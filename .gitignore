@@ -1,0 +1,36 @@
+# Internal build guide — not for public repo
+IMPLEMENTATION_GUIDE.md
+
+# Environment / secrets
+.env
+backend/config/.env
+*.env.local
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-error.log*
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+
+# React build
+frontend/build/
+frontend/node_modules/
+
+# Eval artifacts (regenerate, don't commit ground-truth/test data)
+eval/ground_truth.json
+eval/results.json
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Logs
+*.log
