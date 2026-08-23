@@ -26,6 +26,8 @@ app.use('/api/merchant/orders', require('./routes/orders.routes'));
 app.use('/api/registry', require('./routes/registry.routes'));
 app.use('/api/agent/intent', require('./routes/intent.routes'));
 app.use('/api/agent/negotiation', require('./routes/negotiation.routes'));
+app.use('/api/agent/contract', require('./routes/contract.routes'));
+
 
 
 
