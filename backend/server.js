@@ -24,6 +24,8 @@ app.use('/api/merchant/auth', require('./routes/merchant.auth.routes'));
 app.use('/api/catalog', require('./routes/catalog.routes'));
 app.use('/api/merchant/orders', require('./routes/orders.routes'));
 app.use('/api/registry', require('./routes/registry.routes'));
+app.use('/api/agent/intent', require('./routes/intent.routes'));
+
 
 
 
