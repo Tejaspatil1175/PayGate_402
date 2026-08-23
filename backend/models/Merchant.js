@@ -63,14 +63,10 @@ const merchantSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
-    // OTP Auth fields
-    otp: {
+    // Auth fields (Password based)
+    password: {
       type: String,
-      default: null,
-    },
-    otpExpiresAt: {
-      type: Date,
-      default: null,
+      required: [true, 'Password is required'],
     },
     isActive: {
       type: Boolean,

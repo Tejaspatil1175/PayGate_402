@@ -11,6 +11,10 @@ app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok' });
 });
 
+// Routes
+app.use('/api/merchant/auth', require('./routes/merchant.auth.routes'));
+
+
 connectDB().then(() => {
   app.listen(PORT, () => {
     console.log(`PayGate 402 backend listening on port ${PORT}`);
