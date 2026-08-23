@@ -1,7 +1,18 @@
 # Payment Integrity Mesh
 
-**Defense-only, proxy-enforced fraud and refund-ring detection for Razorpay merchants.**  
-Built for the **Razorpay AI Buildathon — Track 2: AI Risk Manager**
+<p align="center">
+  <img src="https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white" alt="Node.js" />
+  <img src="https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python" />
+  <img src="https://img.shields.io/badge/MongoDB-47A248?style=for-the-badge&logo=mongodb&logoColor=white" alt="MongoDB" />
+  <img src="https://img.shields.io/badge/React-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React" />
+  <img src="https://img.shields.io/badge/Razorpay-0C2451?style=for-the-badge&logo=razorpay&logoColor=white" alt="Razorpay" />
+  <img src="https://img.shields.io/badge/MCP-Model_Context_Protocol-6E56CF?style=for-the-badge" alt="MCP Protocol" />
+</p>
+
+<p align="center">
+  <b>Defense-only, proxy-enforced fraud and refund-ring detection for Razorpay merchants.</b><br/>
+  Built for the <b>Razorpay AI Buildathon — Track 2: AI Risk Manager</b>
+</p>
 
 ---
 
