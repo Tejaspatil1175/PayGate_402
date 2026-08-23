@@ -3,8 +3,10 @@ IMPLEMENTATION_GUIDE.md
 
 # Environment / secrets
 .env
+backend/.env
 backend/config/.env
 *.env.local
+
 
 # Node
 node_modules/
