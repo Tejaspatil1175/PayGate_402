@@ -1,62 +1,72 @@
-# Architecture
+# PayGate 402 — System Architecture
 
-## Diagram
+**Protocol**: AP2 / x402  
+**Track**: Razorpay AI Buildathon — Track 1: AI Growth & Agentic Commerce
+
+---
+
+## High-Level Data Flow
 
 ```
-   Razorpay (Test Mode)
-   Webhooks: payment.authorized · refund.created · payment.dispute.created
-                    │
-                    ▼
-   ┌─────────────────────────────┐
-   │  Webhook Receiver (Node.js)  │  verifies signature, routes event
-   └───────────────┬─────────────┘
-                    │
-        ┌───────────┴────────────┐
-        ▼                        ▼
- ┌───────────────┐      ┌─────────────────────┐
- │ Fraud Guard    │      │ Refund Ring Hunter   │   (Python microservices)
- │ (payment risk) │      │ (graph/link analysis)│
- └───────┬────────┘      └──────────┬───────────┘
-         │   every tool call goes through the proxy — never direct
-         ▼                          ▼
- ┌─────────────────────────────────────────────┐
- │        MCP Tool-Call Proxy (Node.js)          │
- │  Policy Sentinel: allowlist / blocklist /      │
- │  flag-rate cap / business-hours rule           │
- └───────────────────┬───────────────────────────┘
-                     ▼
-     Razorpay MCP Server (hosted, remote — mcp.razorpay.com/mcp)
-     Read-only tools only
-                     │
-                     ▼
-        Audit Ledger (MongoDB) → React + Socket.io Dashboard
+External AI Agent (shopping bot, travel planner, SaaS automation)
+       │
+       ▼
+  Signed Permission Slip (Mandate + ECDSA/HMAC Signature)
+       │
+       ▼
+┌────────────────────────────────────────────────────────┐
+│               PayGate 402 Gateway                      │
+│               (Node.js + Express)                      │
+│                                                        │
+│  1. Signature Verification (crypto module)            │
+│  2. Expiration & Nonce Check                           │
+│  3. Spend Cap & Budget Limit Enforcement              │
+│  4. Merchant Allowlist Validation                     │
+└──────────────────────────┬─────────────────────────────┘
+                           │
+         ┌─────────────────┴─────────────────┐
+         │ (If All Checks Pass)              │ (If Any Check Fails)
+         ▼                                   ▼
+┌─────────────────────────┐       ┌─────────────────────────────┐
+│  Razorpay Test API      │       │  HTTP 402 Challenge         │
+│  (orders.create)        │       │  Response with reason log   │
+└────────────┬────────────┘       └──────────────┬──────────────┘
+             │                                   │
+             └─────────────────┬─────────────────┘
+                               ▼
+                    Audit Ledger (MongoDB)
+                               │
+                               ▼
+               React Dashboard (Live Log Stream)
 ```
 
-## Tech stack
+---
 
-| Layer | Technology | Why |
+## Tech Stack & Rationale
+
+| Layer | Technology | Why Chosen |
 |---|---|---|
-| Webhook receiver + MCP proxy | Node.js + Express | Best-documented Razorpay SDK/webhook support; natural fit for an interception middleware |
-| Detection agents | Python (FastAPI, scikit-learn, networkx) | Graph clustering and lightweight scoring are more direct here |
-| Audit ledger | MongoDB | Document-shaped data, one record per decision |
-| Dashboard | React + Socket.io | Real-time push for the live event feed and live-block demo |
+| **Gateway API** | Node.js + Express | Native non-blocking I/O for lightweight authorization handling; direct integration with Razorpay Node SDK. |
+| **Signature Verification** | Node.js `crypto` module | Built-in, zero-dependency cryptographic verification for signed permission slips. |
+| **Database / Audit Ledger** | MongoDB | Document store ideal for storing permission slips, mandate hashes, and Razorpay payment IDs. |
+| **Dashboard** | React | Real-time governance UI displaying live authorization attempts and gate decisions. |
+| **Payments Integration** | Razorpay Test Mode + Official Node SDK | Seamless order creation upon gate opening. |
+| **Webhooks** | `payment.captured` | Asynchronous confirmation to log completed transactions in the audit ledger. |
 
-## Razorpay MCP tools used (read-only only)
+---
 
-`fetch_payment` · `fetch_payment_card_details` · `fetch_order_payments` · `fetch_all_refunds` · `fetch_multiple_refunds_for_payment` · `fetch_specific_refund_for_payment`
+## Razorpay APIs Used
 
-**Never called, blocked at the proxy regardless of agent:** `create_refund`, `capture_payment`, and every other write-capable tool.
+- `orders.create`: Creates payment orders after permission slip passes signature, spend cap, and allowlist checks.
+- `orders.fetch`: Retrieves and verifies order status.
+- Webhook (`payment.captured`): Confirms successful capture and binds payment ID to mandate hash.
 
-**Webhooks subscribed:** `payment.authorized` · `refund.created` · `payment.dispute.created`
+---
 
-## Data needed
+## Security & Governance Guardrails (Track 1 Requirements)
 
-A labeled, held-out test set — Razorpay's test mode gives transactions, not fraud labels, so this has to be generated:
-- ~70 "clean" transactions/refunds — distinct cards, distinct contacts, spread over time.
-- ~30 "abuse-pattern" refunds — deliberately clustered by shared card BIN or shared contact within a tight time window.
-
-Labels recorded before running any detection, so precision/recall numbers are real, not circular.
-
-## Evaluation
-
-Precision, recall, false-positive count, and estimated false-positive cost, measured against the labeled set above. A stated limitation belongs alongside the numbers: synthetic, non-adversarial, 100-item test set — real-world performance will differ.
+1. **Explainable**: Every decision logs an explicit audit trail (e.g. *"Signature valid. Cap ₹300. Order ₹250. Merchant allowed. PASSED."*).
+2. **Bounded**: The spend cap inside the signed permission slip is strictly enforced. No spending over the limit is permitted.
+3. **Gated**: Zero transactions occur without a verified digital signature.
+4. **Audit Trail**: Mandate hashes are linked to Razorpay payment IDs in MongoDB.
+5. **Graceful Failures**: Invalid/expired signatures or over-budget orders trigger an HTTP 402 response with diagnostic feedback.

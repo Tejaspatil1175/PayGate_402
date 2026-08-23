@@ -1,94 +1,53 @@
-# CryptGate
+# AP2/x402 Agentic Settlement Gateway
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white" />
-  <img src="https://img.shields.io/badge/Express-000000?style=for-the-badge&logo=express&logoColor=white" />
-  <img src="https://img.shields.io/badge/MongoDB-47A248?style=for-the-badge&logo=mongodb&logoColor=white" />
-  <img src="https://img.shields.io/badge/React-61DAFB?style=for-the-badge&logo=react&logoColor=black" />
-  <img src="https://img.shields.io/badge/Razorpay-0C2451?style=for-the-badge&logo=razorpay&logoColor=white" />
-  <img src="https://img.shields.io/badge/Cryptography-RSA%2FECDSA-6E56CF?style=for-the-badge" />
-</p>
-
-<p align="center">
-  <b>AI agent wants to pay? Show the signed slip or get a 402.</b><br/>
-  Built for the Razorpay AI Buildathon — Track 1: AI Growth & Agentic Commerce
+  <img src="https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white" alt="Node.js" />
+  <img src="https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/Razorpay-02042B?style=for-the-badge&logo=razorpay&logoColor=00D6A4" alt="Razorpay" />
+  <img src="https://img.shields.io/badge/MCP-Model%20Context%20Protocol-4B32C3?style=for-the-badge" alt="MCP" />
+  <img src="https://img.shields.io/badge/Google-AP2-4285F4?style=for-the-badge&logo=google&logoColor=white" alt="Google AP2" />
+  <img src="https://img.shields.io/badge/Coinbase-x402-0052FF?style=for-the-badge&logo=coinbase&logoColor=white" alt="x402" />
+  <img src="https://img.shields.io/badge/PostgreSQL-4169E1?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL" />
+  <img src="https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker" />
 </p>
 
 ---
 
-## What this is
+## Introduction
 
-AI agents cannot pay safely today. Give them your card = they can overspend. Don't give it = they cannot buy anything.
+The **AP2/x402 Agentic Settlement Gateway** is a policy-gated middleware layer that lets autonomous AI buyer agents transact safely on merchant catalogs without ever touching raw API keys or violating cardholder authorization requirements.
 
-CryptGate is a cryptographic payment gate. It sits in front of Razorpay. An AI agent can only pay if it brings a digitally signed permission slip from the user. The slip has a hard spending limit and expiry.
+Autonomous agents cannot be handed unrestricted merchant credentials — doing so exposes merchants to prompt-injection risk, unbounded spend, and non-deterministic model behavior. At the same time, global agentic commerce protocols such as Google's **AP2 (Agent Payments Protocol)** and Coinbase's **x402** have no bridge into India's domestic payment rails.
 
-- No signature? 402 Payment Required.
-- Fake signature? 402 Payment Required.
-- Over budget? 402 Payment Required.
+This gateway closes that gap. It intercepts unauthenticated agent requests, issues an HTTP 402 challenge, verifies cryptographically signed AP2 Cart Mandates against per-agent spending policies, and — only after verification — executes a bounded settlement through the official **Razorpay MCP Server**, writing every transaction to an auditable double-entry ledger.
 
-Only real + valid + bounded = gate opens, Razorpay pays.
+## Features
 
----
+- **HTTP 402 Negotiation Engine** — intercepts agent purchase requests and responds with a structured payment challenge containing an AP2 Cart Mandate.
+- **Cryptographic Mandate Verification** — validates ECDSA signatures on Intent, Cart, and Payment Mandates against registered agent public keys.
+- **Policy-Gated Execution Proxy** — enforces per-transaction spend caps, velocity limits, and merchant whitelists before any funds move.
+- **Razorpay MCP Settlement** — routes verified requests through `initiate_payment`, `capture_payment`, and order-management tools on the official Razorpay Remote MCP Server.
+- **x402 Stablecoin Support** — accepts machine-to-machine micropayments over the x402 protocol as an alternative settlement path.
+- **Idempotent Dual-Ledger Audit Trail** — maps every AP2 mandate ID to its resulting Razorpay payment ID (`pay_xxx`) in a non-repudiable, double-entry ledger.
+- **Deterministic Failure Handling** — rejects unsigned, expired, over-budget, or replayed mandates before any Razorpay API call is made.
 
-## The 4 Steps
+## System Flow
 
-| Step | What Happens |
-|---|---|
-| **1. Sign** | User creates a permission slip: "Max ₹300, Zomato, 1 hour" and signs it with their private key |
-| **2. Verify** | AI agent hits `/agent-pay` with the slip. CryptGate checks the digital signature using math (RSA/ECDSA). Impossible to fake. |
-| **3. Bound** | Gate checks: amount ≤ cap? merchant allowed? time not expired? Any fail = BLOCKED |
-| **4. Pay** | All checks pass → Razorpay order created → payment captured → audit log saved |
-
----
-
-## Architecture
-
+```mermaid
+flowchart TD
+    A[AI Buyer Agent] -->|Sends purchase request| B[Settlement Gateway]
+    B -->|No valid mandate found| C[Return HTTP 402 + Cart Mandate Challenge]
+    C --> D[Agent signs Cart Mandate with private key]
+    D -->|Submits signed mandate| E[AP2 Mandate Verifier]
+    E -->|Invalid signature or expired| F[Reject Request]
+    E -->|Signature valid| G[Policy Engine]
+    G -->|Exceeds spend cap or velocity limit| F
+    G -->|Within policy bounds| H{Settlement Path}
+    H -->|INR domestic rail| I[Razorpay MCP Server]
+    H -->|Stablecoin micropayment| J[x402 Settlement on Base]
+    I -->|initiate_payment / capture_payment| K[Razorpay Order Created]
+    J --> L[On-chain Settlement Confirmed]
+    K --> M[Dual-Ledger Audit Record]
+    L --> M
+    M --> N[Receipt Returned to Agent]
 ```
-External AI Agent (any bot, any company)
-        ↓
-   Signed Permission Slip
-        ↓
-┌─────────────────────────────────┐
-│         CryptGate               │
-│      (Node.js + Express)        │
-│                                 │
-│   • RSA/ECDSA Signature Verify  │
-│   • Spend Cap Enforcement       │
-│   • Merchant + Expiry Check     │
-│   • 402 Challenge Response      │
-└──────────────┬──────────────────┘
-               ↓
-      Razorpay Test API
-               ↓
-      Order Created
-               ↓
-┌─────────────────────────────────┐
-│      Audit Ledger (MongoDB)     │
-│                                 │
-│   Mandate Hash → Razorpay ID    │
-│   Every allow / block recorded  │
-└─────────────────────────────────┘
-               ↓
-      React Dashboard (Live log)
-```
-
----
-
-## Tech Stack
-
-| Layer | Technology |
-|---|---|
-| Gateway API | Node.js + Express |
-| Cryptography | Node.js crypto (built-in RSA/ECDSA) |
-| Database | MongoDB |
-| Dashboard | React |
-| Payments | Razorpay Test Mode + Official Node SDK |
-| Webhooks | payment.captured |
-
----
-
-## Razorpay APIs Used
-
-- `orders.create` — create order after gate opens
-- `orders.fetch` — verify status
-- Webhooks: `payment.captured` — confirm success
