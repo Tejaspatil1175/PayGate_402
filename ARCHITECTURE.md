@@ -7,37 +7,26 @@
 
 ## High-Level Data Flow
 
-```
-External AI Agent (shopping bot, travel planner, SaaS automation)
-       │
-       ▼
-  Signed Permission Slip (Mandate + ECDSA/HMAC Signature)
-       │
-       ▼
-┌────────────────────────────────────────────────────────┐
-│               PayGate 402 Gateway                      │
-│               (Node.js + Express)                      │
-│                                                        │
-│  1. Signature Verification (crypto module)            │
-│  2. Expiration & Nonce Check                           │
-│  3. Spend Cap & Budget Limit Enforcement              │
-│  4. Merchant Allowlist Validation                     │
-└──────────────────────────┬─────────────────────────────┘
-                           │
-         ┌─────────────────┴─────────────────┐
-         │ (If All Checks Pass)              │ (If Any Check Fails)
-         ▼                                   ▼
-┌─────────────────────────┐       ┌─────────────────────────────┐
-│  Razorpay Test API      │       │  HTTP 402 Challenge         │
-│  (orders.create)        │       │  Response with reason log   │
-└────────────┬────────────┘       └──────────────┬──────────────┘
-             │                                   │
-             └─────────────────┬─────────────────┘
-                               ▼
-                    Audit Ledger (MongoDB)
-                               │
-                               ▼
-               React Dashboard (Live Log Stream)
+```mermaid
+flowchart TD
+    A[External AI Agent<br/>shopping bot, travel planner, SaaS automation] -->|Sends signed permission slip| B[PayGate 402 Gateway<br/>Node.js + Express]
+
+    subgraph B[PayGate 402 Gateway - Node.js + Express]
+        B1[1. Signature Verification - crypto module]
+        B2[2. Expiration and Nonce Check]
+        B3[3. Spend Cap and Budget Limit Enforcement]
+        B4[4. Merchant Allowlist Validation]
+        B1 --> B2 --> B3 --> B4
+    end
+
+    B4 -->|All checks pass| C[Razorpay Test API<br/>orders.create]
+    B4 -->|Any check fails| D[HTTP 402 Challenge Response<br/>with diagnostic reason log]
+
+    C --> E[Order Created]
+    E -->|payment.captured webhook| F[Audit Ledger - MongoDB]
+    D --> F
+
+    F --> G[React Dashboard<br/>Live Log Stream]
 ```
 
 ---
