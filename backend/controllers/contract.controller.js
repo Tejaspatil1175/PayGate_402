@@ -110,3 +110,36 @@ exports.getContractDetails = async (req, res) => {
     });
   }
 };
+
+// @desc    Perform real-time policy pre-check before contract creation
+// @route   POST /api/agent/contract/precheck
+exports.preCheckPolicy = async (req, res) => {
+  try {
+    const { performPolicyPreCheck } = require('../services/policyPreCheck.service');
+    const { merchantId, agentId, amount, category, budgetCap } = req.body;
+
+    if (!merchantId || amount === undefined) {
+      return res.status(400).json({
+        success: false,
+        error: 'merchantId and amount are required for policy pre-check',
+      });
+    }
+
+    const result = await performPolicyPreCheck({
+      merchantId,
+      agentId: agentId || req.headers['x-agent-id'],
+      amount: parseFloat(amount),
+      category,
+      budgetCap: budgetCap ? parseFloat(budgetCap) : undefined,
+    });
+
+    const statusCode = result.preCheckPassed ? 200 : 402;
+    res.status(statusCode).json(result);
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+};
+
