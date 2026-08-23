@@ -2,8 +2,12 @@ require('dotenv').config();
 const express = require('express');
 const connectDB = require('./config/db');
 
+const { auditLoggerMiddleware } = require('./middleware/auditLogger');
+
 const app = express();
 app.use(express.json());
+app.use(auditLoggerMiddleware);
+
 
 const PORT = process.env.PORT || 4000;
 
