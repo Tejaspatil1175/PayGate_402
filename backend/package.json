@@ -1,0 +1,19 @@
+{
+  "name": "paygate-402-backend",
+  "version": "0.1.0",
+  "description": "PayGate 402 - AP2/x402 agentic settlement gateway backend",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "mongoose": "^8.5.0",
+    "dotenv": "^16.4.5",
+    "razorpay": "^2.9.4"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.4"
+  }
+}
