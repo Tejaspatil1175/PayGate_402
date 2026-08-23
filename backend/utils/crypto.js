@@ -31,7 +31,7 @@ function hashData(data) {
 }
 
 /**
- * Sign payload using RSA-SHA256 and a private key
+ * Sign payload using RSA-PSS SHA256 and a private key
  * @param {string|Object} data - Data payload to sign
  * @param {string} privateKey - RSA Private key in PEM format
  * @returns {string} Base64 encoded signature string
@@ -41,11 +41,18 @@ function signData(data, privateKey) {
   const signer = crypto.createSign('SHA256');
   signer.update(payload);
   signer.end();
-  return signer.sign(privateKey, 'base64');
+  return signer.sign(
+    {
+      key: privateKey,
+      padding: crypto.constants.RSA_PKCS1_PSS_PADDING,
+      saltLength: crypto.constants.RSA_PSS_SALTLEN_DIGEST,
+    },
+    'base64'
+  );
 }
 
 /**
- * Verify RSA-SHA256 signature against data payload and public key
+ * Verify RSA-PSS SHA256 signature against data payload and public key
  * @param {string|Object} data - Original payload
  * @param {string} signature - Base64 encoded signature
  * @param {string} publicKey - RSA Public key in PEM format
@@ -57,7 +64,15 @@ function verifySignature(data, signature, publicKey) {
     const verifier = crypto.createVerify('SHA256');
     verifier.update(payload);
     verifier.end();
-    return verifier.verify(publicKey, signature, 'base64');
+    return verifier.verify(
+      {
+        key: publicKey,
+        padding: crypto.constants.RSA_PKCS1_PSS_PADDING,
+        saltLength: crypto.constants.RSA_PSS_SALTLEN_DIGEST,
+      },
+      signature,
+      'base64'
+    );
   } catch (error) {
     return false;
   }
