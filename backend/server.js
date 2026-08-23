@@ -4,9 +4,13 @@ const connectDB = require('./config/db');
 
 const { auditLoggerMiddleware } = require('./middleware/auditLogger');
 
+const { globalRateLimiter } = require('./middleware/rateLimiter');
+
 const app = express();
 app.use(express.json());
 app.use(auditLoggerMiddleware);
+app.use(globalRateLimiter);
+
 
 
 const PORT = process.env.PORT || 4000;
