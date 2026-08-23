@@ -140,3 +140,30 @@ exports.getAgentIntents = async (req, res) => {
     });
   }
 };
+
+// @desc    Match intent against merchant catalogs and return explainable scored matches
+// @route   GET /api/agent/intent/:id/matches
+exports.matchIntent = async (req, res) => {
+  try {
+    const { matchIntentToMerchants } = require('../services/matching.service');
+    const matches = await matchIntentToMerchants(req.params.id);
+
+    // Update status to matched if matches found
+    if (matches.length > 0) {
+      await Intent.findByIdAndUpdate(req.params.id, { status: 'matched' });
+    }
+
+    res.status(200).json({
+      protocol: 'AP2/x402',
+      success: true,
+      count: matches.length,
+      matches,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+};
+
