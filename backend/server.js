@@ -25,6 +25,10 @@ app.use('/api/registry', require('./routes/registry.routes'));
 
 
 
+// Centralized Error Handler
+const { errorHandler } = require('./middleware/errorHandler');
+app.use(errorHandler);
+
 connectDB().then(() => {
   app.listen(PORT, () => {
     console.log(`PayGate 402 backend listening on port ${PORT}`);
