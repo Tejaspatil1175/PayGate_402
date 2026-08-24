@@ -86,14 +86,15 @@ function verifyWebhookSignature(body, signature, secret) {
   const webhookSecret = secret || process.env.RAZORPAY_WEBHOOK_SECRET;
 
   if (!webhookSecret || !signature) {
-    logger.warn('Webhook secret or signature missing for verification');
+    logger.warn('[SECURITY_WEBHOOK_WARN] Webhook secret or signature missing for verification');
     return false;
   }
 
   try {
+    const rawPayload = Buffer.isBuffer(body) ? body : (typeof body === 'string' ? body : String(body));
     const expectedSignature = crypto
       .createHmac('sha256', webhookSecret)
-      .update(typeof body === 'string' ? body : JSON.stringify(body))
+      .update(rawPayload)
       .digest('hex');
 
     return crypto.timingSafeEqual(
@@ -101,7 +102,7 @@ function verifyWebhookSignature(body, signature, secret) {
       Buffer.from(expectedSignature, 'utf8')
     );
   } catch (error) {
-    logger.error('Error verifying Razorpay webhook signature:', error.message);
+    logger.error('[SECURITY_WEBHOOK_ERROR] Error verifying Razorpay webhook signature:', error.message);
     return false;
   }
 }

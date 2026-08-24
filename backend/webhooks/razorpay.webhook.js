@@ -11,19 +11,32 @@ async function handleRazorpayWebhook(req, res) {
   const signature = req.headers['x-razorpay-signature'];
   const rawBody = req.body;
 
-  // 1. Verify HMAC-SHA256 signature if signature header is provided
-  if (signature) {
-    const isValid = verifyWebhookSignature(rawBody, signature);
-    if (!isValid) {
-      logger.warn('[WEBHOOK] Invalid Razorpay signature detected');
-      return res.status(400).json({ success: false, error: 'Invalid webhook signature' });
-    }
+  // 1. Verify HMAC-SHA256 signature against raw Buffer / string payload
+  if (!signature) {
+    logger.warn('[SECURITY_WEBHOOK_REJECTED] Missing X-Razorpay-Signature header');
+    return res.status(400).json({ success: false, error: 'Missing webhook signature header' });
   }
 
-  const event = req.body.event;
-  const payload = req.body.payload;
+  const isValid = verifyWebhookSignature(rawBody, signature);
+  if (!isValid) {
+    logger.warn('[SECURITY_WEBHOOK_REJECTED] Invalid Razorpay webhook signature detected');
+    return res.status(400).json({ success: false, error: 'Invalid webhook signature' });
+  }
+
+  // Parse JSON from raw payload
+  let body;
+  try {
+    body = Buffer.isBuffer(rawBody) ? JSON.parse(rawBody.toString('utf8')) : (typeof rawBody === 'string' ? JSON.parse(rawBody) : rawBody);
+  } catch (err) {
+    logger.error('[SECURITY_WEBHOOK_ERROR] Failed to parse webhook JSON payload:', err.message);
+    return res.status(400).json({ success: false, error: 'Invalid JSON payload' });
+  }
+
+  const event = body.event;
+  const payload = body.payload;
 
   logger.info(`[WEBHOOK] Received Razorpay event: ${event}`);
+
 
   try {
     if (event === 'payment.captured' || event === 'payment.authorized') {

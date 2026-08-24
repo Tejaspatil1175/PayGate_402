@@ -1,6 +1,8 @@
 const Product = require('../models/Product');
 const Registry = require('../models/Registry');
 const Intent = require('../models/Intent');
+const { AppError } = require('../middleware/errorHandler');
+const logger = require('../utils/logger');
 
 /**
  * Match a purchase intent against available merchant catalogs and policy constraints
@@ -23,11 +25,17 @@ async function matchIntentToMerchants(intentInput, options = {}) {
   const { category, keywords = [], budgetCap = 0, merchantPreferences = [] } = intentDoc;
   const maxResults = options.limit || 10;
 
+  if (!budgetCap || Number(budgetCap) <= 0) {
+    logger.warn('[SECURITY_MATCHING_REJECTED] Intent budgetCap is zero or non-positive');
+    throw new AppError('budgetCap must be greater than 0', 400);
+  }
+
   // Build MongoDB query filter
   const productFilter = {
     isAvailable: true,
     price: { $lte: budgetCap }, // Bounded price constraint
   };
+
 
   if (category && category !== 'General') {
     productFilter.category = category;

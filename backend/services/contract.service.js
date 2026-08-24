@@ -42,10 +42,17 @@ async function generateCommerceContract(params) {
     throw new Error(`Agreed contract amount ₹${agreedAmount} exceeds intent budget cap ₹${intent.budgetCap}`);
   }
 
-  // Handle RSA keys for signing
+const logger = require('../utils/logger');
+
+// Handle RSA keys for signing
   let keys = { publicKey: providedPubKey, privateKey: userPrivateKey };
   if (!userPrivateKey || !providedPubKey) {
-    // Ephemeral keypair generated if not supplied for sandbox demo
+    const isDemoAllowed = process.env.NODE_ENV === 'demo' || params.allowDemoKeys === true;
+    if (!isDemoAllowed) {
+      logger.error('[SECURITY_FATAL] Buyer keys required for contract generation');
+      throw new Error('[SECURITY_FATAL] Buyer keys required');
+    }
+    // Ephemeral keypair generated if supplied for sandbox demo mode
     const generated = generateKeyPair();
     keys = {
       publicKey: providedPubKey || generated.publicKey,

@@ -7,11 +7,13 @@ const { auditLoggerMiddleware } = require('./middleware/auditLogger');
 const { globalRateLimiter } = require('./middleware/rateLimiter');
 
 const app = express();
+
+// Razorpay Webhook Route with raw body parsing (must precede express.json for HMAC signature validation)
+app.post('/api/webhooks/razorpay', express.raw({ type: 'application/json' }), require('./webhooks/razorpay.webhook'));
+
 app.use(express.json());
 app.use(auditLoggerMiddleware);
 app.use(globalRateLimiter);
-
-
 
 const PORT = process.env.PORT || 4000;
 
@@ -38,7 +40,7 @@ app.use('/api/admin/system', require('./routes/admin.system.routes'));
 app.use('/api/admin/config', require('./routes/admin.config.routes'));
 app.use('/.well-known', require('./routes/wellknown.routes'));
 app.use('/well-known', require('./routes/wellknown.routes'));
-app.post('/api/webhooks/razorpay', require('./webhooks/razorpay.webhook'));
+
 
 
 

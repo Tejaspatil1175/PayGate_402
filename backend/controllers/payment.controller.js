@@ -4,6 +4,10 @@ const Order = require('../models/Order');
 const { PolicyViolationError, AppError } = require('../middleware/errorHandler');
 const { logAuditEvent } = require('../middleware/auditLogger');
 const { generateNonce } = require('../utils/crypto');
+const { checkTransactionGuardrails } = require('../middleware/transactionGuardrails');
+const { evaluateGatedAction } = require('../middleware/gatedActions');
+const { evaluateFraudRisk } = require('../services/fraud.service');
+const logger = require('../utils/logger');
 
 // @desc    Execute payment for a verified AP2 contract / Cart Mandate
 // @route   POST /api/agent/payment/execute
@@ -19,6 +23,7 @@ exports.executePayment = async (req, res, next) => {
     const verification = await verifyCommerceContract(contractId);
 
     if (!verification.isValid) {
+      logger.warn(`[SECURITY_GATE_REJECTED] Contract verification failed for contract ${contractId}: ${verification.reason}`);
       return next(new PolicyViolationError(verification.reason, { contractId }));
     }
 
@@ -35,8 +40,72 @@ exports.executePayment = async (req, res, next) => {
       });
     }
 
+    // 1b. Execute Security Gates: Guardrails, Gated Actions, Fraud Risk Scoring
+    const amount = contract.contractTerms.agreedAmount;
+    const agentId = contract.agentId;
+    const merchantId = contract.merchant;
+
+    // Gate A: Bounded Transactions & Velocity Checks
+    const guardrailRes = await checkTransactionGuardrails({ agentId, amount, merchantId });
+    if (!guardrailRes.passed) {
+      logger.warn(`[SECURITY_GATE_REJECTED] Transaction guardrails rejected payment for contract ${contract.contractId}: ${guardrailRes.reason}`);
+      await logAuditEvent({
+        correlationId: contract.mandateHash,
+        agentId,
+        merchant: merchantId,
+        action: 'PAYMENT_SECURITY_GATE_BLOCKED',
+        decision: 'BLOCK',
+        reason: `[SECURITY_GATE_REJECTED] ${guardrailRes.reason}`,
+      });
+      return next(new AppError(`[SECURITY_GATE_REJECTED] ${guardrailRes.reason}`, 400, 'BLOCK'));
+    }
+
+    // Gate B: Manual Approval Thresholds & First-Time Buyer Checks
+    const gatedRes = await evaluateGatedAction({
+      agentId,
+      amount,
+      merchantId,
+      customerEmail: customer?.email,
+      customerPhone: customer?.phone,
+    });
+    if (gatedRes.decision !== 'ALLOW' || gatedRes.requireManualApproval) {
+      logger.warn(`[SECURITY_GATE_REJECTED] Gated action check rejected payment for contract ${contract.contractId}: ${gatedRes.reason}`);
+      await logAuditEvent({
+        correlationId: contract.mandateHash,
+        agentId,
+        merchant: merchantId,
+        action: 'PAYMENT_SECURITY_GATE_BLOCKED',
+        decision: gatedRes.decision || 'REQUIRE_APPROVAL',
+        reason: `[SECURITY_GATE_REJECTED] ${gatedRes.reason}`,
+      });
+      return next(new AppError(`[SECURITY_GATE_REJECTED] ${gatedRes.reason}`, 403, gatedRes.decision));
+    }
+
+    // Gate C: Anomaly Detection & Fraud Scoring
+    const fraudRes = await evaluateFraudRisk({
+      orderId: contract.contractId,
+      merchantId,
+      agentId,
+      amount,
+      customer,
+      ipAddress: req.ip || req.connection?.remoteAddress || '',
+    });
+    if (fraudRes.payoutHold || fraudRes.riskScore >= 70 || fraudRes.action === 'BLOCK' || fraudRes.action === 'PAYOUT_HOLD') {
+      logger.warn(`[SECURITY_GATE_REJECTED] Fraud risk scoring (score ${fraudRes.riskScore}) rejected payment for contract ${contract.contractId}: ${fraudRes.decisionReason}`);
+      await logAuditEvent({
+        correlationId: contract.mandateHash,
+        agentId,
+        merchant: merchantId,
+        action: 'PAYMENT_SECURITY_GATE_BLOCKED',
+        decision: 'PAYOUT_HOLD',
+        reason: `[SECURITY_GATE_REJECTED] Fraud score ${fraudRes.riskScore} exceeds safety threshold: ${fraudRes.decisionReason}`,
+      });
+      return next(new AppError(`[SECURITY_GATE_REJECTED] ${fraudRes.decisionReason}`, 403, 'PAYOUT_HOLD'));
+    }
+
     // 2. Execute Razorpay Order creation
     const razorpayOrder = await createRazorpayOrder({
+
       amount: contract.contractTerms.agreedAmount,
       currency: contract.contractTerms.currency || 'INR',
       receipt: `rcpt_${contract.contractId}`,
