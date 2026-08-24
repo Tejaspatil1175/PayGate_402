@@ -98,4 +98,13 @@ const orderSchema = new mongoose.Schema(
 orderSchema.index({ merchant: 1, createdAt: -1 });
 orderSchema.index({ status: 1 });
 
+const { minimizePII } = require('../utils/encryption');
+
+// Return PII-minimized sanitized JSON representation of Order
+orderSchema.methods.toMinimizedJSON = function () {
+  const obj = this.toObject();
+  return minimizePII(obj);
+};
+
 module.exports = mongoose.model('Order', orderSchema);
+
