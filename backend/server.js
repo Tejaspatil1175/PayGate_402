@@ -31,7 +31,9 @@ app.use('/api/agent/payment', require('./routes/payment.routes'));
 app.use('/api/agent/fulfillment', require('./routes/fulfillment.routes'));
 app.use('/api/analytics', require('./routes/analytics.routes'));
 app.use('/api/admin/overview', require('./routes/admin.overview.routes'));
+app.use('/api/admin/monitoring', require('./routes/admin.monitoring.routes'));
 app.post('/api/webhooks/razorpay', require('./webhooks/razorpay.webhook'));
+
 
 
 
