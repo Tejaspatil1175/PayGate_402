@@ -1,0 +1,217 @@
+openapi: 3.0.3
+info:
+  title: PayGate 402 — AP2/x402 Agentic Commerce & Settlement Gateway API
+  description: >
+    Production specification for PayGate 402, an AP2/x402-compliant agentic commerce gateway.
+    Enables autonomous AI Buyer agents to discover catalogs, submit intent permission slips,
+    negotiate signed contracts with RSA-PSS signatures, execute Razorpay MCP orders,
+    and enforce security guardrails, velocity limits, fraud scoring, and PII minimization.
+  version: 1.0.0
+  contact:
+    name: Tejas Patil
+    url: https://github.com/Tejaspatil1175/Payment-Integrity-Mesh
+servers:
+  - url: http://localhost:4000
+    description: Local Development Server
+  - url: https://api.paygate402.com
+    description: Production AP2 Gateway
+
+paths:
+  /health:
+    get:
+      summary: Gateway Liveness Check
+      tags:
+        - Health
+      responses:
+        '200':
+          description: Gateway is alive
+
+  # --- Well-Known AP2 Protocol Endpoints ---
+  /.well-known/agentwell.json:
+    get:
+      summary: AP2/x402 Protocol Compliance Capabilities Manifest
+      tags:
+        - Well-Known Compliance
+      responses:
+        '200':
+          description: Capabilities and protocol metadata
+
+  /.well-known/agent-catalog.json:
+    get:
+      summary: Machine-Readable Agent Product Catalog Manifest
+      tags:
+        - Well-Known Compliance
+      responses:
+        '200':
+          description: Machine-readable active product inventory
+
+  /.well-known/agent-policy.json:
+    get:
+      summary: Machine-Readable Merchant Policy & Guardrails Manifest
+      tags:
+        - Well-Known Compliance
+      responses:
+        '200':
+          description: Active transaction guardrails and policy rules
+
+  # --- AI Agent Core Commerce Loop ---
+  /api/agent/intent:
+    post:
+      summary: Submit AI Agent Commerce Intent (Step 2.1)
+      tags:
+        - AI Buyer Agent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [agentId, category, budgetCap]
+              properties:
+                agentId:
+                  type: string
+                category:
+                  type: string
+                budgetCap:
+                  type: number
+      responses:
+        '201':
+          description: Intent created successfully
+
+  /api/agent/negotiation:
+    post:
+      summary: Submit Counter-Offer & Auto-Negotiation (Step 2.3)
+      tags:
+        - AI Buyer Agent
+      responses:
+        '200':
+          description: Negotiation response
+
+  /api/agent/contract:
+    post:
+      summary: Generate & Sign RSA-PSS Commerce Contract (Step 2.4)
+      tags:
+        - AI Buyer Agent
+      responses:
+        '201':
+          description: Signed contract generated
+
+  /api/agent/payment/execute:
+    post:
+      summary: Execute Razorpay MCP Order Payment (Step 2.6)
+      tags:
+        - Payments & MCP
+      responses:
+        '200':
+          description: Payment executed successfully
+
+  /api/agent/fulfillment/process:
+    post:
+      summary: Process Post-Payment Order Fulfillment & Receipt (Step 2.7)
+      tags:
+        - Fulfillment
+      responses:
+        '200':
+          description: Digital receipt and delivery tracking generated
+
+  # --- Merchant Management ---
+  /api/merchant/auth/register:
+    post:
+      summary: Register New Merchant
+      tags:
+        - Merchant Auth
+      responses:
+        '201':
+          description: Merchant registered
+
+  /api/merchant/auth/login:
+    post:
+      summary: Merchant Login
+      tags:
+        - Merchant Auth
+      responses:
+        '200':
+          description: Authentication token returned
+
+  /api/catalog:
+    get:
+      summary: List Merchant Products
+      tags:
+        - Merchant Catalog
+      responses:
+        '200':
+          description: Catalog list
+
+  # --- Analytics & Growth ---
+  /api/analytics/revenue:
+    get:
+      summary: Revenue Analytics & GMV Breakdown (Step 4.5)
+      tags:
+        - Analytics
+      responses:
+        '200':
+          description: Aggregated GMV and order analytics
+
+  /api/analytics/agents:
+    get:
+      summary: AI Buyer Agent Performance Metrics (Step 4.5)
+      tags:
+        - Analytics
+      responses:
+        '200':
+          description: Agent transaction breakdown
+
+  # --- Admin Dashboard & Security ---
+  /api/admin/overview:
+    get:
+      summary: Platform Macro Overview Analytics (Step 6.1)
+      tags:
+        - Admin Dashboard
+      responses:
+        '200':
+          description: Macro overview stats
+
+  /api/admin/monitoring/feed:
+    get:
+      summary: Live Transaction Audit Stream (Step 6.2)
+      tags:
+        - Admin Dashboard
+      responses:
+        '200':
+          description: Audit logs stream
+
+  /api/admin/system/health:
+    get:
+      summary: System Health & Uptime Diagnostics (Step 6.4)
+      tags:
+        - Admin Dashboard
+      responses:
+        '200':
+          description: Detailed uptime and memory diagnostics
+
+  /api/admin/config:
+    get:
+      summary: Get Feature Flags & Maintenance Config (Step 6.5)
+      tags:
+        - Admin Dashboard
+      responses:
+        '200':
+          description: Current platform config
+    put:
+      summary: Update Feature Flags & Maintenance Mode (Step 6.5)
+      tags:
+        - Admin Dashboard
+      responses:
+        '200':
+          description: Updated platform config
+
+components:
+  securitySchemes:
+    AgentHeaderAuth:
+      type: apiKey
+      in: header
+      name: x-agent-id
+    MerchantAuthToken:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
