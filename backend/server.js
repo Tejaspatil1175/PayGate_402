@@ -34,7 +34,10 @@ app.use('/api/admin/overview', require('./routes/admin.overview.routes'));
 app.use('/api/admin/monitoring', require('./routes/admin.monitoring.routes'));
 app.use('/api/admin/system', require('./routes/admin.system.routes'));
 app.use('/api/admin/config', require('./routes/admin.config.routes'));
+app.use('/.well-known', require('./routes/wellknown.routes'));
+app.use('/well-known', require('./routes/wellknown.routes'));
 app.post('/api/webhooks/razorpay', require('./webhooks/razorpay.webhook'));
+
 
 
 
