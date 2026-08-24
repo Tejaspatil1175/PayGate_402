@@ -36,3 +36,8 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Postman Collections
+PayGate_402_Postman_Collection.json
+*.postman_collection.json
+
