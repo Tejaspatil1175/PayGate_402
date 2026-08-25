@@ -32,6 +32,13 @@ async function generateCommerceContract(params) {
     throw new Error('Intent not found');
   }
 
+  // Replay Attack Nonce Protection: an Intent's nonce is single-use for contract generation.
+  // Once a contract has already been created from this intent, reject any further attempt
+  // to mint a new mandate from the same nonce (prevents replay of a captured intent payload).
+  if (intent.status === 'contract_created' || intent.status === 'completed') {
+    throw new Error(`[SECURITY_GATE_REJECTED] Replay detected: intent nonce has already been consumed to generate a commerce contract`);
+  }
+
   const merchant = await Merchant.findById(merchantId);
   if (!merchant) {
     throw new Error('Merchant not found');
