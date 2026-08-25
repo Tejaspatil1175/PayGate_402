@@ -37,12 +37,20 @@ function parseCSV(csvText) {
 // @route   POST /api/catalog
 exports.createProduct = async (req, res) => {
   try {
-    const merchantId = req.body.merchant || req.headers['x-merchant-id'];
+    let merchantId = req.body.merchant || req.body.merchantId || req.headers['x-merchant-id'];
+
+    // Support extracting merchant ID from Bearer token header if passed directly
+    if (!merchantId && req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+      const token = req.headers.authorization.split(' ')[1];
+      if (token && token.length === 24) {
+        merchantId = token;
+      }
+    }
 
     if (!merchantId) {
       return res.status(400).json({
         success: false,
-        error: 'Merchant ID is required',
+        error: 'Merchant ID is required. Pass "merchant" in request body or header "x-merchant-id"',
       });
     }
 
@@ -50,6 +58,7 @@ exports.createProduct = async (req, res) => {
       ...req.body,
       merchant: merchantId,
     };
+
 
     const product = await Product.create(productData);
 
@@ -196,7 +205,14 @@ exports.deleteProduct = async (req, res) => {
 // @route   POST /api/catalog/bulk
 exports.bulkUploadCSV = async (req, res) => {
   try {
-    const merchantId = req.body.merchant || req.headers['x-merchant-id'];
+    let merchantId = req.body.merchant || req.body.merchantId || req.headers['x-merchant-id'];
+
+    if (!merchantId && req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+      const token = req.headers.authorization.split(' ')[1];
+      if (token && token.length === 24) {
+        merchantId = token;
+      }
+    }
 
     if (!merchantId) {
       return res.status(400).json({

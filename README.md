@@ -34,21 +34,5 @@ This gateway closes that gap. It intercepts unauthenticated agent requests, issu
 
 ## System Flow
 
-```mermaid
-flowchart TD
-    A[AI Buyer Agent] -->|Sends purchase request| B[Settlement Gateway]
-    B -->|No valid mandate found| C[Return HTTP 402 + Cart Mandate Challenge]
-    C --> D[Agent signs Cart Mandate with private key]
-    D -->|Submits signed mandate| E[AP2 Mandate Verifier]
-    E -->|Invalid signature or expired| F[Reject Request]
-    E -->|Signature valid| G[Policy Engine]
-    G -->|Exceeds spend cap or velocity limit| F
-    G -->|Within policy bounds| H{Settlement Path}
-    H -->|INR domestic rail| I[Razorpay MCP Server]
-    H -->|Stablecoin micropayment| J[x402 Settlement on Base]
-    I -->|initiate_payment / capture_payment| K[Razorpay Order Created]
-    J --> L[On-chain Settlement Confirmed]
-    K --> M[Dual-Ledger Audit Record]
-    L --> M
-    M --> N[Receipt Returned to Agent]
-```
+![System Architecture & Payment Integrity Mesh](./flowchart.png)
+
