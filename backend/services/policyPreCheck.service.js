@@ -1,14 +1,15 @@
 const PolicyRule = require('../models/PolicyRule');
 const Order = require('../models/Order');
 const Merchant = require('../models/Merchant');
+const walletService = require('./wallet.service');
 
 /**
  * Perform real-time policy pre-validation before contract generation/signing
- * @param {Object} params - { merchantId, agentId, amount, category, budgetCap }
+ * @param {Object} params - { merchantId, agentId, amount, category, budgetCap, userId }
  * @returns {Promise<Object>} Detailed policy pre-check evaluation result
  */
 async function performPolicyPreCheck(params) {
-  const { merchantId, agentId, amount = 0, category = 'General', budgetCap } = params;
+  const { merchantId, agentId, amount = 0, category = 'General', budgetCap, userId } = params;
 
   if (!merchantId) {
     throw new Error('Merchant ID is required for policy pre-check');
@@ -23,6 +24,71 @@ async function performPolicyPreCheck(params) {
   let preCheckPassed = true;
   let gateDecision = 'ALLOW';
   let failureReason = '';
+
+  // 0. User Wallet Balance & Cap Check (gated on final negotiated price)
+  if (userId) {
+    try {
+      const wallet = await walletService.getWalletBalance(userId);
+
+      if (wallet.balance < amount) {
+        preCheckPassed = false;
+        gateDecision = 'BLOCK';
+        failureReason = `Insufficient wallet balance: available ₹${wallet.balance}, required ₹${amount}`;
+        checksEvaluated.push({
+          checkName: 'user_wallet_balance',
+          passed: false,
+          details: failureReason,
+        });
+      } else {
+        checksEvaluated.push({
+          checkName: 'user_wallet_balance',
+          passed: true,
+          details: `Available wallet balance ₹${wallet.balance} >= required ₹${amount}`,
+        });
+      }
+
+      if (amount > wallet.perTransactionCap) {
+        preCheckPassed = false;
+        gateDecision = 'BLOCK';
+        failureReason = `Amount ₹${amount} exceeds wallet per-transaction cap ₹${wallet.perTransactionCap}`;
+        checksEvaluated.push({
+          checkName: 'wallet_per_tx_cap',
+          passed: false,
+          details: failureReason,
+        });
+      } else {
+        checksEvaluated.push({
+          checkName: 'wallet_per_tx_cap',
+          passed: true,
+          details: `Amount ₹${amount} <= per-transaction cap ₹${wallet.perTransactionCap}`,
+        });
+      }
+
+      const availableDailyCap = Math.max(0, wallet.perDayCap - wallet.dailySpent);
+      if (amount > availableDailyCap) {
+        preCheckPassed = false;
+        gateDecision = 'BLOCK';
+        failureReason = `Amount ₹${amount} exceeds wallet remaining daily cap ₹${availableDailyCap}`;
+        checksEvaluated.push({
+          checkName: 'wallet_daily_cap',
+          passed: false,
+          details: failureReason,
+        });
+      } else {
+        checksEvaluated.push({
+          checkName: 'wallet_daily_cap',
+          passed: true,
+          details: `Amount ₹${amount} <= remaining daily cap ₹${availableDailyCap}`,
+        });
+      }
+    } catch (err) {
+      checksEvaluated.push({
+        checkName: 'user_wallet_check',
+        passed: false,
+        details: `Wallet check error: ${err.message}`,
+      });
+    }
+  }
 
   // 1. Budget Cap Check (Permission Slip Bound)
   if (budgetCap !== undefined && amount > budgetCap) {
