@@ -12,9 +12,9 @@ import {
   PieChart,
   Clock,
   LogOut,
+  Sparkles,
   Layers,
   Sliders,
-  Sparkles,
   Package,
 } from 'lucide-react';
 
@@ -61,7 +61,6 @@ export default function App() {
   const [userProfile, setUserProfile] = useState(null);
 
   useEffect(() => {
-    // Auto-detect role from path
     const path = location.pathname;
     if (path.startsWith('/merchant')) {
       setActiveRole('merchant');
@@ -103,6 +102,7 @@ export default function App() {
   };
 
   const isAuthenticated = Boolean(userProfile || localStorage.getItem('paygate_token'));
+  const isAuthPage = ['/login', '/register', '/merchant/register'].includes(location.pathname);
 
   // Determine default authenticated redirect
   const getDefaultRedirect = () => {
@@ -112,203 +112,365 @@ export default function App() {
     return '/discovery';
   };
 
-  const isAuthPage = ['/login', '/register', '/merchant/register'].includes(location.pathname);
+  const currentRoleLabel =
+    activeRole === 'merchant'
+      ? 'Merchant Portal'
+      : activeRole === 'admin'
+      ? 'Admin Mesh'
+      : activeRole === 'agent'
+      ? 'AI Agent Hub'
+      : 'Buyer Hub';
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-indigo-500 selection:text-white">
-      {/* Top Main Navbar (Hidden on Login & Auth pages) */}
-      {!isAuthPage && (
-        <header className="sticky top-0 z-50 bg-slate-950/90 backdrop-blur-xl border-b border-slate-800/80 px-4 lg:px-8 py-3">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-3">
-          {/* Logo & Brand */}
-          <div className="flex items-center justify-between">
-            <Link to={isAuthenticated ? getDefaultRedirect() : '/login'} className="flex items-center gap-2.5 group">
-              <div className="p-2 rounded-xl bg-gradient-to-tr from-indigo-600 to-indigo-400 text-white shadow-lg shadow-indigo-500/20 group-hover:scale-105 transition">
-                <ShieldCheck className="w-5 h-5 text-white" />
-              </div>
-              <div className="flex flex-col">
-                <span className="font-bold text-base tracking-tight text-slate-100 flex items-center gap-1.5">
-                  PayGate 402
-                  <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/30">
-                    AP2 Mesh
-                  </span>
-                </span>
-                <span className="text-[10px] text-slate-400">Autonomous Agentic Commerce Gateway</span>
-              </div>
-            </Link>
+    <div className="min-h-screen bg-[#FBF9F4] text-[#1A1612] flex flex-col font-sans selection:bg-indigo-500 selection:text-white">
+      {/* Role-Scoped Main Navbar (Hidden on Login & Registration pages) */}
+      {!isAuthPage && isAuthenticated && (
+        <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-xl border-b border-[#E7E2D6] px-4 lg:px-8 py-2.5 shadow-sm">
+          <div className="max-w-7xl mx-auto flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+            {/* Brand Logo & Current Role Badge */}
+            <div className="flex items-center justify-between">
+              <Link to={getDefaultRedirect()} className="flex items-center gap-2.5 group">
+                <div className="p-2 rounded-xl bg-gradient-to-tr from-indigo-600 to-indigo-500 text-white shadow-md shadow-indigo-500/20 group-hover:scale-105 transition">
+                  <ShieldCheck className="w-5 h-5 text-white" />
+                </div>
+                <div className="flex flex-col">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-base tracking-tight text-[#120F0B]">
+                      PayGate 402
+                    </span>
+                    <span className="text-[10px] uppercase font-semibold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-200">
+                      {currentRoleLabel}
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-[#78716C]">AP2 / x402 Payment Integrity Mesh</span>
+                </div>
+              </Link>
 
-            {/* Mobile Auth Button */}
-            <div className="md:hidden flex items-center gap-2">
-              {isAuthenticated ? (
-                <button
-                  onClick={handleLogout}
-                  className="p-2 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 hover:text-rose-400"
-                >
-                  <LogOut className="w-4 h-4" />
-                </button>
-              ) : (
-                <Link
-                  to="/login"
-                  className="text-xs px-3 py-1.5 rounded-lg bg-indigo-600 font-semibold text-white"
-                >
-                  Sign In
-                </Link>
+              {/* Mobile Logout CTA */}
+              <button
+                onClick={handleLogout}
+                className="lg:hidden p-2 rounded-xl border border-[#E7E2D6] bg-white text-[#78716C] hover:text-rose-600 shadow-sm"
+                title="Sign Out"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Role-Scoped Center Navigation Links */}
+            <nav className="flex items-center gap-1.5 overflow-x-auto text-xs py-1 scrollbar-none">
+              {/* Buyer / User Links */}
+              {activeRole === 'user' && (
+                <>
+                  <NavLink
+                    to="/discovery"
+                    className={({ isActive }) =>
+                      `px-3 py-1.5 rounded-xl font-medium transition flex items-center gap-1.5 ${
+                        isActive
+                          ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20 font-semibold'
+                          : 'text-[#57534E] hover:text-[#120F0B] hover:bg-[#F4EFE6]'
+                      }`
+                    }
+                  >
+                    <ShoppingBag className="w-3.5 h-3.5" />
+                    <span>Catalog</span>
+                  </NavLink>
+                  <NavLink
+                    to="/voice"
+                    className={({ isActive }) =>
+                      `px-3 py-1.5 rounded-xl font-medium transition flex items-center gap-1.5 ${
+                        isActive
+                          ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20 font-semibold'
+                          : 'text-[#57534E] hover:text-[#120F0B] hover:bg-[#F4EFE6]'
+                      }`
+                    }
+                  >
+                    <Mic className="w-3.5 h-3.5" />
+                    <span>Voice AI</span>
+                  </NavLink>
+                  <NavLink
+                    to="/wishlist"
+                    className={({ isActive }) =>
+                      `px-3 py-1.5 rounded-xl font-medium transition flex items-center gap-1.5 ${
+                        isActive
+                          ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20 font-semibold'
+                          : 'text-[#57534E] hover:text-[#120F0B] hover:bg-[#F4EFE6]'
+                      }`
+                    }
+                  >
+                    <Heart className="w-3.5 h-3.5" />
+                    <span>Wishlist</span>
+                  </NavLink>
+                  <NavLink
+                    to="/wallet"
+                    className={({ isActive }) =>
+                      `px-3 py-1.5 rounded-xl font-medium transition flex items-center gap-1.5 ${
+                        isActive
+                          ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20 font-semibold'
+                          : 'text-[#57534E] hover:text-[#120F0B] hover:bg-[#F4EFE6]'
+                      }`
+                    }
+                  >
+                    <span>Wallet & Ledger</span>
+                  </NavLink>
+                  <NavLink
+                    to="/user/orders"
+                    className={({ isActive }) =>
+                      `px-3 py-1.5 rounded-xl font-medium transition flex items-center gap-1.5 ${
+                        isActive
+                          ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20 font-semibold'
+                          : 'text-[#57534E] hover:text-[#120F0B] hover:bg-[#F4EFE6]'
+                      }`
+                    }
+                  >
+                    <span>Orders</span>
+                  </NavLink>
+                  <NavLink
+                    to="/user/analytics"
+                    className={({ isActive }) =>
+                      `px-3 py-1.5 rounded-xl font-medium transition flex items-center gap-1.5 ${
+                        isActive
+                          ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20 font-semibold'
+                          : 'text-[#57534E] hover:text-[#120F0B] hover:bg-[#F4EFE6]'
+                      }`
+                    }
+                  >
+                    <span>Analytics</span>
+                  </NavLink>
+                  <NavLink
+                    to="/user/tasks"
+                    className={({ isActive }) =>
+                      `px-3 py-1.5 rounded-xl font-medium transition flex items-center gap-1.5 ${
+                        isActive
+                          ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20 font-semibold'
+                          : 'text-[#57534E] hover:text-[#120F0B] hover:bg-[#F4EFE6]'
+                      }`
+                    }
+                  >
+                    <Clock className="w-3.5 h-3.5" />
+                    <span>Scheduled</span>
+                  </NavLink>
+                  <NavLink
+                    to="/user/marketplace"
+                    className={({ isActive }) =>
+                      `px-3 py-1.5 rounded-xl font-medium transition flex items-center gap-1.5 ${
+                        isActive
+                          ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20 font-semibold'
+                          : 'text-[#57534E] hover:text-[#120F0B] hover:bg-[#F4EFE6]'
+                      }`
+                    }
+                  >
+                    <Bot className="w-3.5 h-3.5" />
+                    <span>Marketplace</span>
+                  </NavLink>
+                </>
               )}
-            </div>
-          </div>
 
-          {/* Role Hub Switcher Tabs (Only when authenticated) */}
-          {isAuthenticated && (
-            <div className="flex items-center gap-1 bg-slate-900/90 border border-slate-800/90 p-1 rounded-xl self-start md:self-auto overflow-x-auto max-w-full">
-              <NavLink
-                to="/discovery"
-                className={({ isActive }) =>
-                  `px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition ${
-                    isActive || activeRole === 'user'
-                      ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/25'
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`
-                }
-              >
-                <ShoppingBag className="w-3.5 h-3.5" />
-                <span>Buyer Hub</span>
-              </NavLink>
+              {/* Merchant Portal Links */}
+              {activeRole === 'merchant' && (
+                <>
+                  <NavLink
+                    to="/merchant/catalog"
+                    className={({ isActive }) =>
+                      `px-3 py-1.5 rounded-xl font-medium transition flex items-center gap-1.5 ${
+                        isActive
+                          ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20 font-semibold'
+                          : 'text-[#57534E] hover:text-[#120F0B] hover:bg-[#F4EFE6]'
+                      }`
+                    }
+                  >
+                    <Store className="w-3.5 h-3.5" />
+                    <span>Catalog Inventory</span>
+                  </NavLink>
+                  <NavLink
+                    to="/merchant/policy"
+                    className={({ isActive }) =>
+                      `px-3 py-1.5 rounded-xl font-medium transition flex items-center gap-1.5 ${
+                        isActive
+                          ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20 font-semibold'
+                          : 'text-[#57534E] hover:text-[#120F0B] hover:bg-[#F4EFE6]'
+                      }`
+                    }
+                  >
+                    <Sliders className="w-3.5 h-3.5" />
+                    <span>Policy Builder</span>
+                  </NavLink>
+                  <NavLink
+                    to="/merchant/orders"
+                    className={({ isActive }) =>
+                      `px-3 py-1.5 rounded-xl font-medium transition flex items-center gap-1.5 ${
+                        isActive
+                          ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20 font-semibold'
+                          : 'text-[#57534E] hover:text-[#120F0B] hover:bg-[#F4EFE6]'
+                      }`
+                    }
+                  >
+                    <Package className="w-3.5 h-3.5" />
+                    <span>Live Orders</span>
+                  </NavLink>
+                  <NavLink
+                    to="/merchant/copilot"
+                    className={({ isActive }) =>
+                      `px-3 py-1.5 rounded-xl font-medium transition flex items-center gap-1.5 ${
+                        isActive
+                          ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20 font-semibold'
+                          : 'text-[#57534E] hover:text-[#120F0B] hover:bg-[#F4EFE6]'
+                      }`
+                    }
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>AI Co-Pilot</span>
+                  </NavLink>
+                </>
+              )}
 
-              <NavLink
-                to="/merchant/catalog"
-                className={({ isActive }) =>
-                  `px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition ${
-                    isActive || activeRole === 'merchant'
-                      ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/25'
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`
-                }
-              >
-                <Store className="w-3.5 h-3.5" />
-                <span>Merchant Portal</span>
-              </NavLink>
+              {/* AI Agent Hub Links */}
+              {activeRole === 'agent' && (
+                <>
+                  <NavLink
+                    to="/agent/intent"
+                    className={({ isActive }) =>
+                      `px-3 py-1.5 rounded-xl font-medium transition ${
+                        isActive ? 'bg-indigo-600 text-white font-semibold' : 'text-[#57534E] hover:text-[#120F0B] hover:bg-[#F4EFE6]'
+                      }`
+                    }
+                  >
+                    1. Intent
+                  </NavLink>
+                  <NavLink
+                    to="/agent/matches"
+                    className={({ isActive }) =>
+                      `px-3 py-1.5 rounded-xl font-medium transition ${
+                        isActive ? 'bg-indigo-600 text-white font-semibold' : 'text-[#57534E] hover:text-[#120F0B] hover:bg-[#F4EFE6]'
+                      }`
+                    }
+                  >
+                    2. Matches
+                  </NavLink>
+                  <NavLink
+                    to="/agent/negotiation"
+                    className={({ isActive }) =>
+                      `px-3 py-1.5 rounded-xl font-medium transition ${
+                        isActive ? 'bg-indigo-600 text-white font-semibold' : 'text-[#57534E] hover:text-[#120F0B] hover:bg-[#F4EFE6]'
+                      }`
+                    }
+                  >
+                    3. Negotiation
+                  </NavLink>
+                  <NavLink
+                    to="/agent/contract"
+                    className={({ isActive }) =>
+                      `px-3 py-1.5 rounded-xl font-medium transition ${
+                        isActive ? 'bg-indigo-600 text-white font-semibold' : 'text-[#57534E] hover:text-[#120F0B] hover:bg-[#F4EFE6]'
+                      }`
+                    }
+                  >
+                    4. Contract
+                  </NavLink>
+                  <NavLink
+                    to="/agent/payment"
+                    className={({ isActive }) =>
+                      `px-3 py-1.5 rounded-xl font-medium transition ${
+                        isActive ? 'bg-indigo-600 text-white font-semibold' : 'text-[#57534E] hover:text-[#120F0B] hover:bg-[#F4EFE6]'
+                      }`
+                    }
+                  >
+                    5. Payment
+                  </NavLink>
+                  <NavLink
+                    to="/agent/order-status"
+                    className={({ isActive }) =>
+                      `px-3 py-1.5 rounded-xl font-medium transition ${
+                        isActive ? 'bg-indigo-600 text-white font-semibold' : 'text-[#57534E] hover:text-[#120F0B] hover:bg-[#F4EFE6]'
+                      }`
+                    }
+                  >
+                    6. Status
+                  </NavLink>
+                </>
+              )}
 
-              <NavLink
-                to="/agent/intent"
-                className={({ isActive }) =>
-                  `px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition ${
-                    isActive || activeRole === 'agent'
-                      ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/25'
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`
-                }
-              >
-                <Bot className="w-3.5 h-3.5" />
-                <span>AI Agent Hub</span>
-              </NavLink>
+              {/* Admin Mesh Links */}
+              {activeRole === 'admin' && (
+                <>
+                  <NavLink
+                    to="/admin/overview"
+                    className={({ isActive }) =>
+                      `px-3 py-1.5 rounded-xl font-medium transition ${
+                        isActive ? 'bg-indigo-600 text-white font-semibold' : 'text-[#57534E] hover:text-[#120F0B] hover:bg-[#F4EFE6]'
+                      }`
+                    }
+                  >
+                    Overview
+                  </NavLink>
+                  <NavLink
+                    to="/admin/monitoring"
+                    className={({ isActive }) =>
+                      `px-3 py-1.5 rounded-xl font-medium transition ${
+                        isActive ? 'bg-indigo-600 text-white font-semibold' : 'text-[#57534E] hover:text-[#120F0B] hover:bg-[#F4EFE6]'
+                      }`
+                    }
+                  >
+                    Security Monitoring
+                  </NavLink>
+                  <NavLink
+                    to="/admin/merchant-health"
+                    className={({ isActive }) =>
+                      `px-3 py-1.5 rounded-xl font-medium transition ${
+                        isActive ? 'bg-indigo-600 text-white font-semibold' : 'text-[#57534E] hover:text-[#120F0B] hover:bg-[#F4EFE6]'
+                      }`
+                    }
+                  >
+                    Merchant Health
+                  </NavLink>
+                  <NavLink
+                    to="/admin/system-health"
+                    className={({ isActive }) =>
+                      `px-3 py-1.5 rounded-xl font-medium transition ${
+                        isActive ? 'bg-indigo-600 text-white font-semibold' : 'text-[#57534E] hover:text-[#120F0B] hover:bg-[#F4EFE6]'
+                      }`
+                    }
+                  >
+                    System Infrastructure
+                  </NavLink>
+                  <NavLink
+                    to="/admin/config"
+                    className={({ isActive }) =>
+                      `px-3 py-1.5 rounded-xl font-medium transition ${
+                        isActive ? 'bg-indigo-600 text-white font-semibold' : 'text-[#57534E] hover:text-[#120F0B] hover:bg-[#F4EFE6]'
+                      }`
+                    }
+                  >
+                    Config
+                  </NavLink>
+                </>
+              )}
+            </nav>
 
-              <NavLink
-                to="/admin/overview"
-                className={({ isActive }) =>
-                  `px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition ${
-                    isActive || activeRole === 'admin'
-                      ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/25'
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`
-                }
-              >
-                <Activity className="w-3.5 h-3.5" />
-                <span>Admin Mesh</span>
-              </NavLink>
-            </div>
-          )}
-
-          {/* User Profile & Auth CTA */}
-          <div className="hidden md:flex items-center gap-3">
-            {isAuthenticated ? (
-              <div className="flex items-center gap-3 bg-slate-900 border border-slate-800/80 px-3 py-1.5 rounded-xl">
-                <div className="w-6 h-6 rounded-full bg-indigo-600/20 border border-indigo-500/40 flex items-center justify-center text-indigo-400 font-bold text-xs">
+            {/* User Profile & Sign Out CTA on the Right */}
+            <div className="hidden lg:flex items-center gap-3">
+              <div className="flex items-center gap-2.5 bg-[#FBF9F4] border border-[#E7E2D6] px-3 py-1.5 rounded-2xl shadow-sm">
+                <div className="w-7 h-7 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold text-xs shadow-sm">
                   {((userProfile?.name || userProfile?.businessName || userProfile?.email || 'U')[0]).toUpperCase()}
                 </div>
                 <div className="text-left leading-tight">
-                  <div className="text-xs font-semibold text-slate-200 max-w-[120px] truncate">
+                  <div className="text-xs font-semibold text-[#120F0B] max-w-[130px] truncate">
                     {userProfile?.name || userProfile?.businessName || userProfile?.email || 'Active Session'}
                   </div>
-                  <div className="text-[10px] text-indigo-400 capitalize">
+                  <div className="text-[10px] text-indigo-600 capitalize font-medium">
                     {userProfile?.role || localStorage.getItem('paygate_role') || 'User'}
                   </div>
                 </div>
                 <button
                   onClick={handleLogout}
-                  className="p-1 rounded-lg text-slate-400 hover:text-rose-400 transition"
+                  className="p-1 rounded-lg text-[#78716C] hover:text-rose-600 hover:bg-rose-50 transition ml-1"
                   title="Sign Out"
                 >
                   <LogOut className="w-4 h-4" />
                 </button>
               </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <Link
-                  to="/login"
-                  className="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition shadow-md shadow-indigo-600/20"
-                >
-                  Sign In / Switch Role
-                </Link>
-                <Link
-                  to="/register"
-                  className="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-slate-900 border border-slate-800 text-slate-300 hover:text-white transition"
-                >
-                  Create Buyer Account
-                </Link>
-              </div>
-            )}
+            </div>
           </div>
-        </div>
-
-        {/* Secondary Context Sub-Navbar (When Authenticated) */}
-        {isAuthenticated && (
-          <div className="max-w-7xl mx-auto pt-2 border-t border-slate-800/40 flex items-center gap-2 overflow-x-auto text-xs py-1">
-            {activeRole === 'user' && (
-              <>
-                <NavLink to="/discovery" className={({ isActive }) => `px-2.5 py-1 rounded-lg transition ${isActive ? 'text-indigo-400 font-semibold bg-indigo-500/10' : 'text-slate-400 hover:text-slate-200'}`}>Catalog Discovery</NavLink>
-                <NavLink to="/voice" className={({ isActive }) => `px-2.5 py-1 rounded-lg transition flex items-center gap-1 ${isActive ? 'text-amber-400 font-semibold bg-amber-500/10' : 'text-slate-400 hover:text-slate-200'}`}><Mic className="w-3 h-3" /> Voice AI Assistant</NavLink>
-                <NavLink to="/wishlist" className={({ isActive }) => `px-2.5 py-1 rounded-lg transition flex items-center gap-1 ${isActive ? 'text-rose-400 font-semibold bg-rose-500/10' : 'text-slate-400 hover:text-slate-200'}`}><Heart className="w-3 h-3" /> Wishlist</NavLink>
-                <NavLink to="/wallet" className={({ isActive }) => `px-2.5 py-1 rounded-lg transition ${isActive ? 'text-indigo-400 font-semibold bg-indigo-500/10' : 'text-slate-400 hover:text-slate-200'}`}>Wallet & Ledger</NavLink>
-                <NavLink to="/user/orders" className={({ isActive }) => `px-2.5 py-1 rounded-lg transition ${isActive ? 'text-indigo-400 font-semibold bg-indigo-500/10' : 'text-slate-400 hover:text-slate-200'}`}>Order Tracking</NavLink>
-                <NavLink to="/user/analytics" className={({ isActive }) => `px-2.5 py-1 rounded-lg transition ${isActive ? 'text-indigo-400 font-semibold bg-indigo-500/10' : 'text-slate-400 hover:text-slate-200'}`}>Spending Analytics</NavLink>
-                <NavLink to="/user/tasks" className={({ isActive }) => `px-2.5 py-1 rounded-lg transition flex items-center gap-1 ${isActive ? 'text-amber-400 font-semibold bg-amber-500/10' : 'text-slate-400 hover:text-slate-200'}`}><Clock className="w-3 h-3" /> Scheduled Tasks</NavLink>
-                <NavLink to="/user/marketplace" className={({ isActive }) => `px-2.5 py-1 rounded-lg transition ${isActive ? 'text-indigo-400 font-semibold bg-indigo-500/10' : 'text-slate-400 hover:text-slate-200'}`}>Agent Marketplace</NavLink>
-              </>
-            )}
-
-            {activeRole === 'merchant' && (
-              <>
-                <NavLink to="/merchant/catalog" className={({ isActive }) => `px-2.5 py-1 rounded-lg transition ${isActive ? 'text-indigo-400 font-semibold bg-indigo-500/10' : 'text-slate-400 hover:text-slate-200'}`}>Catalog Inventory</NavLink>
-                <NavLink to="/merchant/policy" className={({ isActive }) => `px-2.5 py-1 rounded-lg transition ${isActive ? 'text-indigo-400 font-semibold bg-indigo-500/10' : 'text-slate-400 hover:text-slate-200'}`}>Policy Rule Builder</NavLink>
-                <NavLink to="/merchant/orders" className={({ isActive }) => `px-2.5 py-1 rounded-lg transition ${isActive ? 'text-indigo-400 font-semibold bg-indigo-500/10' : 'text-slate-400 hover:text-slate-200'}`}>Live Order Stream</NavLink>
-                <NavLink to="/merchant/copilot" className={({ isActive }) => `px-2.5 py-1 rounded-lg transition flex items-center gap-1 ${isActive ? 'text-amber-400 font-semibold bg-amber-500/10' : 'text-slate-400 hover:text-slate-200'}`}><Sparkles className="w-3 h-3" /> AI Co-Pilot Suggestions</NavLink>
-                <NavLink to="/merchant/register" className={({ isActive }) => `px-2.5 py-1 rounded-lg transition ${isActive ? 'text-indigo-400 font-semibold bg-indigo-500/10' : 'text-slate-400 hover:text-slate-200'}`}>Store Onboarding</NavLink>
-              </>
-            )}
-
-            {activeRole === 'agent' && (
-              <>
-                <NavLink to="/agent/intent" className={({ isActive }) => `px-2.5 py-1 rounded-lg transition ${isActive ? 'text-indigo-400 font-semibold bg-indigo-500/10' : 'text-slate-400 hover:text-slate-200'}`}>1. Intent Submission</NavLink>
-                <NavLink to="/agent/matches" className={({ isActive }) => `px-2.5 py-1 rounded-lg transition ${isActive ? 'text-indigo-400 font-semibold bg-indigo-500/10' : 'text-slate-400 hover:text-slate-200'}`}>2. Match Results</NavLink>
-                <NavLink to="/agent/negotiation" className={({ isActive }) => `px-2.5 py-1 rounded-lg transition ${isActive ? 'text-indigo-400 font-semibold bg-indigo-500/10' : 'text-slate-400 hover:text-slate-200'}`}>3. Price Negotiation</NavLink>
-                <NavLink to="/agent/contract" className={({ isActive }) => `px-2.5 py-1 rounded-lg transition ${isActive ? 'text-indigo-400 font-semibold bg-indigo-500/10' : 'text-slate-400 hover:text-slate-200'}`}>4. Contract Review</NavLink>
-                <NavLink to="/agent/payment" className={({ isActive }) => `px-2.5 py-1 rounded-lg transition ${isActive ? 'text-indigo-400 font-semibold bg-indigo-500/10' : 'text-slate-400 hover:text-slate-200'}`}>5. Gated Payment</NavLink>
-                <NavLink to="/agent/order-status" className={({ isActive }) => `px-2.5 py-1 rounded-lg transition ${isActive ? 'text-indigo-400 font-semibold bg-indigo-500/10' : 'text-slate-400 hover:text-slate-200'}`}>6. Fulfillment Status</NavLink>
-              </>
-            )}
-
-            {activeRole === 'admin' && (
-              <>
-                <NavLink to="/admin/overview" className={({ isActive }) => `px-2.5 py-1 rounded-lg transition ${isActive ? 'text-purple-400 font-semibold bg-purple-500/10' : 'text-slate-400 hover:text-slate-200'}`}>Platform Overview</NavLink>
-                <NavLink to="/admin/monitoring" className={({ isActive }) => `px-2.5 py-1 rounded-lg transition ${isActive ? 'text-purple-400 font-semibold bg-purple-500/10' : 'text-slate-400 hover:text-slate-200'}`}>Security Monitoring</NavLink>
-                <NavLink to="/admin/merchant-health" className={({ isActive }) => `px-2.5 py-1 rounded-lg transition ${isActive ? 'text-purple-400 font-semibold bg-purple-500/10' : 'text-slate-400 hover:text-slate-200'}`}>Merchant Network Health</NavLink>
-                <NavLink to="/admin/system-health" className={({ isActive }) => `px-2.5 py-1 rounded-lg transition ${isActive ? 'text-purple-400 font-semibold bg-purple-500/10' : 'text-slate-400 hover:text-slate-200'}`}>System Infrastructure</NavLink>
-                <NavLink to="/admin/config" className={({ isActive }) => `px-2.5 py-1 rounded-lg transition ${isActive ? 'text-purple-400 font-semibold bg-purple-500/10' : 'text-slate-400 hover:text-slate-200'}`}>Mesh Configuration</NavLink>
-              </>
-            )}
-          </div>
-        )}
-      </header>
+        </header>
       )}
 
       {/* Main Content Area with Protected Routes */}

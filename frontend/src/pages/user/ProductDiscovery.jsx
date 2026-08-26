@@ -170,11 +170,10 @@ export default function ProductDiscovery() {
               <button
                 key={cat}
                 onClick={() => setSelectedCategory(cat)}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-medium transition ${
-                  selectedCategory === cat
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-medium transition ${selectedCategory === cat
                     ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
                     : 'bg-slate-950 text-slate-400 hover:text-white hover:bg-slate-800'
-                }`}
+                  }`}
               >
                 {cat}
               </button>
@@ -257,11 +256,10 @@ export default function ProductDiscovery() {
                         </span>
                       </div>
                       <span
-                        className={`text-[11px] font-semibold px-2 py-0.5 rounded-md ${
-                          (product.stock || 0) > 0
+                        className={`text-[11px] font-semibold px-2 py-0.5 rounded-md ${(product.stock || 0) > 0
                             ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
                             : 'bg-rose-500/10 text-rose-400 border border-rose-500/30'
-                        }`}
+                          }`}
                       >
                         {(product.stock || 0) > 0 ? `In Stock (${product.stock})` : 'Out of Stock'}
                       </span>
@@ -271,11 +269,10 @@ export default function ProductDiscovery() {
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => handleAddToWishlist(product)}
-                        className={`p-2.5 rounded-xl border transition ${
-                          isSaved
+                        className={`p-2.5 rounded-xl border transition ${isSaved
                             ? 'bg-rose-500/20 border-rose-500/50 text-rose-400'
                             : 'bg-slate-955 border-slate-800 text-slate-400 hover:text-rose-400 hover:border-rose-500/30'
-                        }`}
+                          }`}
                         title="Add to Wishlist"
                       >
                         <Heart className={`w-4 h-4 ${isSaved ? 'fill-rose-400' : ''}`} />

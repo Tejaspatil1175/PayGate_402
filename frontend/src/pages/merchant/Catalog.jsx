@@ -27,6 +27,8 @@ export default function MerchantCatalog() {
   const [price, setPrice] = useState('2000');
   const [stock, setStock] = useState('50');
   const [tags, setTags] = useState('running, shoes, footwear');
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
   const [formLoading, setFormLoading] = useState(false);
 
   // Bulk upload state
@@ -62,6 +64,14 @@ export default function MerchantCatalog() {
     fetchCatalog();
   }, []);
 
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setImageFile(file);
+      setImagePreview(URL.createObjectURL(file));
+    }
+  };
+
   const handleAddProduct = async (e) => {
     e.preventDefault();
     setFormLoading(true);
@@ -73,21 +83,32 @@ export default function MerchantCatalog() {
       const merchant = storedMerchant ? JSON.parse(storedMerchant) : null;
       const merchantId = merchant?._id || merchant?.id;
 
-      const res = await apiClient.post('/catalog', {
-        merchantId,
-        title,
-        description,
-        category,
-        price: Number(price),
-        stock: Number(stock),
-        tags: tags.split(',').map((t) => t.trim()),
+      const formData = new FormData();
+      if (merchantId) formData.append('merchantId', merchantId);
+      formData.append('title', title);
+      formData.append('description', description);
+      formData.append('category', category);
+      formData.append('price', Number(price));
+      formData.append('stock', Number(stock));
+      
+      const tagList = tags.split(',').map((t) => t.trim()).filter(Boolean);
+      tagList.forEach((tag) => formData.append('tags', tag));
+
+      if (imageFile) {
+        formData.append('images', imageFile);
+      }
+
+      const res = await apiClient.post('/catalog', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
 
       if (res.data?.success) {
-        setMessage(`Product "${title}" added to catalog successfully!`);
+        setMessage(`Product "${title}" created and image uploaded successfully!`);
         setShowAddModal(false);
         setTitle('');
         setDescription('');
+        setImageFile(null);
+        setImagePreview(null);
         fetchCatalog();
       }
     } catch (err) {
@@ -276,6 +297,25 @@ export default function MerchantCatalog() {
                 </div>
 
                 <div>
+                  <label className="block text-slate-400 mb-1">Product Image</label>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageChange}
+                      className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 rounded-xl px-3 py-2 text-xs text-slate-300 outline-none file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-500 cursor-pointer"
+                    />
+                    {imagePreview && (
+                      <img
+                        src={imagePreview}
+                        alt="Preview"
+                        className="w-10 h-10 object-cover rounded-lg border border-indigo-500/50 flex-shrink-0"
+                      />
+                    )}
+                  </div>
+                </div>
+
+                <div>
                   <label className="block text-slate-400 mb-1">Tags (Comma-separated)</label>
                   <input
                     type="text"
@@ -402,11 +442,10 @@ export default function MerchantCatalog() {
                       <td className="py-3 px-3 text-slate-300">{p.stock || 0}</td>
                       <td className="py-3 px-3">
                         <span
-                          className={`px-2 py-0.5 rounded-md font-semibold text-[10px] ${
-                            (p.stock || 0) > 0
+                          className={`px-2 py-0.5 rounded-md font-semibold text-[10px] ${(p.stock || 0) > 0
                               ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
                               : 'bg-rose-500/10 text-rose-400 border border-rose-500/30'
-                          }`}
+                            }`}
                         >
                           {(p.stock || 0) > 0 ? 'Available' : 'Out of Stock'}
                         </span>
