@@ -1,6 +1,7 @@
 const Product = require('../models/Product');
 const Registry = require('../models/Registry');
 const Intent = require('../models/Intent');
+const personaService = require('./persona.service');
 const { AppError } = require('../middleware/errorHandler');
 const logger = require('../utils/logger');
 
@@ -24,6 +25,8 @@ async function matchIntentToMerchants(intentInput, options = {}) {
 
   const { category, keywords = [], budgetCap = 0, merchantPreferences = [] } = intentDoc;
   const maxResults = options.limit || 10;
+  const userId = intentDoc.userId || options.userId || null;
+  const userPersona = await personaService.getUserPersona(userId);
 
   if (!budgetCap || Number(budgetCap) <= 0) {
     logger.warn('[SECURITY_MATCHING_REJECTED] Intent budgetCap is zero or non-positive');
@@ -114,7 +117,14 @@ async function matchIntentToMerchants(intentInput, options = {}) {
       explanations.push(`Explicit user merchant preference (+10 pts)`);
     }
 
-    // 5. In-Stock Bonus
+    // 5. User Persona Soft Fit Bonus (max 10 pts, soft factor - never overrides hard caps)
+    const personaFitBonus = personaService.calculatePersonaFitScore(userPersona, product);
+    score += personaFitBonus;
+    if (personaFitBonus > 5) {
+      explanations.push(`User persona preference fit (+${personaFitBonus} pts)`);
+    }
+
+    // 6. In-Stock Bonus
     if ((product.stock || 0) > 0) {
       score += 5;
     }
