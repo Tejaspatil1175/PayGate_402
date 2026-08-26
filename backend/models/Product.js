@@ -103,5 +103,9 @@ const productSchema = new mongoose.Schema(
 
 productSchema.index({ merchant: 1, title: 1 });
 productSchema.index({ category: 1 });
+productSchema.index(
+  { title: 'text', category: 'text', tags: 'text', description: 'text' },
+  { weights: { title: 10, tags: 5, category: 3, description: 1 }, name: 'ProductTextIndex' }
+);
 
 module.exports = mongoose.model('Product', productSchema);
