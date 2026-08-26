@@ -8,7 +8,7 @@ const logger = require('../utils/logger');
  */
 async function getOrCreateWallet(userId) {
   let wallet = await Wallet.findOne({ owner: userId });
-  
+
   if (!wallet) {
     wallet = await Wallet.create({
       owner: userId,

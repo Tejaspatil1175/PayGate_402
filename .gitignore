@@ -1,5 +1,7 @@
-# Internal build guide — not for public repo
+# Internal build guide & system context — not for public repo
 IMPLEMENTATION_GUIDE.md
+SYSTEM_CONTEXT.md
+
 
 # Environment / secrets
 .env
@@ -42,3 +44,7 @@ PayGate_402_Postman_Collection.json
 *.postman_collection.json
 
 API_TESTING_GUIDE.md
+
+# Simple plain-language report for submission — keep local only
+report.tex
+report.pdf
