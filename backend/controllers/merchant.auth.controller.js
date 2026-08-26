@@ -1,5 +1,13 @@
+const fs = require('fs');
 const crypto = require('crypto');
+const cloudinary = require('cloudinary').v2;
 const Merchant = require('../models/Merchant');
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 function hashPassword(password) {
   const salt = crypto.randomBytes(16).toString('hex');
@@ -49,6 +57,19 @@ exports.register = async (req, res) => {
       });
     }
 
+    let logoUrl = req.body.logoUrl || '';
+    if (req.file) {
+      try {
+        const uploadResult = await cloudinary.uploader.upload(req.file.path, {
+          folder: 'paygate402/merchants',
+        });
+        logoUrl = uploadResult.secure_url;
+        fs.unlink(req.file.path, () => {});
+      } catch (uploadErr) {
+        console.error('Merchant logo upload error:', uploadErr);
+      }
+    }
+
     const hashedPassword = hashPassword(password);
 
     const merchant = await Merchant.create({
@@ -57,6 +78,7 @@ exports.register = async (req, res) => {
       phone,
       password: hashedPassword,
       businessCategory: businessCategory || 'General',
+      logoUrl,
       razorpayKeyId: razorpayKeyId || '',
       razorpayKeySecret: razorpayKeySecret || '',
       razorpayWebhookSecret: razorpayWebhookSecret || '',

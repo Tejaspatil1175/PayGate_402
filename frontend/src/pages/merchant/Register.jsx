@@ -11,10 +11,20 @@ export default function MerchantRegister() {
   const [businessCategory, setBusinessCategory] = useState('Electronics');
   const [panNumber, setPanNumber] = useState('');
   const [gstin, setGstin] = useState('');
+  const [logoFile, setLogoFile] = useState(null);
+  const [logoPreview, setLogoPreview] = useState(null);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
+
+  const handleLogoChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setLogoFile(file);
+      setLogoPreview(URL.createObjectURL(file));
+    }
+  };
 
   const handleRegister = async (e) => {
     e.preventDefault();
@@ -22,14 +32,21 @@ export default function MerchantRegister() {
     setLoading(true);
 
     try {
-      const response = await apiClient.post('/merchant/auth/register', {
-        businessName,
-        email,
-        password,
-        phone,
-        businessCategory,
-        panNumber,
-        gstin,
+      const formData = new FormData();
+      formData.append('businessName', businessName);
+      formData.append('email', email);
+      formData.append('password', password);
+      formData.append('phone', phone);
+      formData.append('businessCategory', businessCategory);
+      formData.append('panNumber', panNumber);
+      formData.append('gstin', gstin);
+
+      if (logoFile) {
+        formData.append('logo', logoFile);
+      }
+
+      const response = await apiClient.post('/merchant/auth/register', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
 
       if (response.data?.success) {
@@ -106,6 +123,28 @@ export default function MerchantRegister() {
                 <option value="Home">Home & Kitchen</option>
                 <option value="General">General Retail</option>
               </select>
+            </div>
+          </div>
+
+          {/* Store Logo Upload */}
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-[#57534E] mb-1.5">
+              Store Logo / Brand Image (Optional)
+            </label>
+            <div className="flex items-center gap-3">
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleLogoChange}
+                className="w-full bg-white border border-[#E7E2D6] focus:border-indigo-600 rounded-xl px-3 py-2 text-xs text-[#57534E] outline-none file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-600 hover:file:bg-indigo-100 cursor-pointer shadow-sm"
+              />
+              {logoPreview && (
+                <img
+                  src={logoPreview}
+                  alt="Store Logo Preview"
+                  className="w-10 h-10 object-cover rounded-xl border border-indigo-200 shadow-sm flex-shrink-0"
+                />
+              )}
             </div>
           </div>
 

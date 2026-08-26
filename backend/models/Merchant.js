@@ -25,6 +25,11 @@ const merchantSchema = new mongoose.Schema(
       trim: true,
       default: 'General',
     },
+    logoUrl: {
+      type: String,
+      trim: true,
+      default: '',
+    },
     // Razorpay API Credentials Reference
     razorpayKeyId: {
       type: String,
