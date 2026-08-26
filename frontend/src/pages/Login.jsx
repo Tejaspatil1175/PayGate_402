@@ -59,23 +59,26 @@ export default function Login() {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-screen bg-[#FBF9F4] text-[#1A1612] flex items-center justify-center p-4 relative overflow-hidden">
       {/* Background ambient lighting */}
-      <div className="absolute -top-40 -left-40 w-96 h-96 bg-indigo-600/20 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-emerald-600/20 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -top-40 -left-40 w-96 h-96 bg-amber-200/30 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-indigo-200/30 rounded-full blur-3xl pointer-events-none" />
 
-      <div className="w-full max-w-md bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-2xl p-8 shadow-2xl z-10">
+      <div className="w-full max-w-md bg-white border border-[#E7E2D6] rounded-2xl p-8 shadow-xl shadow-slate-200/60 z-10">
         <div className="text-center mb-6">
-          <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-white via-slate-200 to-indigo-300 bg-clip-text text-transparent">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-indigo-50 border border-indigo-200 text-indigo-600 mb-3 shadow-sm">
+            <ShieldCheck className="w-7 h-7" />
+          </div>
+          <h1 className="text-2xl font-bold tracking-tight text-[#120F0B]">
             Welcome to PayGate 402
           </h1>
-          <p className="text-sm text-slate-400 mt-1">
+          <p className="text-sm text-[#57534E] mt-1">
             Sign in to access your AP2 agentic commerce dashboard
           </p>
         </div>
 
         {/* Role Tab Switcher */}
-        <div className="flex bg-slate-950/80 p-1.5 rounded-xl border border-slate-800/80 mb-6">
+        <div className="flex bg-[#F4EFE6] p-1.5 rounded-xl border border-[#E7E2D6] mb-6">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -90,7 +93,7 @@ export default function Login() {
                 className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-semibold tracking-wide transition ${
                   isActive
                     ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/50'
+                    : 'text-[#57534E] hover:text-[#120F0B] hover:bg-white/60'
                 }`}
               >
                 <Icon className="w-4 h-4" />
@@ -101,18 +104,18 @@ export default function Login() {
         </div>
 
         {error && (
-          <div className="mb-6 p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-sm">
+          <div className="mb-6 p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 text-sm font-medium">
             {error}
           </div>
         )}
 
         <form onSubmit={handleLogin} className="space-y-5">
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
+            <label className="block text-xs font-semibold uppercase tracking-wider text-[#57534E] mb-2">
               Email Address
             </label>
             <div className="relative">
-              <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+              <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-[#78716C]" />
               <input
                 type="email"
                 required
@@ -123,26 +126,26 @@ export default function Login() {
                     ? 'admin@paygate402.com'
                     : activeTab === 'merchant'
                     ? 'merchant@store.com'
-                    : 'alice@example.com'
+                    : 'pranav@gmail.com'
                 }
-                className="w-full bg-slate-950/60 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl px-4 py-3 pl-11 text-sm text-slate-100 placeholder-slate-600 outline-none transition"
+                className="w-full bg-white border border-[#E7E2D6] focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600 rounded-xl px-4 py-3 pl-11 text-sm text-[#120F0B] placeholder-[#A8A29E] outline-none transition shadow-sm"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
+            <label className="block text-xs font-semibold uppercase tracking-wider text-[#57534E] mb-2">
               Password
             </label>
             <div className="relative">
-              <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+              <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-[#78716C]" />
               <input
                 type="password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full bg-slate-950/60 border border-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl px-4 py-3 pl-11 text-sm text-slate-100 placeholder-slate-600 outline-none transition"
+                className="w-full bg-white border border-[#E7E2D6] focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600 rounded-xl px-4 py-3 pl-11 text-sm text-[#120F0B] placeholder-[#A8A29E] outline-none transition shadow-sm"
               />
             </div>
           </div>
@@ -165,11 +168,11 @@ export default function Login() {
 
         {/* Registration link (hidden for Admin per step 46) */}
         {activeTab !== 'admin' && (
-          <div className="mt-8 text-center text-sm text-slate-400">
+          <div className="mt-8 text-center text-sm text-[#57534E]">
             Don't have an account?{' '}
             <Link
               to={activeTab === 'merchant' ? '/merchant/register' : '/register'}
-              className="text-indigo-400 hover:text-indigo-300 font-medium transition"
+              className="text-indigo-600 hover:text-indigo-700 font-semibold transition"
             >
               Register here
             </Link>

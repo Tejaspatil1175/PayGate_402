@@ -1,27 +1,27 @@
 :root {
-  --bg-dark: #090d16;
-  --bg-card: #111827;
-  --bg-card-hover: #1f293d;
-  --bg-glass: rgba(17, 24, 39, 0.7);
-  --border-color: #1e293b;
-  --border-focus: #3b82f6;
+  --bg-dark: #FBF9F4;
+  --bg-card: #FFFFFF;
+  --bg-card-hover: #F8F5ED;
+  --bg-glass: rgba(251, 249, 244, 0.92);
+  --border-color: #E7E2D6;
+  --border-focus: #4F46E5;
 
-  --primary: #2563eb;
-  --primary-hover: #1d4ed8;
-  --primary-glow: rgba(37, 99, 235, 0.35);
+  --primary: #4F46E5;
+  --primary-hover: #4338CA;
+  --primary-glow: rgba(79, 70, 229, 0.12);
 
-  --accent-cyan: #06b6d4;
-  --accent-emerald: #10b981;
-  --accent-amber: #f59e0b;
-  --accent-rose: #f43f5e;
+  --accent-cyan: #0284C7;
+  --accent-emerald: #059669;
+  --accent-amber: #D97706;
+  --accent-rose: #E11D48;
 
-  --text-main: #f8fafc;
-  --text-muted: #94a3b8;
-  --text-dim: #64748b;
+  --text-main: #1A1612;
+  --text-muted: #6B6252;
+  --text-dim: #8C8271;
 
-  --radius-sm: 6pt;
-  --radius-md: 10pt;
-  --radius-lg: 16pt;
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
 
   --font-heading: 'Outfit', sans-serif;
   --font-body: 'Inter', sans-serif;
@@ -42,9 +42,32 @@ body {
   overflow-x: hidden;
 }
 
+/* Headings & Text Contrast on Cream White Theme */
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-heading);
   letter-spacing: -0.02em;
+  color: #120F0B;
+}
+
+.text-white {
+  color: #120F0B;
+}
+
+/* Preserve crisp white text inside solid colored buttons & badges */
+button.text-white,
+a.text-white,
+.btn-primary,
+.bg-indigo-600,
+.bg-indigo-600 *,
+.bg-emerald-600,
+.bg-emerald-600 *,
+.bg-purple-600,
+.bg-purple-600 *,
+.bg-rose-600,
+.bg-rose-600 *,
+.bg-amber-600,
+.bg-amber-600 * {
+  color: #FFFFFF !important;
 }
 
 a {
@@ -59,7 +82,7 @@ a {
   justify-content: space-between;
   padding: 0.8rem 2rem;
   background: var(--bg-glass);
-  backdrop-filter: blur(12px);
+  backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--border-color);
   position: sticky;
   top: 0;
@@ -73,16 +96,16 @@ a {
   font-family: var(--font-heading);
   font-weight: 700;
   font-size: 1.25rem;
-  color: #fff;
+  color: #120F0B;
 }
 
 .brand-badge {
-  background: linear-gradient(135deg, var(--primary), var(--accent-cyan));
-  color: #fff;
+  background: linear-gradient(135deg, var(--primary), #6366F1);
+  color: #fff !important;
   font-size: 0.7rem;
   font-weight: 700;
   padding: 0.2rem 0.5rem;
-  border-radius: 4px;
+  border-radius: 6px;
   text-transform: uppercase;
 }
 
@@ -105,12 +128,13 @@ a {
 }
 
 .nav-item:hover, .nav-item.active {
-  color: #fff;
-  background: rgba(255, 255, 255, 0.06);
+  color: #120F0B;
+  background: #F4EFE6;
 }
 
 .nav-item.active {
   border-bottom: 2px solid var(--primary);
+  font-weight: 600;
 }
 
 /* Layout Containers */
@@ -126,12 +150,13 @@ a {
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   padding: 1.5rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .card:hover {
-  border-color: rgba(59, 130, 246, 0.3);
-  box-shadow: 0 4px 20px var(--primary-glow);
+  border-color: rgba(79, 70, 229, 0.4);
+  box-shadow: 0 6px 24px rgba(79, 70, 229, 0.08);
 }
 
 /* Buttons */
@@ -152,7 +177,7 @@ a {
 
 .btn-primary {
   background: linear-gradient(135deg, var(--primary), var(--primary-hover));
-  color: #fff;
+  color: #fff !important;
   box-shadow: 0 2px 10px var(--primary-glow);
 }
 
@@ -162,13 +187,13 @@ a {
 }
 
 .btn-secondary {
-  background: rgba(255, 255, 255, 0.05);
+  background: #F4EFE6;
   color: var(--text-main);
   border: 1px solid var(--border-color);
 }
 
 .btn-secondary:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: #EAE3D5;
 }
 
 /* Status Badges */
@@ -184,19 +209,53 @@ a {
 }
 
 .badge-success {
-  background: rgba(16, 185, 129, 0.15);
+  background: rgba(5, 150, 105, 0.12);
   color: var(--accent-emerald);
-  border: 1px solid rgba(16, 185, 129, 0.3);
+  border: 1px solid rgba(5, 150, 105, 0.25);
 }
 
 .badge-warning {
-  background: rgba(245, 158, 11, 0.15);
+  background: rgba(217, 119, 6, 0.12);
   color: var(--accent-amber);
-  border: 1px solid rgba(245, 158, 11, 0.3);
+  border: 1px solid rgba(217, 119, 6, 0.25);
 }
 
 .badge-danger {
-  background: rgba(244, 63, 94, 0.15);
+  background: rgba(225, 29, 72, 0.12);
   color: var(--accent-rose);
-  border: 1px solid rgba(244, 63, 94, 0.3);
+  border: 1px solid rgba(225, 29, 72, 0.25);
+}
+
+/* Input Fields on Cream White */
+input, select, textarea {
+  color: #120F0B !important;
+  background-color: #FFFFFF !important;
+  border-color: #E7E2D6 !important;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: #4F46E5 !important;
+}
+
+input::placeholder, textarea::placeholder {
+  color: #8C8271 !important;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #FBF9F4;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #D6CEBE;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #8C8271;
 }

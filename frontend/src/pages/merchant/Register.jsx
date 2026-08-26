@@ -48,26 +48,26 @@ export default function MerchantRegister() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-4 py-12 relative overflow-hidden">
-      {/* Background glow effects */}
-      <div className="absolute -top-40 -left-40 w-96 h-96 bg-indigo-600/20 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-emerald-600/20 rounded-full blur-3xl pointer-events-none" />
+    <div className="min-h-screen bg-[#FBF9F4] text-[#1A1612] flex items-center justify-center p-4 py-12 relative overflow-hidden">
+      {/* Background ambient lighting */}
+      <div className="absolute -top-40 -left-40 w-96 h-96 bg-amber-200/30 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-indigo-200/30 rounded-full blur-3xl pointer-events-none" />
 
-      <div className="w-full max-w-xl bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-2xl p-8 shadow-2xl z-10">
+      <div className="w-full max-w-xl bg-white border border-[#E7E2D6] rounded-2xl p-8 shadow-xl shadow-slate-200/60 z-10">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-indigo-600/10 border border-indigo-500/30 text-indigo-400 mb-3">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-indigo-50 border border-indigo-200 text-indigo-600 mb-3 shadow-sm">
             <Store className="w-7 h-7" />
           </div>
-          <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-white via-slate-200 to-indigo-300 bg-clip-text text-transparent">
+          <h1 className="text-2xl font-bold tracking-tight text-[#120F0B]">
             Merchant Onboarding
           </h1>
-          <p className="text-sm text-slate-400 mt-1">
+          <p className="text-sm text-[#57534E] mt-1">
             Register your store on PayGate 402 for AP2 AI agentic settlement
           </p>
         </div>
 
         {error && (
-          <div className="mb-6 p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-sm">
+          <div className="mb-6 p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 text-sm font-medium">
             {error}
           </div>
         )}
@@ -75,30 +75,30 @@ export default function MerchantRegister() {
         <form onSubmit={handleRegister} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-[#57534E] mb-1.5">
                 Business Name
               </label>
               <div className="relative">
-                <Building className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                <Building className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#78716C]" />
                 <input
                   type="text"
                   required
                   value={businessName}
                   onChange={(e) => setBusinessName(e.target.value)}
                   placeholder="Apex Electronics Ltd"
-                  className="w-full bg-slate-950/60 border border-slate-800 focus:border-indigo-500 rounded-xl px-4 py-2.5 pl-10 text-sm text-white placeholder-slate-600 outline-none"
+                  className="w-full bg-white border border-[#E7E2D6] focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600 rounded-xl px-4 py-2.5 pl-10 text-sm text-[#120F0B] placeholder-[#A8A29E] outline-none transition shadow-sm"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-[#57534E] mb-1.5">
                 Business Category
               </label>
               <select
                 value={businessCategory}
                 onChange={(e) => setBusinessCategory(e.target.value)}
-                className="w-full bg-slate-950/60 border border-slate-800 focus:border-indigo-500 rounded-xl px-4 py-2.5 text-sm text-white outline-none"
+                className="w-full bg-white border border-[#E7E2D6] focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600 rounded-xl px-4 py-2.5 text-sm text-[#120F0B] outline-none transition shadow-sm"
               >
                 <option value="Electronics">Electronics</option>
                 <option value="Footwear">Footwear</option>
@@ -111,28 +111,28 @@ export default function MerchantRegister() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-[#57534E] mb-1.5">
                 Merchant Email
               </label>
               <div className="relative">
-                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#78716C]" />
                 <input
                   type="email"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="merchant@store.com"
-                  className="w-full bg-slate-950/60 border border-slate-800 focus:border-indigo-500 rounded-xl px-4 py-2.5 pl-10 text-sm text-white placeholder-slate-600 outline-none"
+                  className="w-full bg-white border border-[#E7E2D6] focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600 rounded-xl px-4 py-2.5 pl-10 text-sm text-[#120F0B] placeholder-[#A8A29E] outline-none transition shadow-sm"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-[#57534E] mb-1.5">
                 Password
               </label>
               <div className="relative">
-                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#78716C]" />
                 <input
                   type="password"
                   required
@@ -140,7 +140,7 @@ export default function MerchantRegister() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full bg-slate-950/60 border border-slate-800 focus:border-indigo-500 rounded-xl px-4 py-2.5 pl-10 text-sm text-white placeholder-slate-600 outline-none"
+                  className="w-full bg-white border border-[#E7E2D6] focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600 rounded-xl px-4 py-2.5 pl-10 text-sm text-[#120F0B] placeholder-[#A8A29E] outline-none transition shadow-sm"
                 />
               </div>
             </div>
@@ -148,52 +148,52 @@ export default function MerchantRegister() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-[#57534E] mb-1.5">
                 Phone Number
               </label>
               <div className="relative">
-                <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#78716C]" />
                 <input
                   type="text"
                   required
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="+919876543210"
-                  className="w-full bg-slate-950/60 border border-slate-800 focus:border-indigo-500 rounded-xl px-4 py-2.5 pl-10 text-sm text-white placeholder-slate-600 outline-none"
+                  className="w-full bg-white border border-[#E7E2D6] focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600 rounded-xl px-4 py-2.5 pl-10 text-sm text-[#120F0B] placeholder-[#A8A29E] outline-none transition shadow-sm"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-[#57534E] mb-1.5">
                 PAN Number
               </label>
               <div className="relative">
-                <FileText className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                <FileText className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#78716C]" />
                 <input
                   type="text"
                   required
                   value={panNumber}
                   onChange={(e) => setPanNumber(e.target.value.toUpperCase())}
                   placeholder="ABCDE1234F"
-                  className="w-full bg-slate-950/60 border border-slate-800 focus:border-indigo-500 rounded-xl px-4 py-2.5 pl-10 text-sm text-white uppercase placeholder-slate-600 outline-none"
+                  className="w-full bg-white border border-[#E7E2D6] focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600 rounded-xl px-4 py-2.5 pl-10 text-sm text-[#120F0B] uppercase placeholder-[#A8A29E] outline-none transition shadow-sm"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-[#57534E] mb-1.5">
                 GSTIN
               </label>
               <div className="relative">
-                <FileText className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                <FileText className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#78716C]" />
                 <input
                   type="text"
                   required
                   value={gstin}
                   onChange={(e) => setGstin(e.target.value.toUpperCase())}
                   placeholder="27ABCDE1234F1Z5"
-                  className="w-full bg-slate-950/60 border border-slate-800 focus:border-indigo-500 rounded-xl px-4 py-2.5 pl-10 text-sm text-white uppercase placeholder-slate-600 outline-none"
+                  className="w-full bg-white border border-[#E7E2D6] focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600 rounded-xl px-4 py-2.5 pl-10 text-sm text-[#120F0B] uppercase placeholder-[#A8A29E] outline-none transition shadow-sm"
                 />
               </div>
             </div>
@@ -215,9 +215,9 @@ export default function MerchantRegister() {
           </button>
         </form>
 
-        <div className="mt-8 text-center text-sm text-slate-400">
+        <div className="mt-8 text-center text-sm text-[#57534E]">
           Already registered as a merchant?{' '}
-          <Link to="/login" className="text-indigo-400 hover:text-indigo-300 font-medium transition">
+          <Link to="/login" className="text-indigo-600 hover:text-indigo-700 font-semibold transition">
             Sign In
           </Link>
         </div>

@@ -112,19 +112,22 @@ export default function App() {
     return '/discovery';
   };
 
+  const isAuthPage = ['/login', '/register', '/merchant/register'].includes(location.pathname);
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-indigo-500 selection:text-white">
-      {/* Top Main Navbar */}
-      <header className="sticky top-0 z-50 bg-slate-950/90 backdrop-blur-xl border-b border-slate-800/80 px-4 lg:px-8 py-3">
+      {/* Top Main Navbar (Hidden on Login & Auth pages) */}
+      {!isAuthPage && (
+        <header className="sticky top-0 z-50 bg-slate-950/90 backdrop-blur-xl border-b border-slate-800/80 px-4 lg:px-8 py-3">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-3">
           {/* Logo & Brand */}
           <div className="flex items-center justify-between">
             <Link to={isAuthenticated ? getDefaultRedirect() : '/login'} className="flex items-center gap-2.5 group">
               <div className="p-2 rounded-xl bg-gradient-to-tr from-indigo-600 to-indigo-400 text-white shadow-lg shadow-indigo-500/20 group-hover:scale-105 transition">
-                <ShieldCheck className="w-5 h-5" />
+                <ShieldCheck className="w-5 h-5 text-white" />
               </div>
               <div className="flex flex-col">
-                <span className="font-bold text-base tracking-tight text-white flex items-center gap-1.5">
+                <span className="font-bold text-base tracking-tight text-slate-100 flex items-center gap-1.5">
                   PayGate 402
                   <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/30">
                     AP2 Mesh
@@ -306,6 +309,7 @@ export default function App() {
           </div>
         )}
       </header>
+      )}
 
       {/* Main Content Area with Protected Routes */}
       <main className="flex-1">
