@@ -9,6 +9,7 @@ features.md
 .env
 backend/.env
 backend/config/.env
+frontend/.env
 *.env.local
 
 
