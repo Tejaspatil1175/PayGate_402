@@ -18,6 +18,10 @@ node_modules/
 npm-debug.log*
 yarn-error.log*
 
+# Multer temp upload files (images are pushed to Cloudinary, not kept locally)
+backend/uploads/*
+!backend/uploads/.gitkeep
+
 # Python
 __pycache__/
 *.pyc

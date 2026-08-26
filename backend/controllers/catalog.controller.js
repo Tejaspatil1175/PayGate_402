@@ -1,4 +1,25 @@
+const fs = require('fs');
 const Product = require('../models/Product');
+const cloudinary = require('cloudinary').v2;
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+// Uploads an array of multer file objects to Cloudinary and returns their secure URLs
+async function uploadImagesToCloudinary(files) {
+  const uploadedUrls = [];
+  for (const file of files) {
+    const result = await cloudinary.uploader.upload(file.path, {
+      folder: 'paygate402/products',
+    });
+    uploadedUrls.push(result.secure_url);
+    fs.unlink(file.path, () => {}); // clean up local temp file after upload
+  }
+  return uploadedUrls;
+}
 
 // Helper to parse simple CSV text into product objects
 function parseCSV(csvText) {
@@ -59,6 +80,9 @@ exports.createProduct = async (req, res) => {
       merchant: merchantId,
     };
 
+    if (req.files && req.files.length > 0) {
+      productData.images = await uploadImagesToCloudinary(req.files);
+    }
 
     const product = await Product.create(productData);
 
@@ -151,7 +175,13 @@ exports.getProductById = async (req, res) => {
 // @route   PUT /api/catalog/:id
 exports.updateProduct = async (req, res) => {
   try {
-    const product = await Product.findByIdAndUpdate(req.params.id, req.body, {
+    const updateData = { ...req.body };
+
+    if (req.files && req.files.length > 0) {
+      updateData.images = await uploadImagesToCloudinary(req.files);
+    }
+
+    const product = await Product.findByIdAndUpdate(req.params.id, updateData, {
       new: true,
       runValidators: true,
     });
