@@ -28,7 +28,8 @@ export default function UserRegister() {
         if (token) localStorage.setItem('paygate_token', token);
         if (user) localStorage.setItem('paygate_user', JSON.stringify(user));
 
-        navigate('/user/dashboard');
+        localStorage.setItem('paygate_role', 'user');
+        navigate('/discovery');
       }
     } catch (err) {
       setError(err.error || err.message || 'Registration failed. Please try again.');
@@ -133,7 +134,7 @@ export default function UserRegister() {
 
         <div className="mt-8 text-center text-sm text-slate-400">
           Already have an account?{' '}
-          <Link to="/user/login" className="text-indigo-400 hover:text-indigo-300 font-medium transition">
+          <Link to="/login" className="text-indigo-400 hover:text-indigo-300 font-medium transition">
             Sign In
           </Link>
         </div>

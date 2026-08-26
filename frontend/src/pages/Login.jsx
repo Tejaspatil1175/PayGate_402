@@ -18,16 +18,16 @@ export default function Login() {
 
     try {
       let endpoint = '/user/auth/login';
-      let redirectPath = '/user/dashboard';
+      let redirectPath = '/discovery';
       let userKey = 'paygate_user';
 
       if (activeTab === 'merchant') {
         endpoint = '/merchant/auth/login';
-        redirectPath = '/merchant/dashboard';
+        redirectPath = '/merchant/catalog';
         userKey = 'paygate_merchant';
       } else if (activeTab === 'admin') {
         endpoint = '/admin/auth/login';
-        redirectPath = '/admin/dashboard';
+        redirectPath = '/admin/overview';
         userKey = 'paygate_admin';
       }
 
@@ -168,7 +168,7 @@ export default function Login() {
           <div className="mt-8 text-center text-sm text-slate-400">
             Don't have an account?{' '}
             <Link
-              to={activeTab === 'merchant' ? '/merchant/register' : '/user/register'}
+              to={activeTab === 'merchant' ? '/merchant/register' : '/register'}
               className="text-indigo-400 hover:text-indigo-300 font-medium transition"
             >
               Register here

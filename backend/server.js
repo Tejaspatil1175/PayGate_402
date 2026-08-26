@@ -11,6 +11,17 @@ const app = express();
 // Razorpay Webhook Route with raw body parsing (must precede express.json for HMAC signature validation)
 app.post('/api/webhooks/razorpay', express.raw({ type: 'application/json' }), require('./webhooks/razorpay.webhook'));
 
+// CORS headers middleware
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, x-user-id');
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  next();
+});
+
 app.use(express.json());
 app.use(auditLoggerMiddleware);
 app.use(globalRateLimiter);
