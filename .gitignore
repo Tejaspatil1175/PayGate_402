@@ -1,6 +1,8 @@
 # Internal build guide & system context — not for public repo
 IMPLEMENTATION_GUIDE.md
 SYSTEM_CONTEXT.md
+FEATURES.md
+features.md
 
 
 # Environment / secrets
