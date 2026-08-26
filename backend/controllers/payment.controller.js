@@ -143,7 +143,6 @@ exports.executePayment = async (req, res, next) => {
     }
 
     // 2. Execute Wallet Debit (internal agent settlement)
-    const targetUserId = req.body.userId || req.headers['x-user-id'] || customer?.id || contract.userId;
     if (!targetUserId) {
       return next(new AppError('User ID is required to execute wallet payment', 400));
     }
