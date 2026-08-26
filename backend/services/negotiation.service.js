@@ -42,19 +42,20 @@ async function initiateNegotiation(params) {
   let rejectionReason = '';
   let note = `Initial offer submitted by agent: ₹${proposedPrice} (${discountPercentage}% discount)`;
 
-  // Policy Engine Auto Evaluation Rules:
-  // Rule 1: Zero discount (full list price) -> Auto-Accept immediately
-  if (discountPercentage <= 0) {
+  // Policy Engine Evaluation against active merchant PolicyRules:
+  const maxSpendRule = policyRules.find((r) => r.ruleType === 'max_spend_cap');
+
+  if (maxSpendRule && totalProposed > maxSpendRule.maxAmount) {
+    initialStatus = 'rejected';
+    rejectionReason = `Total proposed price ₹${totalProposed} exceeds merchant max single transaction cap ₹${maxSpendRule.maxAmount}`;
+    note = `Auto-rejected by policy engine: ${rejectionReason}`;
+  } else if (discountPercentage <= 0) {
     initialStatus = 'accepted';
     note = 'Auto-accepted by policy engine: Full list price offered.';
-  }
-  // Rule 2: Small discount <= 10% -> Auto-Accept by default policy
-  else if (discountPercentage <= 10) {
+  } else if (discountPercentage <= 10) {
     initialStatus = 'accepted';
     note = `Auto-accepted by policy engine: Discount of ${discountPercentage}% is within 10% auto-approval policy.`;
-  }
-  // Rule 3: Deep discount > 25% -> Auto-Reject
-  else if (discountPercentage > 25) {
+  } else if (discountPercentage > 25) {
     initialStatus = 'rejected';
     rejectionReason = `Discount request of ${discountPercentage}% exceeds max allowed 25% policy threshold`;
     note = `Auto-rejected by policy engine: ${rejectionReason}`;

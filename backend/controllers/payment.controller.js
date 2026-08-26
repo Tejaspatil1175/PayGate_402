@@ -7,6 +7,7 @@ const { generateNonce } = require('../utils/crypto');
 const { checkTransactionGuardrails } = require('../middleware/transactionGuardrails');
 const { evaluateGatedAction } = require('../middleware/gatedActions');
 const { evaluateFraudRisk } = require('../services/fraud.service');
+const { performPolicyPreCheck } = require('../services/policyPreCheck.service');
 const logger = require('../utils/logger');
 
 // @desc    Execute payment for a verified AP2 contract / Cart Mandate
@@ -79,6 +80,44 @@ exports.executePayment = async (req, res, next) => {
         reason: `[SECURITY_GATE_REJECTED] ${gatedRes.reason}`,
       });
       return next(new AppError(`[SECURITY_GATE_REJECTED] ${gatedRes.reason}`, 403, gatedRes.decision));
+    }
+
+    // Gate B2: Real-time Policy Pre-Check (Wallet Balance, Caps & Merchant Rules)
+    const targetUserId = req.body.userId || req.headers['x-user-id'] || customer?.id || contract.userId;
+
+    const policyPreCheckRes = await performPolicyPreCheck({
+      merchantId,
+      agentId,
+      amount,
+      category: contract.items?.[0]?.category || 'General',
+      budgetCap: amount,
+      userId: targetUserId,
+    });
+
+    if (!policyPreCheckRes.preCheckPassed) {
+      logger.warn(`[SECURITY_GATE_REJECTED] Policy pre-check rejected payment for contract ${contract.contractId}: ${policyPreCheckRes.reason}`);
+      await logAuditEvent({
+        correlationId: contract.mandateHash,
+        agentId,
+        merchant: merchantId,
+        action: 'PAYMENT_SECURITY_GATE_BLOCKED',
+        decision: 'BLOCK',
+        reason: `[SECURITY_GATE_REJECTED] ${policyPreCheckRes.reason}`,
+      });
+      return next(new AppError(`[SECURITY_GATE_REJECTED] ${policyPreCheckRes.reason}`, 400, 'BLOCK'));
+    }
+
+    if (policyPreCheckRes.gateDecision === 'REQUIRE_APPROVAL') {
+      logger.warn(`[SECURITY_GATE_REJECTED] Policy pre-check requires manual approval for contract ${contract.contractId}: ${policyPreCheckRes.reason}`);
+      await logAuditEvent({
+        correlationId: contract.mandateHash,
+        agentId,
+        merchant: merchantId,
+        action: 'PAYMENT_SECURITY_GATE_BLOCKED',
+        decision: 'REQUIRE_APPROVAL',
+        reason: `[SECURITY_GATE_REJECTED] ${policyPreCheckRes.reason}`,
+      });
+      return next(new AppError(`[SECURITY_GATE_REJECTED] ${policyPreCheckRes.reason}`, 403, 'REQUIRE_APPROVAL'));
     }
 
     // Gate C: Anomaly Detection & Fraud Scoring
