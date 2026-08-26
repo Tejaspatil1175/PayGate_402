@@ -41,27 +41,29 @@ app.use('/api/admin/config', require('./routes/admin.config.routes'));
 app.use('/.well-known', require('./routes/wellknown.routes'));
 app.use('/well-known', require('./routes/wellknown.routes'));
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+// Phase 9 Routes
+app.use('/api/user/auth', require('./routes/user.auth.routes'));
+app.use('/api/admin/auth', require('./routes/admin.auth.routes'));
+app.use('/api/wallet', require('./routes/wallet.routes'));
+app.use('/api/voice', require('./routes/voice.routes'));
+app.use('/api/discovery', require('./routes/discovery.routes'));
+app.use('/api/recommendations', require('./routes/recommendation.routes'));
+app.use('/api/user-analytics', require('./routes/userAnalytics.routes'));
+app.use('/api/wishlist', require('./routes/wishlist.routes'));
+app.use('/api/user-orders', require('./routes/userOrders.routes'));
+app.use('/api/scheduled-tasks', require('./routes/scheduledTasks.routes'));
+app.use('/api/agent-marketplace', require('./routes/agentMarketplace.routes'));
 
 // Centralized Error Handler
 const { errorHandler } = require('./middleware/errorHandler');
 app.use(errorHandler);
 
+const { seedAdmin } = require('./config/adminSeed');
+const { initScheduledTasksCron } = require('./jobs/scheduledTasks.job');
+
 connectDB().then(() => {
+  seedAdmin();
+  initScheduledTasksCron();
   app.listen(PORT, () => {
     console.log(`PayGate 402 backend listening on port ${PORT}`);
   });

@@ -1,4 +1,3 @@
-const cron = require('node-cron');
 const { getPendingTasksToExecute, updateTaskExecutionStatus } = require('../services/scheduler.service');
 const { matchIntentToMerchants } = require('../services/matching.service');
 const { initiateNegotiation } = require('../services/negotiation.service');
@@ -159,9 +158,17 @@ async function runScheduledTasksJob() {
  */
 function initScheduledTasksCron() {
   logger.info('[SCHEDULED_CRON] Initializing background cron runner (every 60 seconds)...');
-  cron.schedule('*/1 * * * *', async () => {
-    await runScheduledTasksJob();
-  });
+  try {
+    const cron = require('node-cron');
+    cron.schedule('*/1 * * * *', async () => {
+      await runScheduledTasksJob();
+    });
+  } catch (err) {
+    logger.info('[SCHEDULED_CRON] node-cron not available, using native 60-second timer fallback.');
+    setInterval(async () => {
+      await runScheduledTasksJob();
+    }, 60000);
+  }
 }
 
 module.exports = {
