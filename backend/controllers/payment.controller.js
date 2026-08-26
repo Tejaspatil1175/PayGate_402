@@ -103,34 +103,35 @@ exports.executePayment = async (req, res, next) => {
       return next(new AppError(`[SECURITY_GATE_REJECTED] ${fraudRes.decisionReason}`, 403, 'PAYOUT_HOLD'));
     }
 
-    // 2. Execute Razorpay Order creation
-    const razorpayOrder = await createRazorpayOrder({
+    // 2. Execute Wallet Debit (internal agent settlement)
+    const targetUserId = req.body.userId || req.headers['x-user-id'] || customer?.id || contract.userId;
+    if (!targetUserId) {
+      return next(new AppError('User ID is required to execute wallet payment', 400));
+    }
 
-      amount: contract.contractTerms.agreedAmount,
-      currency: contract.contractTerms.currency || 'INR',
-      receipt: `rcpt_${contract.contractId}`,
-      notes: {
-        contractId: contract.contractId,
-        mandateHash: contract.mandateHash,
-        agentId: contract.agentId,
-      },
-    });
+    const walletService = require('../services/wallet.service');
+    const debitedWallet = await walletService.debitWallet(
+      targetUserId,
+      amount,
+      contract.contractId,
+      `Agent Commerce Purchase for contract ${contract.contractId}`
+    );
 
-    // 3. Store Order in MongoDB Audit Ledger
+    // 3. Store Order in MongoDB Audit Ledger with status 'paid'
     const orderData = {
       merchant: contract.merchant,
       orderId: `ord_${generateNonce().substring(0, 12)}`,
-      razorpayOrderId: razorpayOrder.id,
+      razorpayOrderId: `wallet_${generateNonce().substring(0, 12)}`,
       mandateHash: contract.mandateHash,
       agentId: contract.agentId,
       items: contract.items,
       amount: contract.contractTerms.agreedAmount,
       currency: contract.contractTerms.currency || 'INR',
-      status: 'created',
+      status: 'paid',
       customer: customer || {},
       gateDecision: {
         passed: true,
-        reason: 'AP2 Cart Mandate verified. Gate opened. Razorpay order created.',
+        reason: 'AP2 Cart Mandate verified. Internal wallet debited. Order paid.',
       },
     };
 
@@ -146,14 +147,14 @@ exports.executePayment = async (req, res, next) => {
       agentId: contract.agentId,
       merchant: contract.merchant,
       mandateHash: contract.mandateHash,
-      razorpayOrderId: razorpayOrder.id,
+      razorpayOrderId: orderDoc.razorpayOrderId,
       action: 'PAYMENT_EXECUTED',
       decision: 'ALLOW',
-      reason: `Gate opened. Created Razorpay order ${razorpayOrder.id} for ₹${contract.contractTerms.agreedAmount}`,
+      reason: `Gate opened. Debited wallet for ₹${contract.contractTerms.agreedAmount}`,
       metadata: {
         orderId: orderDoc.orderId,
-        razorpayOrderId: razorpayOrder.id,
         amount: contract.contractTerms.agreedAmount,
+        walletBalance: debitedWallet.balance,
       },
     });
 
@@ -161,14 +162,13 @@ exports.executePayment = async (req, res, next) => {
       protocol: 'AP2/x402',
       success: true,
       gateDecision: 'ALLOW',
-      message: 'Payment execution authorized. Razorpay order created.',
+      message: 'Payment execution authorized. Wallet debited successfully.',
       paymentDetails: {
         orderId: orderDoc.orderId,
-        razorpayOrderId: razorpayOrder.id,
-        amount: razorpayOrder.amount, // in paise
-        currency: razorpayOrder.currency,
-        keyId: process.env.RAZORPAY_KEY_ID || 'rzp_test_placeholder',
-        receipt: razorpayOrder.receipt,
+        amount: contract.contractTerms.agreedAmount,
+        currency: contract.contractTerms.currency || 'INR',
+        paymentMethod: 'wallet',
+        walletBalance: debitedWallet.balance,
         mandateHash: contract.mandateHash,
       },
     });

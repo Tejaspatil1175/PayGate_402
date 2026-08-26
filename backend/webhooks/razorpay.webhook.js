@@ -44,8 +44,35 @@ async function handleRazorpayWebhook(req, res) {
       const razorpayOrderId = paymentEntity.order_id;
       const razorpayPaymentId = paymentEntity.id;
       const amountInRupees = (paymentEntity.amount || 0) / 100;
+      const notes = paymentEntity.notes || {};
 
-      if (razorpayOrderId) {
+      // Route 1: Wallet Top-Up Payment
+      if (notes.purpose === 'wallet_topup' && notes.userId) {
+        const walletService = require('../services/wallet.service');
+        await walletService.creditWallet(
+          notes.userId,
+          amountInRupees,
+          razorpayPaymentId,
+          'Razorpay Wallet Top-up'
+        );
+
+        await logAuditEvent({
+          correlationId: razorpayOrderId || razorpayPaymentId,
+          agentId: 'user_wallet',
+          action: 'WALLET_TOPUP_SUCCESS',
+          decision: 'ALLOW',
+          reason: `Razorpay webhook confirmed wallet top-up of ₹${amountInRupees}`,
+          metadata: {
+            event,
+            userId: notes.userId,
+            razorpayPaymentId,
+            amount: amountInRupees,
+          },
+        });
+
+        logger.info(`[WEBHOOK] Credited ₹${amountInRupees} to wallet for user ${notes.userId}`);
+      } else if (razorpayOrderId) {
+        // Route 2: Direct Merchant / Cart Purchase Payment
         const order = await Order.findOne({ razorpayOrderId });
 
         if (order) {
