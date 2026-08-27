@@ -8,6 +8,8 @@ import {
   ShieldCheck,
   ChevronRight,
   TrendingDown,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import apiClient from '../../api/client';
 
@@ -31,6 +33,7 @@ export default function UserDashboard() {
 
   // 2. Wallet Overview States
   const [walletBalance, setWalletBalance] = useState(15450);
+  const [showDashboardBalance, setShowDashboardBalance] = useState(false);
   const [perTxCap, setPerTxCap] = useState(5000);
   const [perDayCap, setPerDayCap] = useState(10000);
   const [walletLoading, setWalletLoading] = useState(false);
@@ -417,21 +420,46 @@ export default function UserDashboard() {
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Wallet className="w-4 h-4 text-slate-600" />
+                  <Wallet className="w-4 h-4 text-indigo-600" />
                   <h3 className="font-bold text-slate-800 text-xs uppercase tracking-wider">
                     Wallet Overview
                   </h3>
                 </div>
-                <button className="text-slate-400 hover:text-slate-600 text-xs">•••</button>
+                <button
+                  type="button"
+                  onClick={() => setShowDashboardBalance((prev) => !prev)}
+                  className="p-1 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition"
+                  title={showDashboardBalance ? 'Hide Balance' : 'Show Balance'}
+                >
+                  {showDashboardBalance ? (
+                    <EyeOff className="w-3.5 h-3.5" />
+                  ) : (
+                    <Eye className="w-3.5 h-3.5 text-indigo-600" />
+                  )}
+                </button>
               </div>
 
               <div>
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
                   CURRENT BALANCE:
                 </span>
-                <span className="text-2xl font-black text-slate-900 tracking-tight">
-                  ₹{walletBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                </span>
+                <div
+                  onClick={() => setShowDashboardBalance((prev) => !prev)}
+                  className="cursor-pointer select-none inline-flex items-center gap-2 group/dbalance"
+                >
+                  <span className="text-2xl font-black text-slate-900 tracking-tight">
+                    {showDashboardBalance ? (
+                      `₹${walletBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
+                    ) : (
+                      <span className="font-mono tracking-widest text-indigo-600 font-bold">₹******</span>
+                    )}
+                  </span>
+                  {!showDashboardBalance && (
+                    <span className="text-[10px] font-semibold text-slate-400 group-hover/dbalance:text-indigo-600 bg-slate-100 px-1.5 py-0.5 rounded">
+                      view
+                    </span>
+                  )}
+                </div>
               </div>
 
               {/* Policy Caps Box */}

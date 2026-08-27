@@ -9,13 +9,35 @@ import {
   RefreshCw,
   ShieldCheck,
   CreditCard,
+  Eye,
+  EyeOff,
+  Copy,
+  Check,
+  Sparkles,
+  Zap,
 } from 'lucide-react';
 import apiClient from '../../api/client';
+
+function loadRazorpayScript() {
+  return new Promise((resolve) => {
+    if (window.Razorpay) {
+      resolve(true);
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+}
 
 export default function UserWallet() {
   const [wallet, setWallet] = useState(null);
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showBalance, setShowBalance] = useState(false);
+  const [copied, setCopied] = useState(false);
   const [topUpAmount, setTopUpAmount] = useState('1000');
   const [topUpLoading, setTopUpLoading] = useState(false);
 
@@ -76,13 +98,56 @@ export default function UserWallet() {
         amount: Number(topUpAmount),
       });
 
-      if (res.data?.success) {
-        setMessage(`Top-up order created: ${res.data.razorpayOrder.id}. Balance updated!`);
-        fetchWalletData();
+      if (!res.data?.success) {
+        throw new Error(res.data?.error || 'Failed to create top-up order');
       }
+
+      const scriptLoaded = await loadRazorpayScript();
+      if (!scriptLoaded || !window.Razorpay) {
+        setError('Could not load Razorpay checkout. Check your internet connection and try again.');
+        setTopUpLoading(false);
+        return;
+      }
+
+      const { orderId, amount, currency, key } = res.data;
+
+      const options = {
+        key,
+        amount: Math.round(amount * 100),
+        currency: currency || 'INR',
+        name: 'PayGate 402',
+        description: 'AP2 Agent Wallet Top-Up',
+        order_id: orderId,
+        prefill: {
+          name: user?.name || '',
+          email: user?.email || '',
+        },
+        notes: {
+          purpose: 'wallet_topup',
+          userId,
+        },
+        theme: { color: '#4f46e5' },
+        handler: function () {
+          setMessage('Payment successful! Confirming with the server...');
+          setTimeout(fetchWalletData, 2500);
+        },
+        modal: {
+          ondismiss: function () {
+            setTopUpLoading(false);
+            setError('Payment was cancelled before completion.');
+          },
+        },
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.on('payment.failed', function (response) {
+        setError(response?.error?.description || 'Payment failed. Please try again.');
+        setTopUpLoading(false);
+      });
+      rzp.open();
+      setTopUpLoading(false);
     } catch (err) {
       setError(err.error || err.message || 'Top-up failed');
-    } finally {
       setTopUpLoading(false);
     }
   };
@@ -114,6 +179,20 @@ export default function UserWallet() {
       setCapSaving(false);
     }
   };
+
+  const handleCopyWalletId = () => {
+    const id = wallet?.walletId || wallet?._id || 'AP2-MESH-402';
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(String(id));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const dailyCap = wallet?.perDayCap || 50000;
+  const dailySpent = wallet?.dailySpent || 0;
+  const remainingCap = Math.max(0, dailyCap - dailySpent);
+  const capPercent = Math.min(100, Math.round((dailySpent / (dailyCap || 1)) * 100));
 
   return (
     <div className="p-6 md:p-8 space-y-6 max-w-7xl mx-auto w-full">
@@ -157,33 +236,142 @@ export default function UserWallet() {
         )}
 
         {/* Top Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Current Balance Hero Card */}
-          <div className="md:col-span-2 bg-gradient-to-tr from-indigo-600 via-indigo-700 to-indigo-800 text-white rounded-2xl p-6 shadow-md relative overflow-hidden flex flex-col justify-between">
-            <div className="absolute top-0 right-0 p-6 opacity-10 pointer-events-none">
-              <CreditCard className="w-40 h-40 text-white" />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Current Balance Card (Razorpay Signature Royal Blue) */}
+          <div className="lg:col-span-2 bg-gradient-to-br from-[#0c2340] via-[#0a2c54] to-[#071d37] border border-[#1b3d68] text-white rounded-2xl p-5 md:p-6 shadow-md flex flex-col justify-between space-y-5 relative overflow-hidden group">
+            {/* Ambient Razorpay Blue Glow */}
+            <div className="absolute -top-20 -right-20 w-56 h-56 bg-[#3395FF]/15 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute -bottom-20 -left-20 w-56 h-56 bg-[#00D2D3]/10 rounded-full blur-3xl pointer-events-none" />
+
+            {/* Background Wallet Watermark Logo & Concentric Geometric Rings */}
+            <div className="absolute right-2 -bottom-4 opacity-[0.09] text-sky-200 pointer-events-none select-none transition-transform duration-700 group-hover:scale-105">
+              <WalletIcon className="w-44 h-44 stroke-[1.2]" />
             </div>
-            <div>
-              <div className="text-xs font-bold uppercase tracking-wider text-indigo-200 mb-1">
-                Available AP2 Balance
+            <div className="absolute -right-12 -bottom-12 w-60 h-60 border border-white/5 rounded-full pointer-events-none" />
+            <div className="absolute -right-24 -bottom-24 w-84 h-84 border border-white/5 rounded-full pointer-events-none" />
+
+            {/* Top Bar: Title, Verified Tag & Eye Action */}
+            <div className="relative z-10 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-[#133863] border border-[#23528b] flex items-center justify-center text-[#3395FF] shadow-xs">
+                  <WalletIcon className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-white text-sm">
+                      Wallet Balance
+                    </h3>
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold">
+                      ● Active
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-[11px] text-slate-300 font-mono">
+                    <span>ID: AP2-{(wallet?._id || wallet?.walletId || '4020').slice(-6).toUpperCase()}</span>
+                    <button
+                      type="button"
+                      onClick={handleCopyWalletId}
+                      className="hover:text-white transition text-sky-300"
+                      title="Copy ID"
+                    >
+                      {copied ? (
+                        <Check className="w-3 h-3 text-emerald-400 inline" />
+                      ) : (
+                        <Copy className="w-3 h-3 inline" />
+                      )}
+                    </button>
+                  </div>
+                </div>
               </div>
-              <div className="text-4xl font-black text-white tracking-tight mb-6">
-                ₹{(wallet?.balance || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+
+              {/* Eye Toggle Button */}
+              <button
+                type="button"
+                onClick={() => setShowBalance((prev) => !prev)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#163863]/80 hover:bg-[#1f4a80] border border-[#2b588e] text-xs font-semibold text-slate-200 hover:text-white transition cursor-pointer"
+                title={showBalance ? 'Hide Balance' : 'Show Balance'}
+              >
+                {showBalance ? (
+                  <>
+                    <EyeOff className="w-3.5 h-3.5 text-slate-300" />
+                    <span>Hide</span>
+                  </>
+                ) : (
+                  <>
+                    <Eye className="w-3.5 h-3.5 text-[#528FF0]" />
+                    <span>Show</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* Main Balance Display */}
+            <div className="relative z-10 space-y-1">
+              <span className="text-[11px] font-bold text-[#528FF0] uppercase tracking-wider block">
+                AVAILABLE FUNDS
+              </span>
+              <div
+                onClick={() => setShowBalance((prev) => !prev)}
+                className="inline-flex items-center gap-3 cursor-pointer group/bal select-none"
+              >
+                {showBalance ? (
+                  <div className="text-3xl md:text-4xl font-black text-white tracking-tight flex items-baseline gap-1.5">
+                    <span className="text-2xl text-[#3395FF] font-bold">₹</span>
+                    <span>
+                      {(wallet?.balance || 0).toLocaleString('en-IN', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-2xl md:text-3xl font-mono font-black text-sky-300 tracking-widest">
+                      ₹******
+                    </span>
+                    <span className="text-[11px] font-bold text-sky-200 group-hover/bal:text-white bg-[#1a406e] group-hover/bal:bg-[#23538c] px-2 py-0.5 rounded-md border border-[#2c5b96] transition">
+                      reveal
+                    </span>
+                  </div>
+                )}
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#133863] text-sky-200 border border-[#23528b] self-center">
+                  INR
+                </span>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 border-t border-white/20 pt-4 text-xs">
-              <div>
-                <span className="text-indigo-200 block">Spent Today</span>
-                <span className="text-white font-bold text-base">
-                  ₹{(wallet?.dailySpent || 0).toLocaleString('en-IN')}
+            {/* Guardrails Policy & Usage Bar */}
+            <div className="relative z-10 space-y-2.5 pt-3 border-t border-[#1b3d68]">
+              <div className="flex items-center justify-between text-xs text-slate-300">
+                <span className="font-medium">Daily Limit ({capPercent}% used)</span>
+                <span className="font-semibold text-white">
+                  {showBalance ? `₹${dailySpent.toLocaleString('en-IN')} / ₹${dailyCap.toLocaleString('en-IN')}` : '₹****** / ₹******'}
                 </span>
               </div>
-              <div>
-                <span className="text-indigo-200 block">Remaining Daily Cap</span>
-                <span className="text-emerald-300 font-bold text-base">
-                  ₹{Math.max(0, (wallet?.perDayCap || 50000) - (wallet?.dailySpent || 0)).toLocaleString('en-IN')}
-                </span>
+              <div className="w-full bg-[#061528] rounded-full h-2 overflow-hidden border border-[#1b3d68]/60">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-[#3395FF] to-[#00D2D3] transition-all duration-500"
+                  style={{ width: `${capPercent}%` }}
+                />
+              </div>
+
+              {/* Compact Stats Row */}
+              <div className="grid grid-cols-2 gap-3 pt-1 text-xs">
+                <div className="bg-[#081c36]/90 border border-[#1a3c66] rounded-xl p-2.5">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                    SPENT TODAY
+                  </span>
+                  <span className="font-bold text-white text-sm">
+                    {showBalance ? `₹${dailySpent.toLocaleString('en-IN')}` : '₹******'}
+                  </span>
+                </div>
+                <div className="bg-[#081c36]/90 border border-[#1a3c66] rounded-xl p-2.5">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                    REMAINING DAILY
+                  </span>
+                  <span className="font-bold text-emerald-300 text-sm">
+                    {showBalance ? `₹${remainingCap.toLocaleString('en-IN')}` : '₹******'}
+                  </span>
+                </div>
               </div>
             </div>
           </div>

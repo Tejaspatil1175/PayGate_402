@@ -57,6 +57,7 @@ router.post('/topup', async (req, res) => {
     res.status(200).json({
       success: true,
       message: 'Top-up order created successfully',
+      key: process.env.RAZORPAY_KEY_ID,
       ...topUpResult,
     });
   } catch (error) {
