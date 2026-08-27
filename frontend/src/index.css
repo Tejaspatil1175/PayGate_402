@@ -42,32 +42,10 @@ body {
   overflow-x: hidden;
 }
 
-/* Headings & Text Contrast on Cream White Theme */
+/* Headings Contrast */
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-heading);
   letter-spacing: -0.02em;
-  color: #120F0B;
-}
-
-.text-white {
-  color: #120F0B;
-}
-
-/* Preserve crisp white text inside solid colored buttons & badges */
-button.text-white,
-a.text-white,
-.btn-primary,
-.bg-indigo-600,
-.bg-indigo-600 *,
-.bg-emerald-600,
-.bg-emerald-600 *,
-.bg-purple-600,
-.bg-purple-600 *,
-.bg-rose-600,
-.bg-rose-600 *,
-.bg-amber-600,
-.bg-amber-600 * {
-  color: #FFFFFF !important;
 }
 
 a {

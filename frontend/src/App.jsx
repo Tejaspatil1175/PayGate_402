@@ -148,20 +148,28 @@ export default function App() {
           <div className="max-w-7xl mx-auto flex flex-col lg:flex-row lg:items-center justify-between gap-3">
             {/* Brand Logo & Current Role Badge */}
             <div className="flex items-center justify-between">
-              <Link to={getDefaultRedirect()} className="flex items-center gap-2.5 group">
-                <div className="p-2 rounded-xl bg-gradient-to-tr from-indigo-600 to-indigo-500 text-white shadow-md shadow-indigo-500/20 group-hover:scale-105 transition">
-                  <ShieldCheck className="w-5 h-5 text-white" />
+              <Link to={getDefaultRedirect()} className="flex items-center gap-3 group">
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-indigo-500 text-white flex items-center justify-center shadow-md shadow-indigo-500/20 group-hover:scale-105 transition-transform duration-200 shrink-0">
+                  <ShieldCheck className="w-5 h-5 text-white" strokeWidth={2.2} />
                 </div>
-                <div className="flex flex-col">
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-base tracking-tight text-[#120F0B]">
-                      PayGate 402
+                <div className="flex flex-col justify-center">
+                  <div className="flex items-center gap-2 leading-none">
+                    <span
+                      style={{ color: '#0f172a' }}
+                      className="font-bold text-lg text-slate-900 tracking-tight"
+                    >
+                      PayGate <span style={{ color: '#4f46e5' }} className="text-indigo-600">402</span>
                     </span>
-                    <span className="text-[10px] uppercase font-semibold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-200">
+                    <span className="text-[10px] uppercase font-semibold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
                       {currentRoleLabel}
                     </span>
                   </div>
-                  <span className="text-[10px] text-[#78716C]">AP2 / x402 Payment Integrity Mesh</span>
+                  <span
+                    style={{ color: '#64748b' }}
+                    className="text-xs text-slate-500 font-medium tracking-normal mt-1 leading-none"
+                  >
+                    AP2 / x402 Payment Integrity Mesh
+                  </span>
                 </div>
               </Link>
 

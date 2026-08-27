@@ -101,15 +101,31 @@ export default function UserLayout() {
       <aside className="w-64 bg-white border-r border-[#E2E8F0] flex flex-col justify-between py-6 px-4 shrink-0 shadow-sm sticky top-0 h-screen overflow-y-auto">
         <div className="space-y-6">
           {/* Brand Logo */}
-          <Link to="/dashboard" className="flex items-center gap-3 px-3 group">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-600 to-indigo-500 text-white flex items-center justify-center shadow-md shadow-indigo-500/20 font-black text-sm group-hover:scale-105 transition">
-              <ShieldCheck className="w-5 h-5 text-white" />
+          <Link to="/discovery" className="flex items-center gap-3 px-2 py-1 group">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-indigo-500 text-white flex items-center justify-center shadow-md shadow-indigo-500/20 group-hover:scale-105 transition-transform duration-200 shrink-0">
+              <ShieldCheck className="w-5 h-5 text-white" strokeWidth={2.2} />
             </div>
-            <div>
-              <span className="font-bold text-lg text-slate-900 tracking-tight block leading-none">
-                PayGate 402
+            <div className="flex flex-col justify-center">
+              <div className="flex items-center gap-1 leading-none">
+                <span
+                  style={{ color: '#0f172a' }}
+                  className="font-bold text-lg text-slate-900 tracking-tight"
+                >
+                  PayGate
+                </span>
+                <span
+                  style={{ color: '#4f46e5' }}
+                  className="font-bold text-lg text-indigo-600 tracking-tight"
+                >
+                  402
+                </span>
+              </div>
+              <span
+                style={{ color: '#64748b' }}
+                className="text-xs text-slate-500 font-medium tracking-normal mt-1 leading-none"
+              >
+                Agentic Commerce
               </span>
-              <span className="text-[10px] text-slate-400 font-medium">Agentic Commerce</span>
             </div>
           </Link>
 
@@ -120,16 +136,22 @@ export default function UserLayout() {
                 key={item.to}
                 to={item.to}
                 className={({ isActive }) =>
-                  `flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition ${
+                  `group flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all duration-150 ${
                     isActive
-                      ? 'bg-indigo-50/90 text-indigo-600 font-bold shadow-xs'
-                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                      ? 'bg-indigo-50 text-indigo-600 font-bold shadow-xs'
+                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 font-medium'
                   }`
                 }
               >
                 {({ isActive }) => (
                   <>
-                    <div className={isActive ? 'text-indigo-600' : 'text-slate-400'}>
+                    <div
+                      className={`transition-colors duration-150 ${
+                        isActive
+                          ? 'text-indigo-600'
+                          : 'text-slate-400 group-hover:text-slate-700'
+                      }`}
+                    >
                       {item.icon}
                     </div>
                     <span>{item.label}</span>
