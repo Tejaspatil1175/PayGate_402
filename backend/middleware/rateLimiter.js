@@ -20,14 +20,19 @@ setInterval(() => {
  */
 function createRateLimiter(options = {}) {
   const windowMs = options.windowMs || 15 * 60 * 1000; // 15 minutes default
-  const maxRequests = options.maxRequests || 100; // 100 requests max default
+  const isDev = process.env.NODE_ENV !== 'production';
+  const defaultMax = isDev ? 10000 : 1000;
+  const maxRequests = options.maxRequests !== undefined ? options.maxRequests : defaultMax;
   const keyPrefix = options.keyPrefix || 'rl';
 
   return (req, res, next) => {
     // Skip health check route
     if (req.originalUrl === '/health') return next();
 
-    const clientIp = req.ip || req.connection.remoteAddress || '127.0.0.1';
+    // In development mode, bypass rate limit blocking
+    if (isDev) return next();
+
+    const clientIp = req.ip || req.connection?.remoteAddress || '127.0.0.1';
     const agentId = req.headers['x-agent-id'] || 'anonymous';
     const key = `${keyPrefix}:${clientIp}:${agentId}`;
 
@@ -66,17 +71,17 @@ function createRateLimiter(options = {}) {
   };
 }
 
-// Global API rate limiter (100 req per 15 min)
+// Global API rate limiter (10,000 req in dev / 1,000 in prod per 15 min)
 const globalRateLimiter = createRateLimiter({
   windowMs: 15 * 60 * 1000,
-  maxRequests: 100,
+  maxRequests: process.env.NODE_ENV === 'production' ? 1000 : 10000,
   keyPrefix: 'global',
 });
 
-// Stricter AI Agent API rate limiter (30 req per 1 minute)
+// Stricter AI Agent API rate limiter
 const agentRateLimiter = createRateLimiter({
   windowMs: 60 * 1000,
-  maxRequests: 30,
+  maxRequests: process.env.NODE_ENV === 'production' ? 100 : 5000,
   keyPrefix: 'agent',
 });
 

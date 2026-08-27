@@ -19,10 +19,12 @@ import {
 } from 'lucide-react';
 
 import ProtectedRoute from './components/ProtectedRoute';
+import UserLayout from './components/UserLayout';
 
 // Buyer Pages
 import Login from './pages/Login';
 import UserRegister from './pages/user/Register';
+import UserDashboard from './pages/user/Dashboard';
 import UserWallet from './pages/user/Wallet';
 import VoiceAssistant from './pages/user/VoiceAssistant';
 import ProductDiscovery from './pages/user/ProductDiscovery';
@@ -104,6 +106,23 @@ export default function App() {
   const isAuthenticated = Boolean(userProfile || localStorage.getItem('paygate_token'));
   const isAuthPage = ['/login', '/register', '/merchant/register'].includes(location.pathname);
 
+  const userRoutePrefixes = [
+    '/dashboard',
+    '/user/dashboard',
+    '/discovery',
+    '/wallet',
+    '/voice',
+    '/wishlist',
+    '/user/orders',
+    '/user/analytics',
+    '/user/tasks',
+    '/user/marketplace',
+  ];
+  const isUserRoute =
+    activeRole === 'user' ||
+    userRoutePrefixes.some((p) => location.pathname === p || location.pathname.startsWith(`${p}/`));
+  const shouldHideNavbar = isAuthPage || isUserRoute;
+
   // Determine default authenticated redirect
   const getDefaultRedirect = () => {
     const role = localStorage.getItem('paygate_role') || userProfile?.role;
@@ -123,8 +142,8 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#FBF9F4] text-[#1A1612] flex flex-col font-sans selection:bg-indigo-500 selection:text-white">
-      {/* Role-Scoped Main Navbar (Hidden on Login & Registration pages) */}
-      {!isAuthPage && isAuthenticated && (
+      {/* Role-Scoped Main Navbar (Hidden on Login, Registration & Unified Dashboard pages) */}
+      {!shouldHideNavbar && isAuthenticated && (
         <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-xl border-b border-[#E7E2D6] px-4 lg:px-8 py-2.5 shadow-sm">
           <div className="max-w-7xl mx-auto flex flex-col lg:flex-row lg:items-center justify-between gap-3">
             {/* Brand Logo & Current Role Badge */}
@@ -161,6 +180,19 @@ export default function App() {
               {/* Buyer / User Links */}
               {activeRole === 'user' && (
                 <>
+                  <NavLink
+                    to="/dashboard"
+                    className={({ isActive }) =>
+                      `px-3 py-1.5 rounded-xl font-medium transition flex items-center gap-1.5 ${
+                        isActive
+                          ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20 font-semibold'
+                          : 'text-[#57534E] hover:text-[#120F0B] hover:bg-[#F4EFE6]'
+                      }`
+                    }
+                  >
+                    <Layers className="w-3.5 h-3.5" />
+                    <span>Dashboard</span>
+                  </NavLink>
                   <NavLink
                     to="/discovery"
                     className={({ isActive }) =>
@@ -493,71 +525,26 @@ export default function App() {
           <Route path="/register" element={<UserRegister />} />
           <Route path="/merchant/register" element={<MerchantRegister />} />
 
-          {/* Protected User/Buyer Portal Routes */}
+          {/* Protected User/Buyer Portal Routes (Wrapped in sleek UserLayout sidebar + topbar) */}
           <Route
-            path="/discovery"
             element={
               <ProtectedRoute allowedRoles={['user']}>
-                <ProductDiscovery />
+                <UserLayout />
               </ProtectedRoute>
             }
-          />
-          <Route
-            path="/wallet"
-            element={
-              <ProtectedRoute allowedRoles={['user']}>
-                <UserWallet />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/voice"
-            element={
-              <ProtectedRoute allowedRoles={['user']}>
-                <VoiceAssistant />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/wishlist"
-            element={
-              <ProtectedRoute allowedRoles={['user']}>
-                <Wishlist />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/user/orders"
-            element={
-              <ProtectedRoute allowedRoles={['user']}>
-                <OrderTracking />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/user/analytics"
-            element={
-              <ProtectedRoute allowedRoles={['user']}>
-                <SpendingAnalytics />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/user/tasks"
-            element={
-              <ProtectedRoute allowedRoles={['user']}>
-                <ScheduledTasks />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/user/marketplace"
-            element={
-              <ProtectedRoute allowedRoles={['user']}>
-                <AgentMarketplace />
-              </ProtectedRoute>
-            }
-          />
+          >
+            <Route path="/discovery" element={<ProductDiscovery />} />
+            <Route path="/catalog" element={<ProductDiscovery />} />
+            <Route path="/wallet" element={<UserWallet />} />
+            <Route path="/user/marketplace" element={<AgentMarketplace />} />
+            <Route path="/wishlist" element={<Wishlist />} />
+            <Route path="/voice" element={<VoiceAssistant />} />
+            <Route path="/user/orders" element={<OrderTracking />} />
+            <Route path="/user/tasks" element={<ScheduledTasks />} />
+            <Route path="/dashboard" element={<UserDashboard />} />
+            <Route path="/user/dashboard" element={<UserDashboard />} />
+            <Route path="/user/analytics" element={<SpendingAnalytics />} />
+          </Route>
 
           {/* Protected Merchant Portal Routes */}
           <Route
