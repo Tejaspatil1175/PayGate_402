@@ -45,9 +45,7 @@ export default function MerchantRegister() {
         formData.append('logo', logoFile);
       }
 
-      const response = await apiClient.post('/merchant/auth/register', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+      const response = await apiClient.post('/merchant/auth/register', formData);
 
       if (response.data?.success) {
         const { token, merchant } = response.data;

@@ -8,17 +8,127 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-// Uploads an array of multer file objects to Cloudinary and returns their secure URLs
+// Uploads an array of multer file objects to Cloudinary (or falls back to base64 Data URI if credentials unset)
 async function uploadImagesToCloudinary(files) {
   const uploadedUrls = [];
-  for (const file of files) {
-    const result = await cloudinary.uploader.upload(file.path, {
-      folder: 'paygate402/products',
+  const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+  const apiKey = process.env.CLOUDINARY_API_KEY;
+  const apiSecret = process.env.CLOUDINARY_API_SECRET;
+  const hasCloudinary = Boolean(cloudName && apiKey && apiSecret);
+
+  if (hasCloudinary) {
+    cloudinary.config({
+      cloud_name: cloudName,
+      api_key: apiKey,
+      api_secret: apiSecret,
     });
-    uploadedUrls.push(result.secure_url);
-    fs.unlink(file.path, () => {}); // clean up local temp file after upload
+  }
+
+  for (const file of files) {
+    try {
+      if (hasCloudinary) {
+        console.log(`[Catalog] Uploading image ${file.originalname || file.path} to Cloudinary...`);
+        const result = await cloudinary.uploader.upload(file.path, {
+          folder: 'paygate402/products',
+        });
+        console.log(`[Catalog] Upload success! Secure URL:`, result.secure_url);
+        uploadedUrls.push(result.secure_url);
+      } else {
+        console.warn('[Catalog] Cloudinary credentials not configured, falling back to base64 Data URI.');
+        const fileData = fs.readFileSync(file.path);
+        const mimeType = file.mimetype || 'image/jpeg';
+        uploadedUrls.push(`data:${mimeType};base64,${fileData.toString('base64')}`);
+      }
+    } catch (err) {
+      console.error('[Catalog] Cloudinary upload error:', err.message);
+      try {
+        const fileData = fs.readFileSync(file.path);
+        const mimeType = file.mimetype || 'image/jpeg';
+        uploadedUrls.push(`data:${mimeType};base64,${fileData.toString('base64')}`);
+      } catch (e) {
+        console.error('[Catalog] File read error on fallback:', e.message);
+      }
+    } finally {
+      if (fs.existsSync(file.path)) {
+        fs.unlink(file.path, () => {});
+      }
+    }
   }
   return uploadedUrls;
+}
+
+// Helper to safely extract and normalize image URLs to an array of valid strings
+function normalizeImages(rawImages) {
+  if (!rawImages) return [];
+
+  // If it's a string, try JSON.parse in case it's a stringified array/object
+  if (typeof rawImages === 'string') {
+    const trimmed = rawImages.trim();
+    if (
+      !trimmed ||
+      trimmed === '""' ||
+      trimmed === "''" ||
+      trimmed === '[]' ||
+      trimmed === '{}' ||
+      trimmed === '[ {} ]' ||
+      trimmed === '[{}]' ||
+      trimmed === '[object Object]'
+    ) {
+      return [];
+    }
+    if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        return normalizeImages(parsed);
+      } catch (e) {
+        if (trimmed.includes(',')) {
+          return trimmed
+            .split(',')
+            .map((s) => s.trim())
+            .filter((s) => s && (s.startsWith('http') || s.startsWith('data:')));
+        }
+        return [trimmed];
+      }
+    }
+    if (trimmed.includes(',')) {
+      return trimmed
+        .split(',')
+        .map((s) => s.trim())
+        .filter((s) => Boolean(s) && s !== '{}' && s !== '[object Object]');
+    }
+    return [trimmed];
+  }
+
+  // If it's an array
+  if (Array.isArray(rawImages)) {
+    const result = [];
+    for (const item of rawImages) {
+      if (!item) continue;
+      if (typeof item === 'string') {
+        const trimmed = item.trim();
+        if (trimmed && trimmed !== '{}' && trimmed !== '[object Object]' && trimmed !== '[ {} ]') {
+          result.push(trimmed);
+        }
+      } else if (typeof item === 'object') {
+        const url = item.url || item.secure_url || item.path || item.src || item.imageUrl;
+        if (url && typeof url === 'string' && url.trim()) {
+          result.push(url.trim());
+        }
+      }
+    }
+    return result;
+  }
+
+  // If it's an object with url/secure_url properties
+  if (typeof rawImages === 'object') {
+    const url = rawImages.url || rawImages.secure_url || rawImages.path || rawImages.src || rawImages.imageUrl;
+    if (url && typeof url === 'string' && url.trim()) {
+      return [url.trim()];
+    }
+    return [];
+  }
+
+  return [];
 }
 
 // Helper to parse simple CSV text into product objects
@@ -46,7 +156,8 @@ function parseCSV(csvText) {
         category: item.category || 'General',
         sku: item.sku || '',
         stock: parseInt(item.stock, 10) || 0,
-        tags: item.tags ? item.tags.split(';').map((t) => t.trim()) : [],
+        tags: item.tags ? item.tags.split(';').map((t) => t.trim()).filter(Boolean) : [],
+        images: item.images ? item.images.split(';').map((img) => img.trim()).filter(Boolean) : (item.image ? [item.image.trim()] : []),
       });
     }
   }
@@ -58,6 +169,8 @@ function parseCSV(csvText) {
 // @route   POST /api/catalog
 exports.createProduct = async (req, res) => {
   try {
+    console.log('[Catalog createProduct] req.files:', req.files ? req.files.length : 0, 'req.body:', req.body);
+
     let merchantId = req.body.merchant || req.body.merchantId || req.headers['x-merchant-id'];
 
     // Support extracting merchant ID from Bearer token header if passed directly
@@ -78,10 +191,61 @@ exports.createProduct = async (req, res) => {
     const productData = {
       ...req.body,
       merchant: merchantId,
+      price: Number(req.body.price) || 0,
+      stock: Number(req.body.stock) || 0,
     };
 
+    // Handle tags safely
+    if (req.body.tags) {
+      if (Array.isArray(req.body.tags)) {
+        productData.tags = req.body.tags.map((t) => (typeof t === 'string' ? t.trim() : String(t))).filter(Boolean);
+      } else if (typeof req.body.tags === 'string') {
+        try {
+          const parsed = JSON.parse(req.body.tags);
+          if (Array.isArray(parsed)) {
+            productData.tags = parsed.map((t) => (typeof t === 'string' ? t.trim() : String(t))).filter(Boolean);
+          } else {
+            productData.tags = req.body.tags.split(',').map((t) => t.trim()).filter(Boolean);
+          }
+        } catch (e) {
+          productData.tags = req.body.tags.split(',').map((t) => t.trim()).filter(Boolean);
+        }
+      }
+    } else {
+      productData.tags = [];
+    }
+
+    // Handle images cleanly
     if (req.files && req.files.length > 0) {
       productData.images = await uploadImagesToCloudinary(req.files);
+    } else if (req.body.images) {
+      productData.images = normalizeImages(req.body.images);
+    } else if (req.body.imageUrl) {
+      productData.images = normalizeImages(req.body.imageUrl);
+    } else if (req.body.image) {
+      productData.images = normalizeImages(req.body.image);
+    } else {
+      productData.images = [];
+    }
+
+    // Clean up variants and attributes if invalid
+    if (typeof productData.variants === 'string') {
+      try {
+        productData.variants = JSON.parse(productData.variants);
+      } catch (e) {
+        delete productData.variants;
+      }
+    }
+    if (!Array.isArray(productData.variants)) {
+      delete productData.variants;
+    }
+
+    if (typeof productData.attributes === 'string') {
+      try {
+        productData.attributes = JSON.parse(productData.attributes);
+      } catch (e) {
+        delete productData.attributes;
+      }
     }
 
     const product = await Product.create(productData);
@@ -179,6 +343,29 @@ exports.updateProduct = async (req, res) => {
 
     if (req.files && req.files.length > 0) {
       updateData.images = await uploadImagesToCloudinary(req.files);
+    } else if (req.body.images !== undefined) {
+      updateData.images = normalizeImages(req.body.images);
+    } else if (req.body.imageUrl) {
+      updateData.images = normalizeImages(req.body.imageUrl);
+    }
+
+    if (req.body.price !== undefined) updateData.price = Number(req.body.price) || 0;
+    if (req.body.stock !== undefined) updateData.stock = Number(req.body.stock) || 0;
+    if (req.body.tags !== undefined) {
+      if (Array.isArray(req.body.tags)) {
+        updateData.tags = req.body.tags.map((t) => (typeof t === 'string' ? t.trim() : String(t))).filter(Boolean);
+      } else if (typeof req.body.tags === 'string') {
+        try {
+          const parsed = JSON.parse(req.body.tags);
+          if (Array.isArray(parsed)) {
+            updateData.tags = parsed.map((t) => (typeof t === 'string' ? t.trim() : String(t))).filter(Boolean);
+          } else {
+            updateData.tags = req.body.tags.split(',').map((t) => t.trim()).filter(Boolean);
+          }
+        } catch (e) {
+          updateData.tags = req.body.tags.split(',').map((t) => t.trim()).filter(Boolean);
+        }
+      }
     }
 
     const product = await Product.findByIdAndUpdate(req.params.id, updateData, {
@@ -271,10 +458,23 @@ exports.bulkUploadCSV = async (req, res) => {
       });
     }
 
-    const itemsToInsert = productList.map((item) => ({
-      ...item,
-      merchant: merchantId,
-    }));
+    const itemsToInsert = productList.map((item) => {
+      const sanitized = {
+        ...item,
+        merchant: merchantId,
+        price: Number(item.price) || 0,
+        stock: Number(item.stock) || 0,
+        images: normalizeImages(item.images || item.imageUrl || item.image),
+      };
+      if (item.tags) {
+        if (Array.isArray(item.tags)) {
+          sanitized.tags = item.tags.map((t) => (typeof t === 'string' ? t.trim() : String(t))).filter(Boolean);
+        } else if (typeof item.tags === 'string') {
+          sanitized.tags = item.tags.split(',').map((t) => t.trim()).filter(Boolean);
+        }
+      }
+      return sanitized;
+    });
 
     const insertedProducts = await Product.insertMany(itemsToInsert);
 

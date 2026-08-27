@@ -98,9 +98,7 @@ export default function MerchantCatalog() {
         formData.append('images', imageFile);
       }
 
-      const res = await apiClient.post('/catalog', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+      const res = await apiClient.post('/catalog', formData);
 
       if (res.data?.success) {
         setMessage(`Product "${title}" created and image uploaded successfully!`);
@@ -112,7 +110,7 @@ export default function MerchantCatalog() {
         fetchCatalog();
       }
     } catch (err) {
-      setError(err.error || err.message || 'Failed to add product');
+      setError(err.response?.data?.error || err.error || err.message || 'Failed to add product');
     } finally {
       setFormLoading(false);
     }
@@ -135,9 +133,7 @@ export default function MerchantCatalog() {
       formData.append('file', csvFile);
       if (merchantId) formData.append('merchantId', merchantId);
 
-      const res = await apiClient.post('/catalog/bulk-upload', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+      const res = await apiClient.post('/catalog/bulk-upload', formData);
 
       if (res.data?.success) {
         setMessage(`Bulk catalog uploaded! Processed ${res.data.count || 0} products.`);
@@ -436,7 +432,24 @@ export default function MerchantCatalog() {
                 <tbody className="divide-y divide-slate-800/60">
                   {products.map((p) => (
                     <tr key={p._id} className="hover:bg-slate-950/40 transition">
-                      <td className="py-3 px-3 font-semibold text-slate-200">{p.title}</td>
+                      <td className="py-3 px-3">
+                        <div className="flex items-center gap-3">
+                          <img
+                            src={
+                              p.images && p.images.length > 0 && p.images[0]
+                                ? p.images[0]
+                                : '/image.png'
+                            }
+                            alt={p.title}
+                            onError={(e) => {
+                              e.currentTarget.onerror = null;
+                              e.currentTarget.src = '/image.png';
+                            }}
+                            className="w-9 h-9 rounded-lg object-cover border border-slate-800 flex-shrink-0 bg-slate-950"
+                          />
+                          <span className="font-semibold text-slate-200">{p.title}</span>
+                        </div>
+                      </td>
                       <td className="py-3 px-3 text-slate-400">{p.category || 'General'}</td>
                       <td className="py-3 px-3 font-bold text-white">₹{(p.price || 0).toLocaleString('en-IN')}</td>
                       <td className="py-3 px-3 text-slate-300">{p.stock || 0}</td>

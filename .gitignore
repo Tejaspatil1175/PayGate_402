@@ -30,6 +30,8 @@ venv/
 *.egg-info/
 
 # React build
+dist/
+frontend/dist/
 frontend/build/
 frontend/node_modules/
 

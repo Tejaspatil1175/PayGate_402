@@ -175,20 +175,39 @@ export default function Wishlist() {
               return (
                 <div
                   key={item._id}
-                  className="bg-slate-900/80 backdrop-blur-xl border border-slate-800 hover:border-rose-500/40 rounded-2xl p-5 shadow-xl transition-all duration-300 flex flex-col justify-between"
+                  className="bg-slate-900/80 backdrop-blur-xl border border-slate-800 hover:border-rose-500/40 rounded-2xl p-4 shadow-xl transition-all duration-300 flex flex-col justify-between group"
                 >
                   <div className="space-y-3">
+                    {/* Product Image Banner */}
+                    <div className="relative w-full h-40 rounded-xl overflow-hidden bg-slate-950/60 border border-slate-800/80 group/img">
+                      <img
+                        src={
+                          product.images && product.images.length > 0 && product.images[0]
+                            ? product.images[0]
+                            : '/image.png'
+                        }
+                        alt={product.title || 'Product'}
+                        onError={(e) => {
+                          e.currentTarget.onerror = null;
+                          e.currentTarget.src = '/image.png';
+                        }}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                      <div className="absolute top-2.5 left-2.5">
+                        <span className="px-2.5 py-0.5 rounded-lg bg-slate-950/80 backdrop-blur-md border border-slate-700/60 text-slate-300 font-semibold text-[10px] shadow-md">
+                          {product.category || 'General'}
+                        </span>
+                      </div>
+                    </div>
+
                     <div className="flex items-center justify-between text-[11px]">
-                      <span className="px-2.5 py-0.5 rounded-full bg-slate-955 border border-slate-800 text-slate-400 font-medium">
-                        {product.category || 'General'}
-                      </span>
                       <span className="text-slate-500 flex items-center gap-1">
-                        <Store className="w-3 h-3" />
+                        <Store className="w-3 h-3 text-rose-400" />
                         {product.merchant?.businessName || 'Merchant'}
                       </span>
                     </div>
 
-                    <h3 className="font-semibold text-slate-100 text-sm">
+                    <h3 className="font-semibold text-slate-100 text-sm line-clamp-1">
                       {product.title || 'Saved Product'}
                     </h3>
 

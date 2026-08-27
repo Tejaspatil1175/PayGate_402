@@ -13,6 +13,14 @@ const apiClient = axios.create({
 // Request interceptor for injecting auth token and user ID
 apiClient.interceptors.request.use(
   (config) => {
+    // If payload is FormData, remove static Content-Type so Axios/browser sets multipart/form-data with boundary
+    if (config.data instanceof FormData) {
+      if (config.headers) {
+        delete config.headers['Content-Type'];
+        delete config.headers['content-type'];
+      }
+    }
+
     const token = localStorage.getItem('paygate_token') || localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
