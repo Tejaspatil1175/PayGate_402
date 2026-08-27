@@ -173,25 +173,21 @@ export default function VoiceAssistant() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-4 md:p-8 flex flex-col justify-between relative overflow-hidden">
-      {/* Background glow effects */}
-      <div className="absolute top-10 left-1/3 w-96 h-96 bg-indigo-600/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-10 right-10 w-96 h-96 bg-purple-600/10 rounded-full blur-3xl pointer-events-none" />
-
-      <div className="max-w-4xl w-full mx-auto flex-1 flex flex-col space-y-6 relative z-10">
+    <div className="p-6 md:p-8 space-y-6 max-w-4xl mx-auto w-full flex flex-col justify-between">
+      <div className="w-full mx-auto flex-1 flex flex-col space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-800/80 pb-4">
+        <div className="flex items-center justify-between border-b border-slate-200 pb-4">
           <div className="flex items-center gap-3">
-            <div className="p-3 rounded-2xl bg-indigo-600/10 border border-indigo-500/30 text-indigo-400">
+            <div className="p-3 rounded-2xl bg-indigo-50 border border-indigo-100 text-indigo-600">
               <Bot className="w-6 h-6" />
             </div>
             <div>
-              <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+              <h1 className="text-xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
                 AP2 Voice Commerce Assistant
-                <Sparkles className="w-4 h-4 text-amber-400" />
+                <Sparkles className="w-4 h-4 text-amber-500" />
               </h1>
-              <p className="text-xs text-slate-400">
-                Groq Whisper + LLM Intent Parser with Gated Price Confirmation
+              <p className="text-xs text-slate-500">
+                Natural Language Intent Parser with Gated Price Confirmation & AP2 Guardrails
               </p>
             </div>
           </div>
@@ -207,10 +203,10 @@ export default function VoiceAssistant() {
                 className={`flex items-start gap-3 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}
               >
                 <div
-                  className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 text-xs font-semibold ${
+                  className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 text-xs font-semibold ${
                     isUser
-                      ? 'bg-indigo-600 text-white'
-                      : 'bg-slate-900 border border-slate-800 text-indigo-400'
+                      ? 'bg-indigo-600 text-white shadow-xs'
+                      : 'bg-white border border-slate-200 text-indigo-600 shadow-xs'
                   }`}
                 >
                   {isUser ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
@@ -219,20 +215,20 @@ export default function VoiceAssistant() {
                 <div
                   className={`max-w-lg rounded-2xl p-4 text-sm leading-relaxed ${
                     isUser
-                      ? 'bg-indigo-600 text-white rounded-tr-none'
-                      : 'bg-slate-900/90 border border-slate-800 text-slate-200 rounded-tl-none shadow-lg'
+                      ? 'bg-indigo-600 text-white rounded-tr-none shadow-xs'
+                      : 'bg-white border border-slate-200 text-slate-800 rounded-tl-none shadow-xs'
                   }`}
                 >
                   <p>{msg.text}</p>
 
                   {/* Pending Gated Confirmation Card */}
                   {msg.isGate && pendingIntent && (
-                    <div className="mt-4 p-4 rounded-xl bg-slate-950/80 border border-amber-500/30 space-y-3">
-                      <div className="flex items-center gap-2 text-xs font-semibold text-amber-400">
-                        <AlertCircle className="w-4 h-4" />
-                        <span>Confirmation Gate (Step 53 Guardrail)</span>
+                    <div className="mt-4 p-4 rounded-xl bg-amber-50 border border-amber-200 space-y-3">
+                      <div className="flex items-center gap-2 text-xs font-bold text-amber-800">
+                        <AlertCircle className="w-4 h-4 text-amber-600" />
+                        <span>Confirmation Gate (Autonomous Guardrail)</span>
                       </div>
-                      <div className="grid grid-cols-2 gap-2 text-xs text-slate-300">
+                      <div className="grid grid-cols-2 gap-2 text-xs text-slate-700 font-medium">
                         <div><span className="text-slate-500">Item:</span> {pendingIntent.intent.itemKeywords}</div>
                         <div><span className="text-slate-500">Category:</span> {pendingIntent.intent.category}</div>
                         <div><span className="text-slate-500">Echoed Budget:</span> ₹{pendingIntent.intent.budget}</div>
@@ -242,7 +238,7 @@ export default function VoiceAssistant() {
                       <button
                         onClick={handleConfirmIntent}
                         disabled={loading}
-                        className="w-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-xl py-2.5 flex items-center justify-center gap-2 transition shadow-md shadow-emerald-600/20"
+                        className="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl py-2.5 flex items-center justify-center gap-2 transition shadow-xs"
                       >
                         <CheckCircle2 className="w-4 h-4" />
                         <span>Confirm Parsed Intent & Find Merchant</span>
@@ -252,15 +248,15 @@ export default function VoiceAssistant() {
 
                   {/* Match & Negotiation Result Card */}
                   {msg.isResult && msg.pipeline && (
-                    <div className="mt-4 p-4 rounded-xl bg-slate-950/80 border border-indigo-500/30 space-y-2 text-xs">
-                      <div className="flex items-center justify-between text-indigo-400 font-semibold">
-                        <span className="flex items-center gap-1.5"><TrendingDown className="w-4 h-4" /> Match & Negotiated Contract</span>
-                        <span className="text-emerald-400">AP2 Verified</span>
+                    <div className="mt-4 p-4 rounded-xl bg-indigo-50 border border-indigo-200 space-y-2 text-xs text-slate-800">
+                      <div className="flex items-center justify-between text-indigo-700 font-bold">
+                        <span className="flex items-center gap-1.5"><TrendingDown className="w-4 h-4 text-indigo-600" /> Match & Negotiated Contract</span>
+                        <span className="text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded font-bold">AP2 Verified</span>
                       </div>
-                      <div><span className="text-slate-400">Product:</span> {msg.pipeline.product?.title}</div>
-                      <div><span className="text-slate-400">Original List Price:</span> ₹{msg.pipeline.originalPrice}</div>
-                      <div><span className="text-slate-400">Agreed Price:</span> ₹{msg.pipeline.finalPrice}</div>
-                      <div><span className="text-slate-400">Contract ID:</span> <code className="text-amber-400">{msg.pipeline.contract?.contractId}</code></div>
+                      <div><span className="text-slate-500">Product:</span> <span className="font-bold text-slate-900">{msg.pipeline.product?.title}</span></div>
+                      <div><span className="text-slate-500">Original List Price:</span> ₹{msg.pipeline.originalPrice}</div>
+                      <div><span className="text-slate-500">Agreed Price:</span> <span className="font-bold text-emerald-700">₹{msg.pipeline.finalPrice}</span></div>
+                      <div><span className="text-slate-500">Contract ID:</span> <code className="text-indigo-700 bg-white px-1 py-0.5 rounded border border-indigo-100 font-bold">{msg.pipeline.contract?.contractId}</code></div>
                     </div>
                   )}
                 </div>
@@ -270,10 +266,10 @@ export default function VoiceAssistant() {
 
           {loading && (
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-xl bg-slate-900 border border-slate-800 text-indigo-400 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-xl bg-white border border-slate-200 text-indigo-600 flex items-center justify-center shadow-xs">
                 <Bot className="w-4 h-4 animate-spin" />
               </div>
-              <div className="text-xs text-slate-400 italic">
+              <div className="text-xs text-slate-500 italic">
                 Processing speech & evaluating AP2 policy gates...
               </div>
             </div>
@@ -281,10 +277,10 @@ export default function VoiceAssistant() {
         </div>
 
         {/* Controls & Voice Recording Section */}
-        <div className="space-y-3 bg-slate-900/90 border border-slate-800/90 rounded-2xl p-4 backdrop-blur-xl">
+        <div className="space-y-3 bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
           {/* Live Transcript / Speech Indicator */}
           {isListening && (
-            <div className="flex items-center gap-3 p-3 rounded-xl bg-indigo-600/10 border border-indigo-500/30 text-indigo-400 text-xs">
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-semibold">
               <div className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping" />
               <span>Listening... {transcript || 'Speak now'}</span>
             </div>
@@ -293,10 +289,10 @@ export default function VoiceAssistant() {
           <div className="flex items-center gap-3">
             <button
               onClick={toggleListening}
-              className={`p-3.5 rounded-xl transition flex-shrink-0 shadow-lg ${
+              className={`p-3.5 rounded-xl transition shrink-0 shadow-xs ${
                 isListening
                   ? 'bg-rose-600 text-white animate-pulse'
-                  : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-600/20'
+                  : 'bg-indigo-600 hover:bg-indigo-700 text-white'
               }`}
               title={isListening ? 'Stop listening' : 'Start voice capture'}
             >
@@ -309,13 +305,13 @@ export default function VoiceAssistant() {
               onChange={(e) => setTranscript(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSendText()}
               placeholder="Or type voice query (e.g. 'buy running shoes under 2000')..."
-              className="flex-1 bg-slate-950/80 border border-slate-800 focus:border-indigo-500 rounded-xl px-4 py-3 text-sm text-slate-100 placeholder-slate-600 outline-none"
+              className="flex-1 bg-slate-50 border border-slate-200 focus:border-indigo-500 focus:bg-white rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none"
             />
 
             <button
               onClick={() => handleSendText()}
               disabled={loading || !transcript.trim()}
-              className="p-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white transition disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0"
+              className="p-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white transition disabled:opacity-40 disabled:cursor-not-allowed shrink-0 shadow-xs"
             >
               <Send className="w-5 h-5" />
             </button>

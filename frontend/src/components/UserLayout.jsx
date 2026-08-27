@@ -204,19 +204,24 @@ export default function UserLayout() {
               <span className="w-2 h-2 rounded-full bg-rose-500 absolute top-1.5 right-1.5" />
             </button>
 
-            <div className="flex items-center gap-2.5 pl-2 border-l border-slate-200">
-              <div className="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-xs shadow-sm">
-                {(user?.name || user?.email || 'U')[0].toUpperCase()}
+            <div className="flex items-center gap-3 pl-2 border-l border-slate-200">
+              <div className="w-9 h-9 rounded-full overflow-hidden border border-slate-200 shadow-xs shrink-0 bg-slate-100">
+                <img
+                  src="/profile image.png"
+                  alt={user?.name || 'Profile'}
+                  onError={(e) => {
+                    e.currentTarget.onerror = null;
+                    e.currentTarget.src = '/image.png';
+                  }}
+                  className="w-full h-full object-cover"
+                />
               </div>
               <div className="text-left hidden sm:block leading-tight">
-                <span className="text-xs font-bold text-slate-800 block max-w-[120px] truncate">
-                  {user?.name || user?.email || 'User'}
+                <span className="text-xs font-bold text-slate-800 block max-w-[140px] truncate">
+                  {user?.name || user?.email || 'Tejas Patil'}
                 </span>
                 <span className="text-[10px] text-slate-400 font-medium">Buyer Account</span>
               </div>
-              <span className="px-2 py-0.5 rounded-md bg-indigo-600 text-white text-[10px] font-bold tracking-wider uppercase">
-                USER
-              </span>
             </div>
           </div>
         </header>

@@ -57,24 +57,20 @@ export default function SpendingAnalytics() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-4 md:p-8 relative overflow-hidden">
-      {/* Background ambient lighting */}
-      <div className="absolute top-10 right-10 w-96 h-96 bg-indigo-600/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-10 left-10 w-96 h-96 bg-purple-600/10 rounded-full blur-3xl pointer-events-none" />
-
-      <div className="max-w-7xl mx-auto space-y-6 relative z-10">
+    <div className="p-6 md:p-8 space-y-6 max-w-7xl mx-auto w-full">
+      <div className="space-y-6">
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800/80 pb-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-6">
           <div className="flex items-center gap-3">
-            <div className="p-3 rounded-2xl bg-indigo-600/10 border border-indigo-500/30 text-indigo-400">
+            <div className="p-3 rounded-2xl bg-indigo-50 border border-indigo-100 text-indigo-600">
               <PieChart className="w-6 h-6" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
+              <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
                 User Spending Analytics
-                <Sparkles className="w-5 h-5 text-amber-400" />
+                <Sparkles className="w-5 h-5 text-indigo-600" />
               </h1>
-              <p className="text-sm text-slate-400">
+              <p className="text-sm text-slate-500">
                 Category breakdowns, monthly trends, and AI financial insights from wallet ledger
               </p>
             </div>
@@ -82,74 +78,74 @@ export default function SpendingAnalytics() {
         </div>
 
         {error && (
-          <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-sm">
+          <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-sm">
             {error}
           </div>
         )}
 
         {loading ? (
-          <div className="text-center py-20 text-slate-500 text-sm">
+          <div className="text-center py-20 text-slate-400 text-sm">
             Calculating wallet analytics & insights...
           </div>
         ) : !analytics ? (
-          <div className="text-center py-20 border border-dashed border-slate-800 rounded-2xl text-slate-500 text-sm">
+          <div className="text-center py-20 border border-dashed border-slate-300 rounded-2xl text-slate-500 text-sm bg-white">
             No spending data available.
           </div>
         ) : (
           <>
             {/* Top Metric Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-2xl p-5 shadow-xl space-y-2">
-                <div className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-2">
+                <div className="text-xs font-bold uppercase tracking-wider text-slate-400">
                   Total Agent Spent
                 </div>
-                <div className="text-2xl font-extrabold text-white">
+                <div className="text-2xl font-black text-slate-900">
                   ₹{(analytics.summary?.totalSpent || 0).toLocaleString('en-IN')}
                 </div>
-                <div className="text-[11px] text-slate-400 flex items-center gap-1">
-                  <ArrowUpRight className="w-3.5 h-3.5 text-indigo-400" />
+                <div className="text-[11px] text-slate-500 flex items-center gap-1 font-medium">
+                  <ArrowUpRight className="w-3.5 h-3.5 text-indigo-600" />
                   <span>Wallet Debits</span>
                 </div>
               </div>
 
-              <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-2xl p-5 shadow-xl space-y-2">
-                <div className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-2">
+                <div className="text-xs font-bold uppercase tracking-wider text-slate-400">
                   Total Wallet Top-Ups
                 </div>
-                <div className="text-2xl font-extrabold text-emerald-400">
+                <div className="text-2xl font-black text-emerald-600">
                   ₹{(analytics.summary?.totalTopUp || 0).toLocaleString('en-IN')}
                 </div>
-                <div className="text-[11px] text-slate-400">Razorpay Credits</div>
+                <div className="text-[11px] text-slate-500 font-medium">Razorpay Credits</div>
               </div>
 
-              <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-2xl p-5 shadow-xl space-y-2">
-                <div className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-2">
+                <div className="text-xs font-bold uppercase tracking-wider text-slate-400">
                   Current Wallet Balance
                 </div>
-                <div className="text-2xl font-extrabold text-indigo-400">
+                <div className="text-2xl font-black text-indigo-600">
                   ₹{(analytics.summary?.currentBalance || 0).toLocaleString('en-IN')}
                 </div>
-                <div className="text-[11px] text-slate-400">Available Funds</div>
+                <div className="text-[11px] text-slate-500 font-medium">Available Funds</div>
               </div>
 
-              <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-2xl p-5 shadow-xl space-y-2">
-                <div className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-2">
+                <div className="text-xs font-bold uppercase tracking-wider text-slate-400">
                   Ledger Transactions
                 </div>
-                <div className="text-2xl font-extrabold text-white">
+                <div className="text-2xl font-black text-slate-900">
                   {analytics.summary?.transactionCount || 0}
                 </div>
-                <div className="text-[11px] text-slate-400">Total Recorded Entries</div>
+                <div className="text-[11px] text-slate-500 font-medium">Total Recorded Entries</div>
               </div>
             </div>
 
             {/* Charts & Breakdown Section */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Category Breakdown Progress Chart */}
-              <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
+              <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-4">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-slate-200">
-                    <PieChart className="w-4 h-4 text-indigo-400" />
+                  <div className="flex items-center gap-2 text-sm font-bold text-slate-900">
+                    <PieChart className="w-4 h-4 text-indigo-600" />
                     <span>Category Spending Breakdown</span>
                   </div>
                 </div>
@@ -162,12 +158,12 @@ export default function SpendingAnalytics() {
                     return (
                       <div key={idx} className="space-y-1.5 text-xs">
                         <div className="flex items-center justify-between">
-                          <span className="font-semibold text-slate-200">{cat.category || 'General'}</span>
-                          <span className="text-slate-400">
+                          <span className="font-bold text-slate-800">{cat.category || 'General'}</span>
+                          <span className="text-slate-500 font-semibold">
                             ₹{(cat.spent || cat.amount || 0).toLocaleString('en-IN')} ({percent}%)
                           </span>
                         </div>
-                        <div className="w-full bg-slate-950 rounded-full h-2.5 overflow-hidden border border-slate-800">
+                        <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden border border-slate-200">
                           <div
                             className={`h-full rounded-full transition-all duration-500 ${getCategoryBarColor(idx)}`}
                             style={{ width: `${percent}%` }}
@@ -180,11 +176,11 @@ export default function SpendingAnalytics() {
               </div>
 
               {/* Monthly Spending Trend Progress Chart */}
-              <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
+              <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-4">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-slate-200">
-                    <BarChart3 className="w-4 h-4 text-emerald-400" />
-                    <span>Monthly Spending Trend (6 Months)</span>
+                  <div className="flex items-center gap-2 text-sm font-bold text-slate-900">
+                    <BarChart3 className="w-4 h-4 text-emerald-600" />
+                    <span>Monthly Spending Trend</span>
                   </div>
                 </div>
 
@@ -196,10 +192,10 @@ export default function SpendingAnalytics() {
                     return (
                       <div key={idx} className="space-y-1.5 text-xs">
                         <div className="flex items-center justify-between">
-                          <span className="font-semibold text-slate-300">{m.month || `Month ${idx + 1}`}</span>
-                          <span className="text-slate-400">₹{(m.spent || m.amount || 0).toLocaleString('en-IN')}</span>
+                          <span className="font-bold text-slate-800">{m.month || `Month ${idx + 1}`}</span>
+                          <span className="text-slate-500 font-semibold">₹{(m.spent || m.amount || 0).toLocaleString('en-IN')}</span>
                         </div>
-                        <div className="w-full bg-slate-950 rounded-full h-2.5 overflow-hidden border border-slate-800">
+                        <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden border border-slate-200">
                           <div
                             className="h-full rounded-full bg-emerald-500 transition-all duration-500"
                             style={{ width: `${percent}%` }}
@@ -213,9 +209,9 @@ export default function SpendingAnalytics() {
             </div>
 
             {/* Smart Actionable AI Insights */}
-            <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
-              <div className="flex items-center gap-2 text-sm font-semibold text-slate-200">
-                <Lightbulb className="w-4 h-4 text-amber-400" />
+            <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-4">
+              <div className="flex items-center gap-2 text-sm font-bold text-slate-900">
+                <Lightbulb className="w-4 h-4 text-amber-500" />
                 <span>Smart AI Financial Insights</span>
               </div>
 
@@ -226,9 +222,9 @@ export default function SpendingAnalytics() {
                 ]).map((insight, idx) => (
                   <div
                     key={idx}
-                    className="p-4 rounded-xl bg-slate-950/80 border border-amber-500/20 text-xs text-slate-300 flex items-start gap-3"
+                    className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-xs text-slate-800 flex items-start gap-3"
                   >
-                    <Sparkles className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+                    <Sparkles className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                     <span>{typeof insight === 'string' ? insight : insight.message}</span>
                   </div>
                 ))}
