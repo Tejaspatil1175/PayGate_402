@@ -102,7 +102,7 @@ Output raw JSON only:`;
             temperature: 0.1,
           },
         },
-        { timeout: 10000 }
+        { timeout: 3500 }
       );
 
       let content = response.data?.candidates?.[0]?.content?.parts?.[0]?.text;

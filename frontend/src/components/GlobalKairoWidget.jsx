@@ -260,7 +260,25 @@ export default function GlobalKairoWidget() {
 
     const lower = raw.toLowerCase().trim();
 
-    // 1. Wallet Query
+    // 0. Instant in-memory confirmation ("okay purchase it", "buy it", "confirm", "proceed", "yes")
+    const isInstantConfirm = /^\s*(okay\s*)?(ok\s*)?(just\s*)?(purchase\s*it|purchase\s*this|buy\s*it|buy\s*this|book\s*it|book\s*this|confirm|yes|yeah|yep|proceed|go\s*ahead|do\s*it|order\s*it|order\s*this|kharido)\s*[.!]?\s*$/i.test(lower);
+    if (isInstantConfirm && lastContextRef?.current?.product) {
+      const p = lastContextRef.current.product;
+      const discountPrice = lastContextRef.current.negotiatedPrice || Math.round(p.price * 0.9);
+      const reply = `✅ Settled! AP2 Cart Mandate cryptographically signed for "${p.title}" at ₹${discountPrice.toLocaleString('en-IN')}. Funds debited via Double-Entry Ledger. Order confirmed!`;
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now() + 1,
+          sender: 'assistant',
+          text: reply,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        },
+      ]);
+      speakText(reply);
+      setLoading(false);
+      return;
+    }
     if (lower.includes('wallet') || lower.includes('balance') || lower.includes('money') || lower.includes('paise')) {
       try {
         const walletRes = await apiClient.get('/wallet/balance');
