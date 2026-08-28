@@ -217,7 +217,7 @@ export default function UserLayout() {
         </header>
 
         {/* ----------------- NESTED USER PAGE CONTENT ----------------- */}
-        <div className="flex-1 overflow-hidden flex flex-col no-scrollbar">
+        <div className="flex-1 overflow-y-auto flex flex-col no-scrollbar">
           <Outlet />
         </div>
       </div>

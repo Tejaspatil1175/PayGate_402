@@ -169,48 +169,66 @@ JSON output only:`;
 function ruleBasedIntentParser(transcript) {
   const lower = transcript.toLowerCase().trim();
 
+  // Phonetic & Misspelling Normalization for Indian/Global accents
+  const normalized = lower
+    // Kairo name mishearings
+    .replace(/\b(cairo|kyro|kiero|chiro|kero|kayro|karo|kaero|hiro|kiro|hero|keiro|cairo)\b/gi, 'kairo')
+    // Action verb variations
+    .replace(/\b(by|bay|kharid|kharido|lena|mangao|mangwana|order|buk|book|booking|layna)\b/gi, 'buy')
+    // Track / Delivery variations
+    .replace(/\b(trak|trac|trake|dhundo|pata karo|kaha hai|where is|bhejo|status|delivary|diliver)\b/gi, 'track')
+    // Wallet / Balance variations
+    .replace(/\b(walet|valet|balence|balans|paise|paisa|kitna hai|amount|funds|rupay)\b/gi, 'balance')
+    // Product variations
+    .replace(/\b(shoo|shoos|juta|jute|sneekers|sneeker|snicker|snickers)\b/gi, 'shoes')
+    .replace(/\b(headfon|hedphone|hedfon|earfon|earphone|earbuds|airpods|airpod|bud)\b/gi, 'headphones')
+    .replace(/\b(fone|fon|mobile|mobail)\b/gi, 'phone')
+    .replace(/\b(kapde|tshirt|tee|t-shirt)\b/gi, 'shirt')
+    // Greeting variations
+    .replace(/\b(namaste|namaskar|helo|hlo|heyy|heya)\b/gi, 'hello');
+
   // Explicit purchase verbs
-  const hasBuyWord = /\b(buy|purchase|order|book|get me|add money|topup|checkout)\b/i.test(lower);
-  const hasProductWord = /\b(shoes?|sneakers?|boots?|phones?|laptops?|headphones?|earphones?|earbuds?|watches?|shirts?|tshirts?|hoodies?|grocer(y|ies))\b/i.test(lower);
+  const hasBuyWord = /\b(buy|purchase|order|book|get me|add money|topup|checkout|kharid)\b/i.test(normalized);
+  const hasProductWord = /\b(shoes?|sneakers?|boots?|phones?|laptops?|headphones?|earphones?|earbuds?|watches?|shirts?|tshirts?|hoodies?|grocer(y|ies))\b/i.test(normalized);
 
   // If NOT explicitly asking to buy or book a product, treat as full Conversational AI Assistant
   if (!hasBuyWord && !hasProductWord) {
     let answer = 'I am your AP2 Voice Commerce Assistant. I can help you search products, negotiate autonomous discounts, check wallet balances, track orders, and execute cryptographic payments!';
 
-    if (lower.includes('who made') || lower.includes('who created') || lower.includes('who built') || lower.includes('developer') || lower.includes('founder') || lower.includes('author')) {
+    if (normalized.includes('who made') || normalized.includes('who created') || normalized.includes('who built') || normalized.includes('developer') || normalized.includes('founder') || normalized.includes('author') || normalized.includes('kisne banaya')) {
       answer = 'I was designed and developed by Tejas Patil for the Razorpay AI Buildathon to demonstrate the AP2 / x402 Autonomous Agent Payment Protocol!';
-    } else if (lower.includes('what are you doing') || lower.includes('what r u doing') || lower.includes('what doing')) {
+    } else if (normalized.includes('what are you doing') || normalized.includes('what r u doing') || normalized.includes('kya kar rahe')) {
       answer = 'I am actively monitoring merchant catalogs, evaluating cryptographic payment mandates, and standing by to help you buy products or track orders!';
-    } else if (lower.includes('stop') || lower.includes('pause') || lower.includes('wait') || lower.includes('hold on') || lower.includes('shutup') || lower.includes('quiet')) {
-      answer = 'Understood! I will pause here. Whenever you are ready to shop, negotiate deals, or check orders, just say hello.';
-    } else if (lower.includes('feature') || lower.includes('what can you do') || lower.includes('capabilities') || lower.includes('what you provide')) {
-      answer = 'Here are my core capabilities:\n• 🎙️ Natural Voice Commerce: Speak or type in real-time.\n• 🤝 Autonomous Price Negotiation: Negotiate 10-15% discounts with merchants.\n• 🔐 Cryptographic Cart Mandates: RSA-PSS 2048-bit mandate signing.\n• 💳 Real-time AP2 Wallet: Instant ledger debit and zero-double-credit idempotency.\n• 📦 Autonomous Order Tracking: Live fulfillment and delivery status.';
-    } else if (lower.includes('name') || lower.includes('who are you') || lower.includes('who r u')) {
-      answer = 'Hello! I am your personalized AP2 Voice Commerce Agent. I handle machine-to-machine negotiations, client-side mandate signing, and autonomous payments.';
-    } else if (lower.includes('ap2') || lower.includes('paygate') || lower.includes('mesh')) {
+    } else if (normalized.includes('stop') || normalized.includes('pause') || normalized.includes('wait') || normalized.includes('hold on') || normalized.includes('ruko') || normalized.includes('bas')) {
+      answer = 'Understood! I will pause here. Whenever you are ready to shop, negotiate deals, or check orders, just say "Hey Kairo".';
+    } else if (normalized.includes('feature') || normalized.includes('what can you do') || normalized.includes('capabilities') || normalized.includes('what you provide')) {
+      answer = 'Here are my core capabilities as Kairo:\n• 🎙️ Natural Voice Commerce: Speak or type in real-time.\n• 🤝 Autonomous Price Negotiation: Negotiate 10-15% discounts with merchants.\n• 🔐 Cryptographic Cart Mandates: RSA-PSS 2048-bit mandate signing.\n• 💳 Real-time AP2 Wallet: Instant ledger debit and zero-double-credit idempotency.\n• 📦 Autonomous Order Tracking: Live fulfillment and delivery status.';
+    } else if (normalized.includes('name') || normalized.includes('who are you') || normalized.includes('naam') || normalized.includes('kairo')) {
+      answer = 'Hello! I am KAIRO — your Crypto-Agent Payment Intelligence Assistant for PayGate 402. I handle machine-to-machine negotiations, client-side mandate signing, and autonomous payments.';
+    } else if (normalized.includes('ap2') || normalized.includes('paygate') || normalized.includes('mesh')) {
       answer = 'PayGate 402 is an Agentic Payment Integrity Mesh implementing the AP2 & x402 protocols for secure, machine-to-machine autonomous commerce with client-side RSA-PSS mandates.';
-    } else if (lower.includes('negotiat') || lower.includes('discount') || lower.includes('bargain')) {
+    } else if (normalized.includes('negotiat') || normalized.includes('discount') || normalized.includes('bargain') || normalized.includes('offer')) {
       answer = 'When you choose a product, I autonomously negotiate with verified merchants on your behalf to secure the best available market discount (up to 10-15% off).';
-    } else if (lower.includes('wallet') || lower.includes('balance') || lower.includes('money') || lower.includes('fund')) {
+    } else if (normalized.includes('wallet') || normalized.includes('balance') || normalized.includes('money') || normalized.includes('fund') || normalized.includes('paise')) {
       answer = 'Your AP2 Wallet holds INR test funds. You can top up anytime via Razorpay, and configure daily velocity caps to control autonomous agent spending.';
-    } else if (lower.includes('order') || lower.includes('track') || lower.includes('delivery')) {
+    } else if (normalized.includes('order') || normalized.includes('track') || normalized.includes('delivery')) {
       answer = 'I track all your autonomous agent orders in real-time. Just ask "Track my last order" to see live fulfillment and delivery receipts.';
-    } else if (lower.includes('refund') || lower.includes('fail') || lower.includes('cancel') || lower.includes('rollback')) {
+    } else if (normalized.includes('refund') || normalized.includes('fail') || normalized.includes('cancel') || normalized.includes('rollback')) {
       answer = 'Our Double-Entry Cryptographic Ledger includes automated rollback compensation. If an order fails, funds are instantly credited back to your wallet with zero loss.';
-    } else if (lower.includes('security') || lower.includes('safe') || lower.includes('hack') || lower.includes('crypto')) {
+    } else if (normalized.includes('security') || normalized.includes('safe') || normalized.includes('hack') || normalized.includes('crypto')) {
       answer = 'All transactions are secured by client-side RSA-PSS 2048-bit keys, SHA-256 integrity hashes, policy velocity limits, and HMAC webhook authentication.';
-    } else if (lower.includes('how are you') || lower.includes('how r u') || lower.includes('how are u')) {
+    } else if (normalized.includes('how are you') || normalized.includes('kaise ho') || normalized.includes('how r u')) {
       answer = 'I am doing great! Ready to help you discover products, negotiate deals, and execute AP2 payments. What are you looking for today?';
-    } else if (lower.includes('thank') || lower.includes('thx') || lower.includes('good job') || lower.includes('awesome') || lower.includes('great')) {
+    } else if (normalized.includes('thank') || normalized.includes('dhanyawad') || normalized.includes('shukriya') || normalized.includes('great')) {
       answer = "You're very welcome! Let me know whenever you want to search products, check deals, or settle orders.";
-    } else if (lower.includes('bye') || lower.includes('goodbye') || lower.includes('good night') || lower.includes('see you')) {
-      answer = 'Goodbye! Have a great day ahead. Feel free to wake me up whenever you need anything!';
-    } else if (lower.includes('joke') || lower.includes('make me laugh')) {
+    } else if (normalized.includes('bye') || normalized.includes('goodbye') || normalized.includes('alvida')) {
+      answer = 'Goodbye! Have a great day ahead. Feel free to say "Hey Kairo" whenever you need anything!';
+    } else if (normalized.includes('joke') || normalized.includes('hasao')) {
       answer = 'Why did the autonomous agent go to the store? To negotiate a deal it could not refuse!';
-    } else if (lower.includes('weather') || lower.includes('time')) {
+    } else if (normalized.includes('weather') || normalized.includes('time') || normalized.includes('samay')) {
       answer = `Right now the local time is ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}. For commerce and shopping, it's always a good time to find deals!`;
     } else {
-      answer = `I am listening! You can ask me questions about your wallet, orders, or ask me to find products like "Buy running shoes under 3000". How can I assist you?`;
+      answer = `I am KAIRO, listening! You can ask me questions about your wallet, orders, or ask me to find products like "Buy running shoes under 3000". How can I assist you?`;
     }
 
     return {
@@ -224,15 +242,17 @@ function ruleBasedIntentParser(transcript) {
   }
   
   let action = 'buy';
-  if (lower.includes('search') || lower.includes('find') || lower.includes('look for')) {
+  if (normalized.includes('search') || normalized.includes('find') || normalized.includes('look for')) {
     action = 'search';
-  } else if (lower.includes('topup') || lower.includes('add money') || lower.includes('recharge')) {
+  } else if (normalized.includes('topup') || normalized.includes('add money') || normalized.includes('recharge')) {
     action = 'topup';
   }
 
   let category = 'General';
-  if (lower.includes('shoe') || lower.includes('sneaker') || lower.includes('boot') || lower.includes('footwear')) category = 'Footwear';
-  else if (lower.includes('phone') || lower.includes('laptop') || lower.includes('headphone') || lower.includes('electronic') || lower.includes('airpod')) category = 'Electronics';
+  if (normalized.includes('shoe') || normalized.includes('sneaker') || normalized.includes('boot') || normalized.includes('footwear')) category = 'Footwear';
+  else if (normalized.includes('phone') || normalized.includes('laptop') || normalized.includes('headphone') || normalized.includes('electronic') || normalized.includes('airpod')) category = 'Electronics';
+  else if (normalized.includes('shirt') || normalized.includes('pant') || normalized.includes('jacket') || normalized.includes('cloth') || normalized.includes('tshirt') || normalized.includes('hoodie')) category = 'Apparel';
+  else if (normalized.includes('food') || normalized.includes('grocery') || normalized.includes('snack')) category = 'Groceries';
   else if (lower.includes('shirt') || lower.includes('pant') || lower.includes('jacket') || lower.includes('cloth') || lower.includes('tshirt') || lower.includes('hoodie')) category = 'Apparel';
   else if (lower.includes('food') || lower.includes('grocery') || lower.includes('snack')) category = 'Groceries';
 

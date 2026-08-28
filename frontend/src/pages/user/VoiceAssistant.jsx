@@ -93,7 +93,7 @@ export default function VoiceAssistant() {
       id: 1,
       sender: 'assistant',
       isWelcome: true,
-      text: `Hello, ${userName}! I am your Voice Commerce Agent. I can help you find products, track orders, and manage your account.\n\nHere are some things you can try:`,
+      text: `Hello, ${userName}! I am KAIRO — your Crypto-Agent Payment Intelligence Assistant. I can help you find products, negotiate discounts, track orders, and execute cryptographic payments.\n\nHere are some things you can try:`,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     },
   ]);
@@ -169,9 +169,16 @@ export default function VoiceAssistant() {
   }, [isRecording, isSpeaking]);
 
   const recognitionRef = useRef(null);
+  const silenceTimerRef = useRef(null);
 
   const startRecording = async () => {
     try {
+      // Immediately interrupt any ongoing Assistant TTS speech
+      if (window.speechSynthesis && window.speechSynthesis.speaking) {
+        window.speechSynthesis.cancel();
+        setIsSpeaking(false);
+      }
+
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (SpeechRecognition) {
         const recognition = new SpeechRecognition();
@@ -182,17 +189,31 @@ export default function VoiceAssistant() {
         let finalSpeechText = '';
 
         recognition.onresult = (event) => {
+          // If assistant was speaking, instantly mute & cancel it
+          if (window.speechSynthesis && window.speechSynthesis.speaking) {
+            window.speechSynthesis.cancel();
+            setIsSpeaking(false);
+          }
+
           let interimText = '';
           for (let i = event.resultIndex; i < event.results.length; ++i) {
             if (event.results[i].isFinal) {
-              finalSpeechText += event.results[i][0].transcript;
+              finalSpeechText += ' ' + event.results[i][0].transcript;
             } else {
-              interimText += event.results[i][0].transcript;
+              interimText += ' ' + event.results[i][0].transcript;
             }
           }
-          const currentText = finalSpeechText || interimText;
+          const currentText = (finalSpeechText || interimText).trim();
           if (currentText) {
             setTranscript(currentText);
+
+            // Auto-send after 1.8s of speech silence (Alexa / Siri style continuous conversation)
+            if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+            silenceTimerRef.current = setTimeout(() => {
+              if (currentText.length > 2) {
+                stopRecording();
+              }
+            }, 1800);
           }
         };
 
@@ -203,6 +224,7 @@ export default function VoiceAssistant() {
         recognition.onend = () => {
           setIsRecording(false);
           clearInterval(recordingTimerRef.current);
+          if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
         };
 
         recognition.start();
@@ -251,6 +273,11 @@ export default function VoiceAssistant() {
   };
 
   const stopRecording = () => {
+    if (silenceTimerRef.current) {
+      clearTimeout(silenceTimerRef.current);
+      silenceTimerRef.current = null;
+    }
+
     if (recognitionRef.current) {
       recognitionRef.current.stop();
       recognitionRef.current = null;

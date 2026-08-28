@@ -20,6 +20,7 @@ import {
 
 import ProtectedRoute from './components/ProtectedRoute';
 import UserLayout from './components/UserLayout';
+import GlobalKairoWidget from './components/GlobalKairoWidget';
 
 // Buyer Pages
 import Login from './pages/Login';
@@ -694,6 +695,9 @@ export default function App() {
           />
         </Routes>
       </main>
+
+      {/* Global KAIRO Floating AI Voice Assistant Widget */}
+      <GlobalKairoWidget />
     </div>
   );
 }
