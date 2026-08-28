@@ -20,6 +20,7 @@ import {
 
 import ProtectedRoute from './components/ProtectedRoute';
 import UserLayout from './components/UserLayout';
+import MerchantLayout from './components/MerchantLayout';
 import GlobalKairoWidget from './components/GlobalKairoWidget';
 
 // Buyer Pages
@@ -118,10 +119,23 @@ export default function App() {
     '/user/tasks',
     '/user/marketplace',
   ];
+  const merchantRoutePrefixes = [
+    '/merchant/catalog',
+    '/merchant/policy',
+    '/merchant/orders',
+    '/merchant/copilot',
+  ];
+  
   const isUserRoute =
     activeRole === 'user' ||
     userRoutePrefixes.some((p) => location.pathname === p || location.pathname.startsWith(`${p}/`));
-  const shouldHideNavbar = isAuthPage || isUserRoute;
+    
+  const isMerchantRoute = 
+    activeRole === 'merchant' ||
+    merchantRoutePrefixes.some((p) => location.pathname === p || location.pathname.startsWith(`${p}/`));
+
+  // We hide the global navbar on auth pages and any routes that have their own sidebar layouts (User & Merchant)
+  const shouldHideNavbar = isAuthPage || isUserRoute || isMerchantRoute;
 
   // Determine default authenticated redirect
   const getDefaultRedirect = () => {
@@ -554,39 +568,19 @@ export default function App() {
             <Route path="/user/dashboard" element={<Navigate to="/discovery" replace />} />
           </Route>
 
-          {/* Protected Merchant Portal Routes */}
+          {/* Protected Merchant Portal Routes (Wrapped in MerchantLayout) */}
           <Route
-            path="/merchant/catalog"
             element={
               <ProtectedRoute allowedRoles={['merchant']}>
-                <MerchantCatalog />
+                <MerchantLayout />
               </ProtectedRoute>
             }
-          />
-          <Route
-            path="/merchant/policy"
-            element={
-              <ProtectedRoute allowedRoles={['merchant']}>
-                <MerchantPolicy />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/merchant/orders"
-            element={
-              <ProtectedRoute allowedRoles={['merchant']}>
-                <MerchantOrders />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/merchant/copilot"
-            element={
-              <ProtectedRoute allowedRoles={['merchant']}>
-                <MerchantCoPilot />
-              </ProtectedRoute>
-            }
-          />
+          >
+            <Route path="/merchant/catalog" element={<MerchantCatalog />} />
+            <Route path="/merchant/policy" element={<MerchantPolicy />} />
+            <Route path="/merchant/orders" element={<MerchantOrders />} />
+            <Route path="/merchant/copilot" element={<MerchantCoPilot />} />
+          </Route>
 
           {/* Protected AI Agent Pipeline Routes */}
           <Route
@@ -697,7 +691,8 @@ export default function App() {
       </main>
 
       {/* Global KAIRO Floating AI Voice Assistant Widget */}
-      <GlobalKairoWidget />
+      {/* Hide on merchant portal since merchants use a text-based Co-Pilot instead */}
+      {activeRole !== 'merchant' && <GlobalKairoWidget />}
     </div>
   );
 }
