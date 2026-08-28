@@ -56,21 +56,22 @@ async function parseVoiceIntent(transcript, userId) {
   const cleanTranscript = transcript.trim();
   let parsedIntent = null;
 
-  // 1. Try Groq LLM extraction if API key available
+  // 1. Try Groq LLM extraction and conversational answer if API key available
   if (GROQ_API_KEY) {
     try {
-      const prompt = `You are a voice intent parser for an agentic commerce payment gateway (PayGate 402).
-Extract structured JSON from the user's speech transcript.
-Transcript: "${cleanTranscript}"
+      const prompt = `You are an intelligent voice commerce assistant for PayGate 402 (Autonomous Agent Payment Protocol AP2 / x402).
+The user spoke: "${cleanTranscript}"
 
-Respond STRICTLY with a raw JSON object containing these keys:
+Determine if the user is asking a conversational question OR stating a purchase/e-commerce intent.
+
+Respond STRICTLY with a raw JSON object matching this schema:
 {
-  "action": "buy" | "search" | "book" | "topup" | "general",
+  "action": "buy" | "search" | "question" | "topup" | "general",
   "category": "Electronics" | "Footwear" | "Apparel" | "Groceries" | "General",
-  "itemKeywords": string (e.g. "running shoes", "black shirt"),
-  "budget": number or null (e.g. 2000),
+  "itemKeywords": string,
+  "budget": number or null,
   "brandPreference": string or null,
-  "scheduleTime": string or null
+  "answer": string (If the user asked a question, provide a friendly, helpful, concise answer in 1-3 sentences. Otherwise null)
 }
 JSON output only:`;
 
@@ -79,7 +80,7 @@ JSON output only:`;
         {
           model: 'llama-3.3-70b-versatile',
           messages: [{ role: 'user', content: prompt }],
-          temperature: 0.1,
+          temperature: 0.2,
           response_format: { type: 'json_object' },
         },
         {
@@ -111,6 +112,23 @@ JSON output only:`;
   const budget = Number(parsedIntent.budget) || 0;
   const brandPreference = parsedIntent.brandPreference || '';
   const scheduleTime = parsedIntent.scheduleTime || '';
+  const answer = parsedIntent.answer || null;
+
+  // If it's a general question with an answer, return directly without gating confirmation
+  if (action === 'question' && answer) {
+    return {
+      rawTranscript: cleanTranscript,
+      isQuestion: true,
+      answer,
+      intent: {
+        action: 'question',
+        category: 'General',
+        itemKeywords: cleanTranscript,
+        budget: 0,
+      },
+      parsedAt: new Date().toISOString(),
+    };
+  }
 
   // 3. Echo-back & Confirmation Gate Integration (gatedActions)
   const gatedEvaluation = await evaluateGatedAction({
@@ -149,7 +167,61 @@ JSON output only:`;
  * Fallback regex intent parser with intelligent noise stripping
  */
 function ruleBasedIntentParser(transcript) {
-  const lower = transcript.toLowerCase();
+  const lower = transcript.toLowerCase().trim();
+
+  // Explicit purchase verbs
+  const hasBuyWord = /\b(buy|purchase|order|book|get me|add money|topup|checkout)\b/i.test(lower);
+  const hasProductWord = /\b(shoes?|sneakers?|boots?|phones?|laptops?|headphones?|earphones?|earbuds?|watches?|shirts?|tshirts?|hoodies?|grocer(y|ies))\b/i.test(lower);
+
+  // If NOT explicitly asking to buy or book a product, treat as full Conversational AI Assistant
+  if (!hasBuyWord && !hasProductWord) {
+    let answer = 'I am your AP2 Voice Commerce Assistant. I can help you search products, negotiate autonomous discounts, check wallet balances, track orders, and execute cryptographic payments!';
+
+    if (lower.includes('who made') || lower.includes('who created') || lower.includes('who built') || lower.includes('developer') || lower.includes('founder') || lower.includes('author')) {
+      answer = 'I was designed and developed by Tejas Patil for the Razorpay AI Buildathon to demonstrate the AP2 / x402 Autonomous Agent Payment Protocol!';
+    } else if (lower.includes('what are you doing') || lower.includes('what r u doing') || lower.includes('what doing')) {
+      answer = 'I am actively monitoring merchant catalogs, evaluating cryptographic payment mandates, and standing by to help you buy products or track orders!';
+    } else if (lower.includes('stop') || lower.includes('pause') || lower.includes('wait') || lower.includes('hold on') || lower.includes('shutup') || lower.includes('quiet')) {
+      answer = 'Understood! I will pause here. Whenever you are ready to shop, negotiate deals, or check orders, just say hello.';
+    } else if (lower.includes('feature') || lower.includes('what can you do') || lower.includes('capabilities') || lower.includes('what you provide')) {
+      answer = 'Here are my core capabilities:\n• 🎙️ Natural Voice Commerce: Speak or type in real-time.\n• 🤝 Autonomous Price Negotiation: Negotiate 10-15% discounts with merchants.\n• 🔐 Cryptographic Cart Mandates: RSA-PSS 2048-bit mandate signing.\n• 💳 Real-time AP2 Wallet: Instant ledger debit and zero-double-credit idempotency.\n• 📦 Autonomous Order Tracking: Live fulfillment and delivery status.';
+    } else if (lower.includes('name') || lower.includes('who are you') || lower.includes('who r u')) {
+      answer = 'Hello! I am your personalized AP2 Voice Commerce Agent. I handle machine-to-machine negotiations, client-side mandate signing, and autonomous payments.';
+    } else if (lower.includes('ap2') || lower.includes('paygate') || lower.includes('mesh')) {
+      answer = 'PayGate 402 is an Agentic Payment Integrity Mesh implementing the AP2 & x402 protocols for secure, machine-to-machine autonomous commerce with client-side RSA-PSS mandates.';
+    } else if (lower.includes('negotiat') || lower.includes('discount') || lower.includes('bargain')) {
+      answer = 'When you choose a product, I autonomously negotiate with verified merchants on your behalf to secure the best available market discount (up to 10-15% off).';
+    } else if (lower.includes('wallet') || lower.includes('balance') || lower.includes('money') || lower.includes('fund')) {
+      answer = 'Your AP2 Wallet holds INR test funds. You can top up anytime via Razorpay, and configure daily velocity caps to control autonomous agent spending.';
+    } else if (lower.includes('order') || lower.includes('track') || lower.includes('delivery')) {
+      answer = 'I track all your autonomous agent orders in real-time. Just ask "Track my last order" to see live fulfillment and delivery receipts.';
+    } else if (lower.includes('refund') || lower.includes('fail') || lower.includes('cancel') || lower.includes('rollback')) {
+      answer = 'Our Double-Entry Cryptographic Ledger includes automated rollback compensation. If an order fails, funds are instantly credited back to your wallet with zero loss.';
+    } else if (lower.includes('security') || lower.includes('safe') || lower.includes('hack') || lower.includes('crypto')) {
+      answer = 'All transactions are secured by client-side RSA-PSS 2048-bit keys, SHA-256 integrity hashes, policy velocity limits, and HMAC webhook authentication.';
+    } else if (lower.includes('how are you') || lower.includes('how r u') || lower.includes('how are u')) {
+      answer = 'I am doing great! Ready to help you discover products, negotiate deals, and execute AP2 payments. What are you looking for today?';
+    } else if (lower.includes('thank') || lower.includes('thx') || lower.includes('good job') || lower.includes('awesome') || lower.includes('great')) {
+      answer = "You're very welcome! Let me know whenever you want to search products, check deals, or settle orders.";
+    } else if (lower.includes('bye') || lower.includes('goodbye') || lower.includes('good night') || lower.includes('see you')) {
+      answer = 'Goodbye! Have a great day ahead. Feel free to wake me up whenever you need anything!';
+    } else if (lower.includes('joke') || lower.includes('make me laugh')) {
+      answer = 'Why did the autonomous agent go to the store? To negotiate a deal it could not refuse!';
+    } else if (lower.includes('weather') || lower.includes('time')) {
+      answer = `Right now the local time is ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}. For commerce and shopping, it's always a good time to find deals!`;
+    } else {
+      answer = `I am listening! You can ask me questions about your wallet, orders, or ask me to find products like "Buy running shoes under 3000". How can I assist you?`;
+    }
+
+    return {
+      action: 'question',
+      category: 'General',
+      itemKeywords: transcript,
+      budget: 0,
+      brandPreference: '',
+      answer,
+    };
+  }
   
   let action = 'buy';
   if (lower.includes('search') || lower.includes('find') || lower.includes('look for')) {
@@ -199,6 +271,7 @@ function ruleBasedIntentParser(transcript) {
     budget,
     brandPreference,
     scheduleTime: null,
+    answer: null,
   };
 }
 

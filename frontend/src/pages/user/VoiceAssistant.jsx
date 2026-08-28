@@ -332,6 +332,8 @@ export default function VoiceAssistant() {
     const textToSend = customText || transcript;
     if (!textToSend.trim()) return;
 
+    const textLower = textToSend.toLowerCase();
+
     const userMsg = {
       id: Date.now(),
       sender: 'user',
@@ -344,36 +346,156 @@ export default function VoiceAssistant() {
     setLoading(true);
     setPipelineStage('parsing');
 
-    if (textToSend.toLowerCase().includes('wallet') || textToSend.toLowerCase().includes('balance')) {
-      await fetchWalletBalance();
-      const bal = walletBalance !== null ? `₹${walletBalance.toLocaleString('en-IN')}` : 'available in your account';
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: Date.now() + 1,
-          sender: 'assistant',
-          text: `💳 Your current AP2 Wallet Balance is ${bal}. You can top up or manage spending limits in the Wallet tab.`,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        },
-      ]);
-      speakText(`Your current wallet balance is ${bal}`);
-      setLoading(false);
-      setPipelineStage('');
+    if (textLower.includes('wallet') || textLower.includes('balance') || textLower.includes('money') || textLower.includes('funds')) {
+      try {
+        const walletRes = await apiClient.get('/wallet/balance');
+        const data = walletRes.data || {};
+        const balance = data.balance ?? walletBalance ?? 0;
+        const dailySpent = data.dailySpent ?? 0;
+        const perDayCap = data.perDayCap ?? 50000;
+        const remainingCap = Math.max(0, perDayCap - dailySpent);
+
+        setWalletBalance(balance);
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: Date.now() + 1,
+            sender: 'assistant',
+            text: `💳 Here is your live AP2 Wallet & Spending summary:`,
+            isWalletCard: true,
+            walletData: {
+              balance,
+              dailySpent,
+              perDayCap,
+              remainingCap,
+            },
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          },
+        ]);
+        speakText(`Your AP2 wallet balance is ₹${balance.toLocaleString('en-IN')}. You have ₹${remainingCap.toLocaleString('en-IN')} remaining in your daily spend limit.`);
+      } catch (err) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: Date.now() + 1,
+            sender: 'assistant',
+            text: `💳 Your current AP2 Wallet Balance is ₹${(walletBalance || 0).toLocaleString('en-IN')}.`,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          },
+        ]);
+      } finally {
+        setLoading(false);
+        setPipelineStage('');
+      }
       return;
     }
 
-    if (textToSend.toLowerCase().includes('track') || textToSend.toLowerCase().includes('order')) {
+    if (textLower.includes('track') || textLower.includes('order') || textLower.includes('delivery') || textLower.includes('package') || textLower.includes('status')) {
+      try {
+        const ordersRes = await apiClient.get('/user/orders');
+        const orders = ordersRes.data?.orders || ordersRes.data || [];
+
+        if (Array.isArray(orders) && orders.length > 0) {
+          const latestOrder = orders[0];
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: Date.now() + 1,
+              sender: 'assistant',
+              text: `📦 Found your most recent AP2 order #${latestOrder.orderId || latestOrder._id}:`,
+              isOrderCard: true,
+              orderData: latestOrder,
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            },
+          ]);
+          speakText(`Your latest order #${latestOrder.orderId || ''} for ₹${latestOrder.totalAmount || latestOrder.amount} is currently ${latestOrder.status || 'confirmed'}.`);
+        } else {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: Date.now() + 1,
+              sender: 'assistant',
+              text: `📦 You don't have any placed orders yet. Would you like me to find deals on shoes, headphones, or fashion for you?`,
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            },
+          ]);
+          speakText(`You do not have any orders placed yet.`);
+        }
+      } catch (err) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: Date.now() + 1,
+            sender: 'assistant',
+            text: `📦 You can view your live orders and fulfillment timeline in the Orders dashboard.`,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          },
+        ]);
+      } finally {
+        setLoading(false);
+        setPipelineStage('');
+      }
+      return;
+    }
+
+    if (textLower.includes('deal') || textLower.includes('offer') || textLower.includes('recommend') || textLower.includes('top deal') || textLower.includes('trending')) {
+      try {
+        const discoveryRes = await apiClient.get('/discovery/search', { params: { limit: 4 } });
+        const products = discoveryRes.data?.products || [];
+
+        if (products.length > 0) {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: Date.now() + 1,
+              sender: 'assistant',
+              text: `🔥 Here are today's top recommended deals with autonomous AP2 discounts:`,
+              isDealsCard: true,
+              deals: products,
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            },
+          ]);
+          speakText(`Here are today's top deals from verified merchants.`);
+        } else {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: Date.now() + 1,
+              sender: 'assistant',
+              text: `🔥 Explore our catalog to discover live products eligible for autonomous agent discounts.`,
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            },
+          ]);
+        }
+      } catch (err) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: Date.now() + 1,
+            sender: 'assistant',
+            text: `🔥 Checking catalog deals for you...`,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          },
+        ]);
+      } finally {
+        setLoading(false);
+        setPipelineStage('');
+      }
+      return;
+    }
+
+    if (textLower.includes('security') || textLower.includes('safe') || textLower.includes('crypto') || textLower.includes('how it works') || textLower.includes('guardrail')) {
       setMessages((prev) => [
         ...prev,
         {
           id: Date.now() + 1,
           sender: 'assistant',
-          text: `📦 Opening your Order Tracking dashboard to inspect live fulfillment timelines and AP2 delivery receipts.`,
+          text: `🛡️ PayGate 402 Cryptographic Integrity & Safety Architecture:`,
+          isSecurityCard: true,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         },
       ]);
-      speakText(`Opening your orders tracking`);
-      setTimeout(() => navigate('/orders'), 1200);
+      speakText(`All autonomous agent transactions are secured by RSA-PSS 2048-bit digital signatures and atomic double-entry ledgers.`);
       setLoading(false);
       setPipelineStage('');
       return;
@@ -381,6 +503,22 @@ export default function VoiceAssistant() {
 
     try {
       const res = await apiClient.post('/voice/parse-text', { text: textToSend });
+      if (res.data?.isQuestion && res.data?.answer) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: Date.now() + 1,
+            sender: 'assistant',
+            text: res.data.answer,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          },
+        ]);
+        speakText(res.data.answer);
+        setLoading(false);
+        setPipelineStage('');
+        return;
+      }
+
       if (res.data?.success) {
         const { rawTranscript, intent, confirmationGate } = res.data;
         setPendingIntent({ rawTranscript, intent, confirmationGate });
@@ -673,6 +811,126 @@ export default function VoiceAssistant() {
                       </div>
                     </div>
                   )}
+                  {msg.isWalletCard && msg.walletData && (
+                    <div className="mt-4 p-4 rounded-2xl bg-white border border-indigo-100 shadow-xs space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-slate-500 font-medium">Available Wallet Balance</span>
+                        <span className="text-lg font-black text-slate-900">₹{msg.walletData.balance?.toLocaleString('en-IN')}</span>
+                      </div>
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-[11px] text-slate-500 font-medium">
+                          <span>Daily Spend Quota</span>
+                          <span>₹{msg.walletData.dailySpent?.toLocaleString('en-IN')} / ₹{msg.walletData.perDayCap?.toLocaleString('en-IN')}</span>
+                        </div>
+                        <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-gradient-to-r from-emerald-500 to-indigo-600 rounded-full transition-all duration-500"
+                            style={{ width: `${Math.min(100, ((msg.walletData.dailySpent || 0) / (msg.walletData.perDayCap || 1)) * 100)}%` }}
+                          />
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => navigate('/wallet')}
+                          className="flex-1 py-2 bg-[#0F172A] hover:bg-[#1E293B] text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                        >
+                          <Wallet className="w-3.5 h-3.5 text-cyan-400" />
+                          <span>Top Up & Ledger History</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {msg.isOrderCard && msg.orderData && (
+                    <div className="mt-4 p-4 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-3">
+                      <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                        <div>
+                          <span className="text-[10px] text-slate-400 block font-mono">ORDER ID</span>
+                          <strong className="text-xs font-bold text-slate-900">{msg.orderData.orderId || msg.orderData._id}</strong>
+                        </div>
+                        <span className="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[11px] font-bold uppercase border border-emerald-200">
+                          {msg.orderData.status || 'Confirmed'}
+                        </span>
+                      </div>
+                      <div className="text-xs text-slate-600 space-y-1">
+                        <div className="flex justify-between">
+                          <span className="text-slate-400">Total Paid:</span>
+                          <strong className="text-slate-900 font-bold">₹{(msg.orderData.totalAmount || msg.orderData.amount)?.toLocaleString('en-IN')}</strong>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-400">Settlement:</span>
+                          <span className="text-emerald-600 font-medium">AP2 Autonomous Mandate</span>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => navigate('/orders')}
+                        className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <span>Track Delivery Timeline</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )}
+
+                  {msg.isDealsCard && msg.deals && (
+                    <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {msg.deals.map((item, idx) => (
+                        <div key={idx} className="bg-white border border-slate-200/90 rounded-2xl p-3 shadow-xs space-y-2 flex flex-col justify-between hover:border-indigo-300 transition">
+                          <div className="flex items-center gap-3">
+                            <div className="w-14 h-14 rounded-xl overflow-hidden bg-slate-50 border border-slate-100 shrink-0">
+                              <img
+                                src={getProductImage(item)}
+                                alt={item.title}
+                                onError={(e) => {
+                                  e.currentTarget.onerror = null;
+                                  e.currentTarget.src = 'https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=400';
+                                }}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <h5 className="text-xs font-bold text-slate-900 truncate">{item.title}</h5>
+                              <span className="text-[11px] font-black text-indigo-700">₹{item.price?.toLocaleString('en-IN')}</span>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleSendText(`Buy ${item.title}`)}
+                            className="w-full py-1.5 bg-[#0F172A] hover:bg-[#1E293B] text-white text-[11px] font-bold rounded-xl transition flex items-center justify-center gap-1 cursor-pointer"
+                          >
+                            <Zap className="w-3 h-3 text-cyan-400" />
+                            <span>Negotiate & Buy</span>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {msg.isSecurityCard && (
+                    <div className="mt-4 p-4 rounded-2xl bg-white border border-indigo-200 shadow-xs space-y-2.5 text-xs text-slate-700">
+                      <div className="flex items-center gap-2 text-indigo-900 font-bold">
+                        <ShieldCheck className="w-4 h-4 text-indigo-600" />
+                        <span>AP2 Cryptographic Security Protocol</span>
+                      </div>
+                      <div className="space-y-2 pt-1">
+                        <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                          <strong className="text-slate-900 block">🔑 RSA-PSS 2048-bit Mandates</strong>
+                          <span className="text-[11px] text-slate-500">Every autonomous purchase generates a cryptographically signed contract with your private key.</span>
+                        </div>
+                        <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                          <strong className="text-slate-900 block">⚡ Double-Entry Idempotency</strong>
+                          <span className="text-[11px] text-slate-500">Atomic ledger updates guarantee 0 duplicate debits or stale balance states.</span>
+                        </div>
+                        <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                          <strong className="text-slate-900 block">🛡️ Safety Velocity Gates</strong>
+                          <span className="text-[11px] text-slate-500">Autonomous spend limits enforce numerical echo verification before executing payments.</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {msg.isReceipt && msg.receipt && (
                     <div className="mt-3 p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-slate-900 space-y-2 text-xs">
                       <div className="flex items-center gap-2 font-bold text-emerald-800"><PackageCheck className="w-4 h-4 text-emerald-600" /> <span>Order Generated & Wallet Settled</span></div>
