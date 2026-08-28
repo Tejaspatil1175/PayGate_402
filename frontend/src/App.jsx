@@ -24,7 +24,6 @@ import UserLayout from './components/UserLayout';
 // Buyer Pages
 import Login from './pages/Login';
 import UserRegister from './pages/user/Register';
-import UserDashboard from './pages/user/Dashboard';
 import UserWallet from './pages/user/Wallet';
 import VoiceAssistant from './pages/user/VoiceAssistant';
 import ProductDiscovery from './pages/user/ProductDiscovery';
@@ -545,13 +544,13 @@ export default function App() {
             <Route path="/catalog" element={<ProductDiscovery />} />
             <Route path="/wallet" element={<UserWallet />} />
             <Route path="/user/marketplace" element={<AgentMarketplace />} />
-            <Route path="/wishlist" element={<Wishlist />} />
             <Route path="/voice" element={<VoiceAssistant />} />
             <Route path="/user/orders" element={<OrderTracking />} />
             <Route path="/user/tasks" element={<ScheduledTasks />} />
-            <Route path="/dashboard" element={<UserDashboard />} />
-            <Route path="/user/dashboard" element={<UserDashboard />} />
+            <Route path="/wishlist" element={<Wishlist />} />
             <Route path="/user/analytics" element={<SpendingAnalytics />} />
+            <Route path="/dashboard" element={<Navigate to="/discovery" replace />} />
+            <Route path="/user/dashboard" element={<Navigate to="/discovery" replace />} />
           </Route>
 
           {/* Protected Merchant Portal Routes */}

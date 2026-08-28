@@ -64,11 +64,6 @@ export default function UserLayout() {
       icon: <Bot className="w-4 h-4" />,
     },
     {
-      to: '/wishlist',
-      label: 'Wishlist',
-      icon: <Heart className="w-4 h-4" />,
-    },
-    {
       to: '/voice',
       label: 'Voice AI',
       icon: <Mic className="w-4 h-4" />,
@@ -84,14 +79,9 @@ export default function UserLayout() {
       icon: <Calendar className="w-4 h-4" />,
     },
     {
-      to: '/dashboard',
-      label: 'Dashboard',
-      icon: (
-        <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-          <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-          <polyline points="9 22 9 12 15 12 15 22"/>
-        </svg>
-      ),
+      to: '/wishlist',
+      label: 'Wishlist',
+      icon: <Heart className="w-4 h-4" />,
     },
   ];
 
