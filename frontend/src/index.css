@@ -219,21 +219,26 @@ input::placeholder, textarea::placeholder {
   color: #8C8271 !important;
 }
 
-/* Custom Scrollbar */
+/* Hide scrollbar utility */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Clean Invisible Scrollbars */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 0px;
+  height: 0px;
+  display: none;
 }
 
 ::-webkit-scrollbar-track {
-  background: #FBF9F4;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #D6CEBE;
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #8C8271;
+  background: transparent;
 }

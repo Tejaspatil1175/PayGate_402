@@ -172,9 +172,9 @@ export default function UserLayout() {
       </aside>
 
       {/* ----------------- MAIN VIEW WRAPPER ----------------- */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
         {/* ----------------- TOP HEADER BAR ----------------- */}
-        <header className="h-16 bg-white border-b border-[#E2E8F0] px-6 flex items-center justify-between gap-4 sticky top-0 z-30 shadow-xs">
+        <header className="h-16 bg-white border-b border-[#E2E8F0] px-6 flex items-center justify-between gap-4 shrink-0 z-30 shadow-xs">
           {/* Global Search Bar */}
           <form onSubmit={handleSearchSubmit} className="relative flex-1 max-w-md">
             <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -217,14 +217,9 @@ export default function UserLayout() {
         </header>
 
         {/* ----------------- NESTED USER PAGE CONTENT ----------------- */}
-        <div className="flex-1">
+        <div className="flex-1 overflow-hidden flex flex-col no-scrollbar">
           <Outlet />
         </div>
-
-        {/* ----------------- BOTTOM FOOTER ----------------- */}
-        <footer className="py-3 px-6 text-center text-xs text-slate-400 border-t border-slate-200 bg-white">
-          PayGate 402 — Razorpay AI Buildathon | AP2 / x402 Payment Integrity Mesh
-        </footer>
       </div>
     </div>
   );
