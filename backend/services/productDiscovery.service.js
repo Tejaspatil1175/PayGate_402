@@ -59,7 +59,8 @@ async function searchProducts(params = {}) {
         .populate('merchant', 'businessName businessCategory')
         .lean();
     } catch (err) {
-      logger.warn('[PRODUCT_DISCOVERY] Text search query error:', err.message);
+      logger.error('[PRODUCT_DISCOVERY] Text search query error:', err);
+      throw new Error(`Product text search failed: ${err.message}`);
     }
 
     // Attempt 2: If 0 results and multiple keywords exist (e.g. "black shirt"), drop attribute/color token and retry with core item token (e.g. "shirt")
@@ -87,7 +88,8 @@ async function searchProducts(params = {}) {
         
         logger.info(`[PRODUCT_DISCOVERY] Fallback triggered: dropped attributes, searched core keyword "${searchedKeywords}". Found ${products.length} item(s).`);
       } catch (err) {
-        logger.warn('[PRODUCT_DISCOVERY] Fallback text search error:', err.message);
+        logger.error('[PRODUCT_DISCOVERY] Fallback text search error:', err);
+        throw new Error(`Product fallback text search failed: ${err.message}`);
       }
     }
   } else {
@@ -111,6 +113,7 @@ async function searchProducts(params = {}) {
     limit: limitNum,
     products: products.map((p) => ({
       id: p._id,
+      _id: p._id,
       title: p.title,
       description: p.description,
       price: p.price,
@@ -121,11 +124,38 @@ async function searchProducts(params = {}) {
       tags: p.tags || [],
       merchant: {
         id: p.merchant?._id,
+        _id: p.merchant?._id,
         name: p.merchant?.businessName || 'Merchant',
       },
       textScore: p.score || 0,
     })),
   };
+}
+
+/**
+ * Verify on startup that ProductTextIndex exists on MongoDB collection, or sync it
+ */
+async function ensureProductIndexes() {
+  try {
+    const indexes = await Product.collection.getIndexes();
+    const indexNames = Object.keys(indexes);
+    const hasTextIndex = indexNames.includes('ProductTextIndex') || Object.values(indexes).some((spec) => {
+      if (Array.isArray(spec)) {
+        return spec.some(([field, type]) => type === 'text');
+      }
+      return Object.values(spec).includes('text');
+    });
+
+    if (hasTextIndex) {
+      logger.info(`[PRODUCT_DISCOVERY] ProductTextIndex verified on MongoDB collection (${indexNames.join(', ')}).`);
+    } else {
+      logger.warn('[PRODUCT_DISCOVERY] ProductTextIndex missing on collection. Running Product.syncIndexes()...');
+      await Product.syncIndexes();
+      logger.info('[PRODUCT_DISCOVERY] Product.syncIndexes() completed successfully.');
+    }
+  } catch (err) {
+    logger.error('[PRODUCT_DISCOVERY] Error verifying Product indexes:', err.message);
+  }
 }
 
 /**
@@ -153,5 +183,6 @@ async function initiateSearchMatchingPipeline(params) {
 
 module.exports = {
   searchProducts,
+  ensureProductIndexes,
   initiateSearchMatchingPipeline,
 };

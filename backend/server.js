@@ -71,10 +71,12 @@ app.use(errorHandler);
 
 const { seedAdmin } = require('./config/adminSeed');
 const { initScheduledTasksCron } = require('./jobs/scheduledTasks.job');
+const { ensureProductIndexes } = require('./services/productDiscovery.service');
 
-connectDB().then(() => {
+connectDB().then(async () => {
   seedAdmin();
   initScheduledTasksCron();
+  await ensureProductIndexes();
   app.listen(PORT, () => {
     console.log(`PayGate 402 backend listening on port ${PORT}`);
   });
