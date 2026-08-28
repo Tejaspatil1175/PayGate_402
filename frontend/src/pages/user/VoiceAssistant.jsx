@@ -40,7 +40,7 @@ import { getOrCreateUserKeys } from '../../utils/keys';
 
 // Confirmation / "book it" style phrases — checked locally first (instant, no network round trip)
 // against whatever's currently pending, so voice can trigger checkout/confirm directly.
-const CONFIRM_PHRASE_REGEX = /^\s*(book\s*it|book\s*this|book\s*that|confirm|yes|yeah|yep|proceed|go\s*ahead|buy\s*it|buy\s*this|do\s*it|purchase\s*it|okay\s*book|ok\s*book|pay\s*now|complete\s*(the\s*)?purchase)\s*[.!]?\s*$/i;
+const CONFIRM_PHRASE_REGEX = /^\s*(book\s*it|book\s*this|book\s*that|confirm|yes|yeah|yep|proceed|go\s*ahead|buy\s*it|buy\s*this|do\s*it|purchase\s*it|okay\s*book|ok\s*book|pay\s*now|complete\s*(the\s*)?purchase|do\s*(the\s*)?payment|ok(\s*do\s*payment)?|all\s*ok|done)\s*[.!]?\s*$/i;
 
 function getProductImage(product) {
   if (!product) return 'https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=400';
@@ -260,6 +260,16 @@ export default function VoiceAssistant() {
   const silenceTimerRef = useRef(null);
   const manualStopRef = useRef(false);
 
+  // Fix React Closure Trap for async event handlers
+  const handleSendTextRef = useRef(null);
+  const handleAudioUploadRef = useRef(null);
+  
+  useEffect(() => {
+    // These get updated on every render so they always close over the latest state
+    handleSendTextRef.current = handleSendText;
+    handleAudioUploadRef.current = handleAudioUpload;
+  });
+
   const startRecording = async () => {
     try {
       manualStopRef.current = false;
@@ -302,7 +312,7 @@ export default function VoiceAssistant() {
             silenceTimerRef.current = setTimeout(() => {
               if (currentText.length > 2) {
                 stopRecording();
-                handleSendText(currentText); // ACTUALLY SEND THE TEXT
+                if (handleSendTextRef.current) handleSendTextRef.current(currentText); // ACTUALLY SEND THE TEXT
               }
             }, 1800);
           }
@@ -362,7 +372,7 @@ export default function VoiceAssistant() {
         }
       };
 
-      mediaRecorder.onstop = async () => {
+      mediaRecorder.onstop = () => {
         clearInterval(vadInterval);
         if (audioContext.state !== 'closed') {
           audioContext.close();
@@ -370,10 +380,10 @@ export default function VoiceAssistant() {
         stream.getTracks().forEach((track) => track.stop());
         clearInterval(recordingTimerRef.current);
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        await handleAudioUpload(audioBlob);
+        if (handleAudioUploadRef.current) handleAudioUploadRef.current(audioBlob);
+        audioChunksRef.current = [];
         
-        // Continuous mode for fallback
-        if (continuousMode && !manualStopRef.current) {
+        if (!manualStopRef.current) {
           setTimeout(() => {
             if (!manualStopRef.current) startRecording();
           }, 400);
@@ -420,8 +430,8 @@ export default function VoiceAssistant() {
       manualStopRef.current = true;
       // If user manually taps orb to stop, send whatever they had spoken so far
       setTranscript((currentTrans) => {
-        if (currentTrans.length > 2) {
-          handleSendText(currentTrans);
+        if (currentTrans.length > 2 && handleSendTextRef.current) {
+          handleSendTextRef.current(currentTrans);
         }
         return currentTrans; // don't clear here, handleSendText will clear it
       });
@@ -602,6 +612,27 @@ export default function VoiceAssistant() {
 
     setMessages((prev) => [...prev, userMsg]);
     if (!customText) setTranscript('');
+
+    // Voice Budget Follow-up parsing
+    if (pendingIntent && (!pendingIntent.intent.budget || pendingIntent.intent.budget === 0)) {
+      let parsedBudget = 0;
+      const digits = textLower.match(/\d+/g);
+      if (digits) {
+        parsedBudget = parseInt(digits.join(''), 10);
+        if (textLower.includes('thousand') || textLower.includes('k')) {
+          if (parsedBudget < 1000) parsedBudget *= 1000;
+        } else if (textLower.includes('hundred')) {
+          if (parsedBudget < 100) parsedBudget *= 100;
+        }
+      }
+      
+      if (parsedBudget > 0) {
+        setEditBudget(parsedBudget);
+        // Automatically trigger confirmation with the new budget
+        handleConfirmIntent(parsedBudget);
+        return;
+      }
+    }
 
     // Instant local confirmation routing — "book it" / "yes" / "confirm" etc. against whatever's pending,
     // no network round trip needed since we already have this state on the client.
@@ -860,13 +891,13 @@ export default function VoiceAssistant() {
     }
   };
 
-  const handleConfirmIntent = async () => {
+  const handleConfirmIntent = async (overrideBudget = null) => {
     if (!pendingIntent) return;
 
     setLoading(true);
     setPipelineStage('matching');
     const { intent } = pendingIntent;
-    const finalBudget = Number(editBudget) || 0;
+    const finalBudget = (typeof overrideBudget === 'number' ? overrideBudget : Number(editBudget)) || 0;
 
     try {
       const stored = localStorage.getItem('paygate_user');
@@ -962,6 +993,8 @@ export default function VoiceAssistant() {
         },
       ]);
       setPendingIntent(null);
+      
+      speakText(`I found ${topProduct.title}. I am negotiating. The merchant set the last price to ${negotiatedPrice} rupees. Shall I do the payment?`);
     } catch (err) {
       const pipeErrMsg = err?.error || err?.message || (typeof err === 'string' ? err : 'Something went wrong. Please try again.');
       setMessages((prev) => [...prev, { id: Date.now() + 2, sender: 'assistant', text: `⚠️ Error: ${pipeErrMsg}`, isError: true, timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }]);
@@ -1012,6 +1045,8 @@ export default function VoiceAssistant() {
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         },
       ]);
+      
+      speakText(`All ok! The transaction is completed and ${orderReceipt.amount} rupees have been paid via autonomous mandate.`);
     } catch (err) {
       const errMsg = err?.error || err?.message || (typeof err === 'string' ? err : 'Payment execution failed. Please try again.');
       setMessages((prev) => [...prev, { id: Date.now() + 3, sender: 'assistant', text: `⚠️ Payment Error: ${errMsg}`, isError: true, timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }]);
