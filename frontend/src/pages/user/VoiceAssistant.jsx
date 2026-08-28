@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   Mic,
   MicOff,
@@ -80,6 +80,7 @@ function getProductImage(product) {
 
 export default function VoiceAssistant() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [isRecording, setIsRecording] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
   const [transcript, setTranscript] = useState('');
@@ -97,7 +98,7 @@ export default function VoiceAssistant() {
       id: 1,
       sender: 'assistant',
       isWelcome: true,
-      text: `Hello, ${userName}! I am KAIRO — your Crypto-Agent Payment Intelligence Assistant. I can help you find products, negotiate discounts, track orders, and execute cryptographic payments.\n\nHere are some things you can try:`,
+      text: `Hello! I am Tejas — your Crypto-Agent Payment Intelligence Assistant. I can help you find products, negotiate discounts, track orders, and execute cryptographic payments.\n\nHere are some things you can try:`,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     },
   ]);
@@ -108,7 +109,7 @@ export default function VoiceAssistant() {
   const [editBudget, setEditBudget] = useState(0);
   const [pipelineResult, setPipelineResult] = useState(null);
   const [checkoutComplete, setCheckoutComplete] = useState(null);
-  const [continuousMode, setContinuousMode] = useState(false);
+  const [continuousMode, setContinuousMode] = useState(true); // always-listening by default
   const [ttsAvailable, setTtsAvailable] = useState(true);
   const lastContextRef = useRef(null); // { category, itemKeywords, budget, brandPreference } — last resolved intent for follow-up resolution
 
@@ -167,21 +168,77 @@ export default function VoiceAssistant() {
     }
   }, [messages, loading, pipelineStage]);
 
-  const speakText = (text) => {
-    if (!ttsEnabled || !ttsAvailable || !window.speechSynthesis) return;
+  const speakText = (text, onEndCallback) => {
+    if (!ttsEnabled || !ttsAvailable || typeof window === 'undefined' || !window.speechSynthesis) {
+      if (onEndCallback) onEndCallback();
+      return;
+    }
     try {
+      if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume();
+      }
       window.speechSynthesis.cancel();
+
       const cleanSpeech = text.replace(/[*_#`₹]/g, '').replace(/AP2/g, 'A P 2');
       const utterance = new SpeechSynthesisUtterance(cleanSpeech);
-      utterance.rate = 1.05;
+      utterance.rate = 1.0;
       utterance.pitch = 1.0;
       utterance.lang = 'en-US';
+
+      // Pick a natural English voice if loaded
+      const voices = window.speechSynthesis.getVoices();
+      if (voices && voices.length > 0) {
+        const preferredVoice = voices.find((v) =>
+          (v.lang.startsWith('en') || v.lang.includes('IN')) &&
+          (v.name.includes('Google') || v.name.includes('Natural') || v.name.includes('David') || v.name.includes('George') || v.name.includes('Zira'))
+        );
+        if (preferredVoice) utterance.voice = preferredVoice;
+      }
+
+      let callbackCalled = false;
+      const finish = () => {
+        if (!callbackCalled) {
+          callbackCalled = true;
+          setIsSpeaking(false);
+          if (onEndCallback) onEndCallback();
+        }
+      };
+
       utterance.onstart = () => setIsSpeaking(true);
-      utterance.onend = () => setIsSpeaking(false);
-      utterance.onerror = () => setIsSpeaking(false);
-      window.speechSynthesis.speak(utterance);
+      utterance.onend = finish;
+      utterance.onerror = (e) => {
+        console.warn('Utterance error:', e);
+        finish();
+      };
+      
+      // Detect if browser blocked autoplay (onstart never fires)
+      setTimeout(() => {
+        if (!callbackCalled && window.speechSynthesis.paused) {
+           console.warn('Autoplay blocked TTS, skipping to end');
+           finish();
+        }
+      }, 800);
+
+      // Fallback timer so audio never gets permanently stuck
+      const approxDurationMs = Math.max(2000, (cleanSpeech.split(' ').length / 2.5) * 1000 + 1200);
+      const fallbackTimer = setTimeout(() => {
+        finish();
+      }, approxDurationMs);
+
+      const originalOnEnd = utterance.onend;
+      utterance.onend = () => {
+        clearTimeout(fallbackTimer);
+        originalOnEnd();
+      };
+
+      // 60ms delay after cancel to prevent Chrome from dropping speech
+      setTimeout(() => {
+        if (window.speechSynthesis.paused) window.speechSynthesis.resume();
+        window.speechSynthesis.speak(utterance);
+      }, 60);
     } catch (e) {
       console.warn('Speech synthesis error:', e);
+      if (onEndCallback) onEndCallback();
     }
   };
 
@@ -245,6 +302,7 @@ export default function VoiceAssistant() {
             silenceTimerRef.current = setTimeout(() => {
               if (currentText.length > 2) {
                 stopRecording();
+                handleSendText(currentText); // ACTUALLY SEND THE TEXT
               }
             }, 1800);
           }
@@ -258,8 +316,8 @@ export default function VoiceAssistant() {
           setIsRecording(false);
           clearInterval(recordingTimerRef.current);
           if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
-          // Always-Listening mode: auto-restart the mic unless the user explicitly stopped it
-          if (continuousMode && !manualStopRef.current) {
+          // Auto-restart mic always (continuous listening — never stop unless user manually presses stop)
+          if (!manualStopRef.current) {
             setTimeout(() => {
               if (!manualStopRef.current) startRecording();
             }, 400);
@@ -277,12 +335,26 @@ export default function VoiceAssistant() {
         return;
       }
 
-      // Fallback: MediaRecorder Audio Blob
+      // Fallback: MediaRecorder Audio Blob with Voice Activity Detection (VAD)
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       audioChunksRef.current = [];
 
       const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
+
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const source = audioContext.createMediaStreamSource(stream);
+      const analyser = audioContext.createAnalyser();
+      analyser.minDecibels = -70;
+      analyser.fftSize = 512;
+      source.connect(analyser);
+
+      const bufferLength = analyser.frequencyBinCount;
+      const dataArray = new Uint8Array(bufferLength);
+
+      let isSpeakingNow = false;
+      let silenceStart = Date.now();
+      let vadInterval;
 
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
@@ -291,15 +363,47 @@ export default function VoiceAssistant() {
       };
 
       mediaRecorder.onstop = async () => {
+        clearInterval(vadInterval);
+        if (audioContext.state !== 'closed') {
+          audioContext.close();
+        }
         stream.getTracks().forEach((track) => track.stop());
         clearInterval(recordingTimerRef.current);
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
         await handleAudioUpload(audioBlob);
+        
+        // Continuous mode for fallback
+        if (continuousMode && !manualStopRef.current) {
+          setTimeout(() => {
+            if (!manualStopRef.current) startRecording();
+          }, 400);
+        }
       };
 
-      mediaRecorder.start();
+      mediaRecorder.start(250);
       setIsRecording(true);
       setRecordingDuration(0);
+
+      vadInterval = setInterval(() => {
+        analyser.getByteFrequencyData(dataArray);
+        const sum = dataArray.reduce((a, b) => a + b, 0);
+        const avg = sum / bufferLength;
+
+        if (avg > 10) { // Speech detected
+          if (!isSpeakingNow) {
+            isSpeakingNow = true;
+          }
+          silenceStart = Date.now();
+        } else {
+          // 2 seconds of silence -> auto send
+          if (isSpeakingNow && (Date.now() - silenceStart > 2000)) {
+            isSpeakingNow = false;
+            if (mediaRecorder.state !== 'inactive') {
+              stopRecording();
+            }
+          }
+        }
+      }, 100);
 
       recordingTimerRef.current = setInterval(() => {
         setRecordingDuration((prev) => prev + 1);
@@ -312,7 +416,17 @@ export default function VoiceAssistant() {
   };
 
   const stopRecording = (isManual = false) => {
-    if (isManual) manualStopRef.current = true;
+    if (isManual) {
+      manualStopRef.current = true;
+      // If user manually taps orb to stop, send whatever they had spoken so far
+      setTranscript((currentTrans) => {
+        if (currentTrans.length > 2) {
+          handleSendText(currentTrans);
+        }
+        return currentTrans; // don't clear here, handleSendText will clear it
+      });
+    }
+    
     if (silenceTimerRef.current) {
       clearTimeout(silenceTimerRef.current);
       silenceTimerRef.current = null;
@@ -334,6 +448,59 @@ export default function VoiceAssistant() {
       setIsRecording(false);
     }
   };
+
+  const hasAutoStartedRef = useRef(false);
+
+  // On page mount: speak greeting and auto-start continuous listening immediately.
+  useEffect(() => {
+    if (hasAutoStartedRef.current) return;
+    hasAutoStartedRef.current = true;
+
+    const greeting = 'Hello! I am Tejas. How can I help you?';
+
+    const doGreet = () => {
+      // We start the mic AFTER the greeting finishes, otherwise the mic 
+      // instantly hears the greeting and cancels it (barge-in bug)
+      speakText(greeting, () => {
+        setTimeout(startRecording, 100);
+      });
+    };
+
+    const synth = window.speechSynthesis;
+    if (!synth) {
+      setTimeout(startRecording, 300);
+      return;
+    }
+
+    // Small delay so React can finish painting the page first
+    const timer = setTimeout(() => {
+      const voices = synth.getVoices();
+      if (voices && voices.length > 0) {
+        doGreet();
+      } else {
+        let fired = false;
+        // voiceschanged fires once voices are loaded (Chrome async)
+        const onVoicesChanged = () => {
+          if (fired) return;
+          fired = true;
+          synth.removeEventListener('voiceschanged', onVoicesChanged);
+          doGreet();
+        };
+        synth.addEventListener('voiceschanged', onVoicesChanged);
+        
+        // Fallback if voiceschanged never fires (e.g. some browsers/OS)
+        setTimeout(() => {
+          if (!fired) {
+            fired = true;
+            synth.removeEventListener('voiceschanged', onVoicesChanged);
+            doGreet();
+          }
+        }, 1200);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   const handleAudioUpload = async (audioBlob) => {
     setLoading(true);
@@ -796,7 +963,8 @@ export default function VoiceAssistant() {
       ]);
       setPendingIntent(null);
     } catch (err) {
-      setMessages((prev) => [...prev, { id: Date.now() + 2, sender: 'assistant', text: `⚠️ Error: ${err.message}`, isError: true, timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }]);
+      const pipeErrMsg = err?.error || err?.message || (typeof err === 'string' ? err : 'Something went wrong. Please try again.');
+      setMessages((prev) => [...prev, { id: Date.now() + 2, sender: 'assistant', text: `⚠️ Error: ${pipeErrMsg}`, isError: true, timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }]);
     } finally {
       setLoading(false);
       setPipelineStage('');
@@ -845,7 +1013,8 @@ export default function VoiceAssistant() {
         },
       ]);
     } catch (err) {
-      setMessages((prev) => [...prev, { id: Date.now() + 3, sender: 'assistant', text: `⚠️ Payment Error: ${err.message}`, isError: true, timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }]);
+      const errMsg = err?.error || err?.message || (typeof err === 'string' ? err : 'Payment execution failed. Please try again.');
+      setMessages((prev) => [...prev, { id: Date.now() + 3, sender: 'assistant', text: `⚠️ Payment Error: ${errMsg}`, isError: true, timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }]);
     } finally {
       setLoading(false);
       setPipelineStage('');
@@ -1097,99 +1266,81 @@ export default function VoiceAssistant() {
         )}
       </div>
 
-      {/* Floating Bottom Fixed Input Bar with Subtle Light Black Shadow */}
-      <div className="absolute bottom-3 left-0 right-0 px-3 sm:px-6 z-30 pointer-events-none">
-        <div className="max-w-4xl mx-auto w-full pointer-events-auto">
-          {isRecording && (
-            <div className="mb-2.5 flex items-center justify-between p-2.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-900 text-xs animate-in fade-in duration-150 shadow-[0_4px_16px_rgba(244,63,94,0.12)]">
-              <div className="flex items-center gap-2.5">
-                <span className="relative flex h-2.5 w-2.5"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span></span>
-                <span className="font-semibold">Recording microphone audio... <span className="font-normal text-rose-700">({recordingDuration}s)</span></span>
-              </div>
-              <button type="button" onClick={() => stopRecording(true)} className="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-[11px] font-bold cursor-pointer transition shadow-xs">Stop & Transcribe</button>
-            </div>
-          )}
-          <div className="flex items-center gap-2.5 bg-white/95 backdrop-blur-md border border-slate-200/90 rounded-2xl p-2 shadow-[0_4px_20px_-2px_rgba(0,0,0,0.08),0_2px_6px_rgba(0,0,0,0.04)] transition-all duration-300 hover:shadow-[0_6px_24px_-2px_rgba(0,0,0,0.12)]">
-            {/* Glowing Mic Button (Left) */}
-            <div className="relative group shrink-0">
-              <div className="absolute -inset-0.5 bg-gradient-to-r from-cyan-400 via-indigo-500 to-purple-500 rounded-2xl blur-xs opacity-75 group-hover:opacity-100 transition duration-300"></div>
-              <button
-                type="button"
-                onClick={isRecording ? () => stopRecording(true) : startRecording}
-                className={`relative p-3 rounded-2xl transition-all duration-300 shadow-sm cursor-pointer flex items-center justify-center shrink-0 ${
-                  isRecording ? 'bg-rose-600 text-white animate-pulse' : 'bg-[#0B101B] text-sky-400 hover:text-sky-300'
-                }`}
-                title={isRecording ? 'Stop and send audio' : 'Click to speak'}
-              >
-                {isRecording ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5 text-[#818CF8]" />}
-              </button>
-            </div>
+      {/* ── Always-Listening Orb ────────────────────────────────────────── */}
+      <div className="absolute bottom-0 left-0 right-0 flex flex-col items-center pb-6 pt-2 z-30 pointer-events-none">
 
-            {/* Always-Listening toggle: keeps the mic open continuously so you can interrupt KAIRO just by speaking */}
-            <button
-              type="button"
-              onClick={() => {
-                const next = !continuousMode;
-                setContinuousMode(next);
-                if (next && !isRecording) {
-                  manualStopRef.current = false;
-                  startRecording();
-                } else if (!next) {
-                  stopRecording(true);
-                }
-              }}
-              title={continuousMode ? 'Always-Listening mode is ON — click to turn off' : 'Turn on Always-Listening mode (like Alexa/Siri, interrupt anytime by speaking)'}
-              className={`shrink-0 p-2.5 rounded-xl border transition cursor-pointer flex items-center justify-center ${
-                continuousMode ? 'bg-emerald-50 border-emerald-300 text-emerald-700' : 'bg-white border-slate-200 text-slate-400 hover:text-slate-600'
-              }`}
-            >
-              <Radio className="w-4 h-4" />
-            </button>
-
-            {/* Input Field with Waveform Graphic on Right */}
-            <div className="flex-1 flex items-center gap-2 px-3 py-1.5">
-              <input
-                type="text"
-                value={transcript}
-                onChange={(e) => setTranscript(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSendText()}
-                placeholder="Record or type your request (e.g., 'buy running shoes under 3000')..."
-                className="flex-1 bg-transparent text-xs sm:text-sm text-slate-900 placeholder-slate-400 outline-none"
-              />
-              <div className="flex items-center gap-0.5 h-6 px-1 shrink-0">
-                {audioLevel.map((height, idx) => (
-                  <span
-                    key={idx}
-                    style={{ height: `${Math.max(4, height * 0.26)}px` }}
-                    className={`w-0.5 rounded-full transition-all duration-75 ${
-                      isRecording ? 'bg-rose-500 animate-pulse' : isSpeaking ? 'bg-indigo-500 animate-pulse' : idx % 3 === 0 ? 'bg-sky-400' : idx % 3 === 1 ? 'bg-indigo-500' : 'bg-purple-500'
-                    }`}
-                  />
-                ))}
-              </div>
+        {/* Live transcript bubble — shows what Tejas hears in real time */}
+        {transcript && (
+          <div className="mb-4 max-w-sm w-full mx-auto px-4 pointer-events-none">
+            <div className="bg-white/90 backdrop-blur border border-slate-200 rounded-2xl px-4 py-2.5 text-xs text-slate-700 font-medium shadow-md text-center animate-in fade-in duration-200">
+              🎙️ <span className="italic">{transcript}</span>
             </div>
-
-            {/* Send Controls */}
-            <button
-              type="button"
-              onClick={() => handleSendText()}
-              disabled={loading || !transcript.trim()}
-              className="p-2.5 rounded-xl bg-[#091322] hover:bg-[#0f1d33] text-sky-400 hover:text-sky-300 transition disabled:opacity-40 disabled:cursor-not-allowed shrink-0 shadow-xs cursor-pointer"
-              title="Send Command"
-            >
-              <Send className="w-4 h-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => handleSendText()}
-              disabled={loading || !transcript.trim()}
-              className="px-4 py-2.5 rounded-xl bg-[#0F172A] hover:bg-[#1E293B] text-white font-bold text-xs transition disabled:opacity-40 disabled:cursor-not-allowed shrink-0 shadow-xs cursor-pointer hidden sm:block"
-            >
-              Send
-            </button>
           </div>
+        )}
+
+        {/* Speaking status */}
+        {isSpeaking && !isRecording && (
+          <div className="mb-3 text-xs text-indigo-600 font-semibold animate-pulse tracking-wide">
+            Tejas is speaking...
+          </div>
+        )}
+
+        {/* Mic orb */}
+        <div className="pointer-events-auto flex flex-col items-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              if (isRecording) {
+                stopRecording(true);
+              } else {
+                manualStopRef.current = false;
+                startRecording();
+              }
+            }}
+            title={isRecording ? 'Tap to stop' : 'Tap to speak'}
+            style={{
+              width: 72,
+              height: 72,
+              borderRadius: '50%',
+              border: 'none',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              position: 'relative',
+              background: isRecording
+                ? 'linear-gradient(135deg, #ef4444, #dc2626)'
+                : isSpeaking
+                ? 'linear-gradient(135deg, #6366f1, #8b5cf6)'
+                : 'linear-gradient(135deg, #0f172a, #1e293b)',
+              boxShadow: isRecording
+                ? '0 0 0 12px rgba(239,68,68,0.15), 0 4px 24px rgba(239,68,68,0.4)'
+                : isSpeaking
+                ? '0 0 0 12px rgba(99,102,241,0.15), 0 4px 24px rgba(99,102,241,0.45)'
+                : '0 4px 24px rgba(0,0,0,0.3)',
+              transition: 'all 0.3s ease',
+              animation: isRecording ? 'pulse 1.2s ease-in-out infinite' : 'none',
+            }}
+          >
+            {isRecording
+              ? <MicOff style={{ color: 'white', width: 28, height: 28 }} />
+              : <Mic style={{ color: isRecording ? 'white' : '#818cf8', width: 28, height: 28 }} />
+            }
+          </button>
+
+          {/* Status label under orb */}
+          <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+            {isRecording ? '● Listening' : isSpeaking ? '◎ Speaking' : '○ Tap to speak'}
+          </span>
         </div>
       </div>
+
+      <style>{`
+        @keyframes pulse {
+          0%, 100% { box-shadow: 0 0 0 12px rgba(239,68,68,0.15), 0 4px 24px rgba(239,68,68,0.4); }
+          50% { box-shadow: 0 0 0 22px rgba(239,68,68,0.06), 0 4px 32px rgba(239,68,68,0.6); }
+        }
+      `}</style>
 
     </div>
   );
