@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const {
   generateCommerceContract,
   verifyCommerceContract,
@@ -98,9 +99,12 @@ exports.verifyContract = async (req, res) => {
 // @route   GET /api/agent/contract/:id
 exports.getContractDetails = async (req, res) => {
   try {
-    const contract = await Contract.findOne({
-      $or: [{ _id: req.params.id }, { contractId: req.params.id }],
-    })
+    const isObjectId = mongoose.Types.ObjectId.isValid(req.params.id) && String(new mongoose.Types.ObjectId(req.params.id)) === req.params.id;
+    const contract = await Contract.findOne(
+      isObjectId
+        ? { $or: [{ _id: req.params.id }, { contractId: req.params.id }] }
+        : { contractId: req.params.id }
+    )
       .populate('intent')
       .populate('merchant', 'businessName email phone');
 

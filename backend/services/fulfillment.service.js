@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Order = require('../models/Order');
 const { logAuditEvent } = require('../middleware/auditLogger');
 const { generateNonce } = require('../utils/crypto');
@@ -10,9 +11,12 @@ const logger = require('../utils/logger');
  * @returns {Promise<Object>} Updated order with digital receipt
  */
 async function processOrderFulfillment(orderId, data = {}) {
-  const order = await Order.findOne({
-    $or: [{ _id: orderId }, { orderId }, { razorpayOrderId: orderId }],
-  }).populate('merchant', 'businessName email phone');
+  const isObjectId = mongoose.Types.ObjectId.isValid(orderId) && String(new mongoose.Types.ObjectId(orderId)) === orderId;
+  const order = await Order.findOne(
+    isObjectId
+      ? { $or: [{ _id: orderId }, { orderId }, { razorpayOrderId: orderId }] }
+      : { $or: [{ orderId }, { razorpayOrderId: orderId }] }
+  ).populate('merchant', 'businessName email phone');
 
   if (!order) {
     throw new Error('Order not found for fulfillment');
@@ -86,9 +90,12 @@ async function processOrderFulfillment(orderId, data = {}) {
  * @returns {Promise<Object>}
  */
 async function getFulfillmentDetails(orderId) {
-  const order = await Order.findOne({
-    $or: [{ _id: orderId }, { orderId }, { razorpayOrderId: orderId }],
-  }).populate('merchant', 'businessName email phone');
+  const isObjectId = mongoose.Types.ObjectId.isValid(orderId) && String(new mongoose.Types.ObjectId(orderId)) === orderId;
+  const order = await Order.findOne(
+    isObjectId
+      ? { $or: [{ _id: orderId }, { orderId }, { razorpayOrderId: orderId }] }
+      : { $or: [{ orderId }, { razorpayOrderId: orderId }] }
+  ).populate('merchant', 'businessName email phone');
 
   if (!order) {
     throw new Error('Order not found');

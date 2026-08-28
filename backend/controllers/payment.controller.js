@@ -156,13 +156,28 @@ exports.executePayment = async (req, res, next) => {
     );
 
     // 3. Store Order in MongoDB Audit Ledger with status 'paid'
+    const orderItems = (contract.items || []).map((it) => {
+      const unitPrice = it.unitPrice || it.totalPrice || it.price || contract.contractTerms.agreedAmount;
+      const quantity = it.quantity || 1;
+      const totalPrice = it.totalPrice || unitPrice * quantity;
+      return {
+        product: it.product,
+        title: it.title || 'Item',
+        quantity,
+        price: unitPrice,
+        unitPrice,
+        totalPrice,
+        variant: it.variant,
+      };
+    });
+
     const orderData = {
       merchant: contract.merchant,
       orderId: `ord_${generateNonce().substring(0, 12)}`,
       razorpayOrderId: `wallet_${generateNonce().substring(0, 12)}`,
       mandateHash: contract.mandateHash,
       agentId: contract.agentId,
-      items: contract.items,
+      items: orderItems,
       amount: contract.contractTerms.agreedAmount,
       currency: contract.contractTerms.currency || 'INR',
       status: 'paid',

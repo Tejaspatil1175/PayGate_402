@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Contract = require('../models/Contract');
 const Intent = require('../models/Intent');
 const Merchant = require('../models/Merchant');
@@ -142,9 +143,12 @@ const logger = require('../utils/logger');
 async function verifyCommerceContract(contractInput) {
   let contract;
   if (typeof contractInput === 'string') {
-    contract = await Contract.findOne({
-      $or: [{ _id: contractInput }, { contractId: contractInput }],
-    });
+    const isObjectId = mongoose.Types.ObjectId.isValid(contractInput) && String(new mongoose.Types.ObjectId(contractInput)) === contractInput;
+    contract = await Contract.findOne(
+      isObjectId
+        ? { $or: [{ _id: contractInput }, { contractId: contractInput }] }
+        : { contractId: contractInput }
+    );
   } else {
     contract = contractInput;
   }

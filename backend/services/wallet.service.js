@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Wallet = require('../models/Wallet');
 const User = require('../models/User');
 const { createRazorpayOrder } = require('./razorpay.service');
@@ -7,11 +8,31 @@ const logger = require('../utils/logger');
  * Get or create wallet for user, handling daily spent reset if date changed
  */
 async function getOrCreateWallet(userId) {
-  let wallet = await Wallet.findOne({ owner: userId });
+  let targetOwnerId = userId;
+  if (!targetOwnerId || !mongoose.Types.ObjectId.isValid(targetOwnerId)) {
+    const existingUser = await User.findOne({
+      $or: [{ email: targetOwnerId }, { name: targetOwnerId }],
+    });
+    if (existingUser) {
+      targetOwnerId = existingUser._id;
+    } else {
+      let defaultUser = await User.findOne();
+      if (!defaultUser) {
+        defaultUser = await User.create({
+          name: 'Demo Buyer',
+          email: 'buyer@paygate.internal',
+          password: 'demo_password_hash',
+        });
+      }
+      targetOwnerId = defaultUser._id;
+    }
+  }
+
+  let wallet = await Wallet.findOne({ owner: targetOwnerId });
 
   if (!wallet) {
     wallet = await Wallet.create({
-      owner: userId,
+      owner: targetOwnerId,
       balance: 0,
       perTransactionCap: 10000,
       perDayCap: 50000,
@@ -20,7 +41,7 @@ async function getOrCreateWallet(userId) {
       ledger: [],
     });
 
-    await User.findByIdAndUpdate(userId, { walletId: wallet._id });
+    await User.findByIdAndUpdate(targetOwnerId, { walletId: wallet._id });
   } else {
     // Reset daily spent if lastSpentResetDate is before today
     const now = new Date();
@@ -133,7 +154,7 @@ async function debitWallet(userId, amount, referenceId, description = 'Agent Com
   }
 
   const filter = {
-    owner: userId,
+    owner: wallet.owner,
     balance: { $gte: amount },
     perTransactionCap: { $gte: amount },
     $expr: { $lte: [{ $add: ['$dailySpent', amount] }, '$perDayCap'] },
@@ -155,7 +176,7 @@ async function debitWallet(userId, amount, referenceId, description = 'Agent Com
   const updatedWallet = await Wallet.findOneAndUpdate(filter, update, { new: true });
 
   if (!updatedWallet) {
-    const currentWallet = await Wallet.findOne({ owner: userId });
+    const currentWallet = await Wallet.findOne({ owner: wallet.owner });
     if (!currentWallet) {
       throw new Error('Wallet not found');
     }

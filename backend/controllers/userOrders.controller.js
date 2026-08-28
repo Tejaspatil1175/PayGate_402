@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Order = require('../models/Order');
 const { getFulfillmentDetails } = require('../services/fulfillment.service');
 
@@ -20,13 +21,18 @@ exports.getUserOrders = async (req, res) => {
     }
 
     const orders = await Order.find({
-      $or: [{ 'customer.email': userId }, { agentId: userId }, { userId }],
+      $or: [
+        { 'customer.id': userId },
+        { 'customer.email': userId },
+        { agentId: userId },
+      ],
     })
-      .populate('merchant', 'businessName email phone businessCategory')
       .sort({ createdAt: -1 })
+      .populate('merchant', 'businessName email phone businessCategory')
       .lean();
 
     res.status(200).json({
+      protocol: 'AP2/x402',
       success: true,
       count: orders.length,
       orders,
@@ -45,9 +51,12 @@ exports.getOrderDetails = async (req, res) => {
   try {
     const { orderId } = req.params;
 
-    const order = await Order.findOne({
-      $or: [{ _id: orderId }, { orderId }, { razorpayOrderId: orderId }],
-    })
+    const isObjectId = mongoose.Types.ObjectId.isValid(orderId) && String(new mongoose.Types.ObjectId(orderId)) === orderId;
+    const order = await Order.findOne(
+      isObjectId
+        ? { $or: [{ _id: orderId }, { orderId }, { razorpayOrderId: orderId }] }
+        : { $or: [{ orderId }, { razorpayOrderId: orderId }] }
+    )
       .populate('merchant', 'businessName email phone businessCategory')
       .lean();
 

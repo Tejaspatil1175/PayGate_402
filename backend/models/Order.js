@@ -18,7 +18,17 @@ const orderItemSchema = new mongoose.Schema(
     },
     price: {
       type: Number,
-      required: true,
+      default: 0,
+      min: 0,
+    },
+    unitPrice: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    totalPrice: {
+      type: Number,
+      default: 0,
       min: 0,
     },
     variant: {

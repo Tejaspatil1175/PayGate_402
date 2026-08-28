@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Order = require('../models/Order');
 const { logAuditEvent } = require('../middleware/auditLogger');
 const logger = require('../utils/logger');
@@ -168,9 +169,12 @@ async function evaluateFraudRisk(txData = {}) {
  * @returns {Promise<Object>} Updated order document
  */
 async function placePayoutHold(orderId, fraudEvaluation = {}) {
-  const order = await Order.findOne({
-    $or: [{ _id: orderId }, { orderId }, { razorpayOrderId: orderId }],
-  });
+  const isObjectId = mongoose.Types.ObjectId.isValid(orderId) && String(new mongoose.Types.ObjectId(orderId)) === orderId;
+  const order = await Order.findOne(
+    isObjectId
+      ? { $or: [{ _id: orderId }, { orderId }, { razorpayOrderId: orderId }] }
+      : { $or: [{ orderId }, { razorpayOrderId: orderId }] }
+  );
 
   if (!order) {
     throw new Error('Order not found for payout hold');
@@ -210,9 +214,12 @@ async function placePayoutHold(orderId, fraudEvaluation = {}) {
  * @returns {Promise<Object>} Updated order
  */
 async function releasePayoutHold(orderId, adminReason = 'Manual review passed') {
-  const order = await Order.findOne({
-    $or: [{ _id: orderId }, { orderId }, { razorpayOrderId: orderId }],
-  });
+  const isObjectId = mongoose.Types.ObjectId.isValid(orderId) && String(new mongoose.Types.ObjectId(orderId)) === orderId;
+  const order = await Order.findOne(
+    isObjectId
+      ? { $or: [{ _id: orderId }, { orderId }, { razorpayOrderId: orderId }] }
+      : { $or: [{ orderId }, { razorpayOrderId: orderId }] }
+  );
 
   if (!order) {
     throw new Error('Order not found');
