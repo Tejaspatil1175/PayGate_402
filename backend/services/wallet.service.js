@@ -108,17 +108,32 @@ async function createTopUpOrder(userId, amount) {
 }
 
 /**
- * Credit wallet (Top-Up completion)
+ * Credit wallet (Top-Up completion) with idempotency check
  */
 async function creditWallet(userId, amount, referenceId, description = 'Wallet Top-up') {
   if (!amount || amount <= 0) {
     throw new Error('Credit amount must be greater than zero');
   }
 
-  await getOrCreateWallet(userId);
+  const wallet = await getOrCreateWallet(userId);
+
+  // Idempotency check: prevent duplicate credits for the same payment/reference ID
+  if (
+    referenceId &&
+    wallet.ledger.some(
+      (entry) => entry.referenceId === referenceId && entry.status === 'completed'
+    )
+  ) {
+    logger.info(
+      `[WALLET_IDEMPOTENT] Reference ${referenceId} already credited to user ${wallet.owner}. Skipping duplicate.`
+    );
+    return null;
+  }
+
+  const newBalance = (wallet.balance || 0) + amount;
 
   const updatedWallet = await Wallet.findOneAndUpdate(
-    { owner: userId },
+    { owner: wallet.owner },
     {
       $inc: { balance: amount },
       $push: {
@@ -128,13 +143,14 @@ async function creditWallet(userId, amount, referenceId, description = 'Wallet T
           description,
           referenceId,
           status: 'completed',
+          balanceAfter: newBalance,
         },
       },
     },
     { new: true }
   );
 
-  logger.info(`[WALLET] Credited ₹${amount} to user ${userId}. New balance: ₹${updatedWallet.balance}`);
+  logger.info(`[WALLET] Credited ₹${amount} to user ${wallet.owner}. New balance: ₹${updatedWallet.balance}`);
   return updatedWallet;
 }
 
@@ -153,6 +169,8 @@ async function debitWallet(userId, amount, referenceId, description = 'Agent Com
     throw new Error(`Transaction amount ₹${amount} exceeds per-transaction cap of ₹${wallet.perTransactionCap}`);
   }
 
+  const newBalance = Math.max(0, (wallet.balance || 0) - amount);
+
   const filter = {
     owner: wallet.owner,
     balance: { $gte: amount },
@@ -169,6 +187,7 @@ async function debitWallet(userId, amount, referenceId, description = 'Agent Com
         description,
         referenceId,
         status: 'completed',
+        balanceAfter: newBalance,
       },
     },
   };
@@ -191,7 +210,7 @@ async function debitWallet(userId, amount, referenceId, description = 'Agent Com
     throw new Error('Wallet debit failed due to concurrency or cap constraint');
   }
 
-  logger.info(`[WALLET] Atomically debited ₹${amount} from user ${userId}. New balance: ₹${updatedWallet.balance}`);
+  logger.info(`[WALLET] Atomically debited ₹${amount} from user ${wallet.owner}. New balance: ₹${updatedWallet.balance}`);
   return updatedWallet;
 }
 

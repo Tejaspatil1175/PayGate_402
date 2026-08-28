@@ -25,6 +25,10 @@ const ledgerEntrySchema = new mongoose.Schema(
       enum: ['pending', 'completed', 'failed'],
       default: 'completed',
     },
+    balanceAfter: {
+      type: Number,
+      default: 0,
+    },
   },
   {
     timestamps: true,

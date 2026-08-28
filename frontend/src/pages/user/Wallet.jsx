@@ -695,7 +695,7 @@ export default function UserWallet() {
             <div className="bg-[#F8FAFC] border border-slate-200/80 rounded-xl p-3">
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Total Inflow</span>
               <span className="text-sm font-black text-emerald-600">
-                +₹{history.filter((t) => t.type === 'credit').reduce((s, t) => s + (t.amount || 0), 0).toLocaleString('en-IN')}
+                +₹{history.filter((t) => t.type === 'credit' || t.type === 'topup' || t.type === 'refund').reduce((s, t) => s + (t.amount || 0), 0).toLocaleString('en-IN')}
               </span>
             </div>
             <div className="bg-[#F8FAFC] border border-slate-200/80 rounded-xl p-3">
@@ -709,12 +709,13 @@ export default function UserWallet() {
           {/* Ledger List */}
           {(() => {
             const filtered = history.filter((tx) => {
-              if (ledgerFilter === 'credit' && tx.type !== 'credit') return false;
+              const isTxCredit = tx.type === 'credit' || tx.type === 'topup' || tx.type === 'refund';
+              if (ledgerFilter === 'credit' && !isTxCredit) return false;
               if (ledgerFilter === 'debit' && tx.type !== 'debit') return false;
               if (ledgerSearch.trim()) {
                 const q = ledgerSearch.toLowerCase();
                 const desc = (tx.description || tx.type || '').toLowerCase();
-                const id = (tx._id || tx.transactionId || '').toLowerCase();
+                const id = (tx._id || tx.transactionId || tx.referenceId || '').toLowerCase();
                 return desc.includes(q) || id.includes(q);
               }
               return true;
@@ -733,7 +734,7 @@ export default function UserWallet() {
             return (
               <div className="space-y-2.5">
                 {filtered.map((tx, idx) => {
-                  const isCredit = tx.type === 'credit';
+                  const isCredit = tx.type === 'credit' || tx.type === 'topup' || tx.type === 'refund';
                   return (
                     <div
                       key={idx}
@@ -772,8 +773,8 @@ export default function UserWallet() {
 
                           <div className="flex items-center gap-2 text-slate-400 text-[11px] font-mono mt-0.5">
                             <span>
-                              {tx.timestamp
-                                ? new Date(tx.timestamp).toLocaleString('en-IN', {
+                              {tx.createdAt || tx.timestamp
+                                ? new Date(tx.createdAt || tx.timestamp).toLocaleString('en-IN', {
                                     day: 'numeric',
                                     month: 'short',
                                     year: 'numeric',
@@ -783,7 +784,7 @@ export default function UserWallet() {
                                 : 'Recent'}
                             </span>
                             <span>•</span>
-                            <span>TX-{(tx._id || tx.transactionId || `AP2-${idx}`).slice(-8).toUpperCase()}</span>
+                            <span>TX-{(tx._id || tx.transactionId || tx.referenceId || `AP2-${idx}`).slice(-8).toUpperCase()}</span>
                           </div>
                         </div>
                       </div>
@@ -800,9 +801,11 @@ export default function UserWallet() {
                             maximumFractionDigits: 2,
                           })}
                         </div>
-                        <div className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">
-                          Post Balance: ₹{(tx.balanceAfter || 0).toLocaleString('en-IN')}
-                        </div>
+                        {tx.balanceAfter !== undefined && tx.balanceAfter !== null && (
+                          <div className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">
+                            Post Balance: ₹{Number(tx.balanceAfter).toLocaleString('en-IN')}
+                          </div>
+                        )}
                       </div>
                     </div>
                   );

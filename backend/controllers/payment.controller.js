@@ -155,45 +155,57 @@ exports.executePayment = async (req, res, next) => {
       `Agent Commerce Purchase for contract ${contract.contractId}`
     );
 
-    // 3. Store Order in MongoDB Audit Ledger with status 'paid'
-    const orderItems = (contract.items || []).map((it) => {
-      const unitPrice = it.unitPrice || it.totalPrice || it.price || contract.contractTerms.agreedAmount;
-      const quantity = it.quantity || 1;
-      const totalPrice = it.totalPrice || unitPrice * quantity;
-      return {
-        product: it.product,
-        title: it.title || 'Item',
-        quantity,
-        price: unitPrice,
-        unitPrice,
-        totalPrice,
-        variant: it.variant,
+    let orderDoc;
+    try {
+      // 3. Store Order in MongoDB Audit Ledger with status 'paid'
+      const orderItems = (contract.items || []).map((it) => {
+        const unitPrice = it.unitPrice || it.totalPrice || it.price || contract.contractTerms.agreedAmount;
+        const quantity = it.quantity || 1;
+        const totalPrice = it.totalPrice || unitPrice * quantity;
+        return {
+          product: it.product,
+          title: it.title || 'Item',
+          quantity,
+          price: unitPrice,
+          unitPrice,
+          totalPrice,
+          variant: it.variant,
+        };
+      });
+
+      const orderData = {
+        merchant: contract.merchant,
+        orderId: `ord_${generateNonce().substring(0, 12)}`,
+        razorpayOrderId: `wallet_${generateNonce().substring(0, 12)}`,
+        mandateHash: contract.mandateHash,
+        agentId: contract.agentId,
+        items: orderItems,
+        amount: contract.contractTerms.agreedAmount,
+        currency: contract.contractTerms.currency || 'INR',
+        status: 'paid',
+        customer: customer || {},
+        gateDecision: {
+          passed: true,
+          reason: 'AP2 Cart Mandate verified. Internal wallet debited. Order paid.',
+        },
       };
-    });
 
-    const orderData = {
-      merchant: contract.merchant,
-      orderId: `ord_${generateNonce().substring(0, 12)}`,
-      razorpayOrderId: `wallet_${generateNonce().substring(0, 12)}`,
-      mandateHash: contract.mandateHash,
-      agentId: contract.agentId,
-      items: orderItems,
-      amount: contract.contractTerms.agreedAmount,
-      currency: contract.contractTerms.currency || 'INR',
-      status: 'paid',
-      customer: customer || {},
-      gateDecision: {
-        passed: true,
-        reason: 'AP2 Cart Mandate verified. Internal wallet debited. Order paid.',
-      },
-    };
+      orderDoc = existingOrder
+        ? await Order.findByIdAndUpdate(existingOrder._id, orderData, { new: true })
+        : await Order.create(orderData);
 
-    const orderDoc = existingOrder
-      ? await Order.findByIdAndUpdate(existingOrder._id, orderData, { new: true })
-      : await Order.create(orderData);
-
-    contract.status = 'executed';
-    await contract.save();
+      contract.status = 'executed';
+      await contract.save();
+    } catch (orderErr) {
+      logger.error(`[PAYMENT_ROLLBACK] Order creation failed for contract ${contract.contractId}. Refunding wallet:`, orderErr.message);
+      await walletService.creditWallet(
+        targetUserId,
+        amount,
+        `rollback_${contract.contractId}`,
+        `Refund: Failed order settlement for contract ${contract.contractId}`
+      );
+      throw orderErr;
+    }
 
     await logAuditEvent({
       correlationId: contract.mandateHash,
