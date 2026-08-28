@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { User, Mail, Lock, ArrowRight, ShieldCheck } from 'lucide-react';
 import apiClient from '../../api/client';
+import { getOrCreateUserKeys } from '../../utils/keys';
 
 export default function UserRegister() {
   const [name, setName] = useState('');
@@ -27,6 +28,11 @@ export default function UserRegister() {
         const { token, user } = response.data;
         if (token) localStorage.setItem('paygate_token', token);
         if (user) localStorage.setItem('paygate_user', JSON.stringify(user));
+
+        const userId = user?._id || user?.id;
+        if (userId) {
+          await getOrCreateUserKeys(userId);
+        }
 
         localStorage.setItem('paygate_role', 'user');
         navigate('/discovery');

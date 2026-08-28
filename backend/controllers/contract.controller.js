@@ -25,10 +25,23 @@ exports.createContract = async (req, res) => {
       });
     }
 
+    const normalizedItems = (items || []).map((it) => {
+      const unitPrice = parseFloat(it.unitPrice || it.price || agreedAmount);
+      const quantity = parseInt(it.quantity, 10) || 1;
+      const totalPrice = parseFloat(it.totalPrice || it.subtotal || unitPrice * quantity);
+      return {
+        product: it.product || it.productId || it._id || it.id,
+        title: it.title || 'Item',
+        quantity,
+        unitPrice,
+        totalPrice,
+      };
+    });
+
     const result = await generateCommerceContract({
       intentId,
       merchantId,
-      items: items || [],
+      items: normalizedItems,
       agreedAmount: parseFloat(agreedAmount),
       userPrivateKey,
       userPublicKey,

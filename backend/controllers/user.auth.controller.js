@@ -18,7 +18,7 @@ function verifyPassword(password, storedHash) {
 // @route   POST /api/user/auth/register
 exports.register = async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, publicKey } = req.body;
 
     if (!name || !email || !password) {
       return res.status(400).json({
@@ -41,6 +41,7 @@ exports.register = async (req, res) => {
       name,
       email: email.toLowerCase(),
       password: hashedPassword,
+      publicKey: publicKey ? publicKey.trim() : '',
     });
 
     const userData = user.toObject();
@@ -130,6 +131,46 @@ exports.getProfile = async (req, res) => {
 
     res.status(200).json({
       success: true,
+      user,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+};
+
+// @desc    Save/update user public key
+// @route   POST /api/user/auth/keys
+exports.updatePublicKey = async (req, res) => {
+  try {
+    const { userId, publicKey } = req.body;
+    const targetId = userId || req.headers['x-user-id'];
+
+    if (!targetId || !publicKey) {
+      return res.status(400).json({
+        success: false,
+        error: 'User ID and publicKey are required',
+      });
+    }
+
+    const user = await User.findByIdAndUpdate(
+      targetId,
+      { publicKey: publicKey.trim() },
+      { new: true }
+    ).select('-password');
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found',
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Public key updated successfully',
       user,
     });
   } catch (error) {

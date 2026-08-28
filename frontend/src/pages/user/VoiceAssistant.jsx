@@ -33,6 +33,7 @@ import {
   ShieldAlert
 } from 'lucide-react';
 import apiClient from '../../api/client';
+import { getOrCreateUserKeys } from '../../utils/keys';
 
 export default function VoiceAssistant() {
   const [isRecording, setIsRecording] = useState(false);
@@ -414,19 +415,26 @@ export default function VoiceAssistant() {
       setPipelineStage('contracting');
       const merchantId = topProduct.merchant?.id || topProduct.merchant?._id || negotiationDoc?.merchant;
 
+      // Retrieve/Generate buyer's client-side RSA keypair
+      const userKeys = await getOrCreateUserKeys(userId);
+
       const contractRes = await apiClient.post('/agent/contract', {
         intentId,
         merchantId,
         items: [
           {
-            productId: topProduct.id || topProduct._id,
+            product: topProduct._id || topProduct.id,
+            productId: topProduct._id || topProduct.id,
             title: topProduct.title,
             quantity: 1,
             unitPrice: negotiatedPrice,
+            totalPrice: negotiatedPrice,
             subtotal: negotiatedPrice,
           },
         ],
         agreedAmount: negotiatedPrice,
+        userPrivateKey: userKeys.privateKey,
+        userPublicKey: userKeys.publicKey,
         expiresInMinutes: 60,
       });
 
