@@ -1,12 +1,11 @@
 const crypto = require('crypto');
 const logger = require('../utils/logger');
 
-// Retrieve admin credentials from environment or fallback defaults
+// Retrieve admin credentials securely from environment variables only
 function getAdminCredentials() {
-  return {
-    email: (process.env.ADMIN_EMAIL || 'admin@paygate402.com').toLowerCase().trim(),
-    password: process.env.ADMIN_PASSWORD || 'AdminPaygate@2026!',
-  };
+  const email = (process.env.ADMIN_EMAIL || '').toLowerCase().trim();
+  const password = process.env.ADMIN_PASSWORD || '';
+  return { email, password };
 }
 
 // Seed/verify admin configuration on startup
@@ -24,6 +23,7 @@ function seedAdmin() {
 function verifyAdminCredentials(email, password) {
   if (!email || !password) return false;
   const current = getAdminCredentials();
+  if (!current.email || !current.password) return false;
   return (
     email.toLowerCase().trim() === current.email &&
     password === current.password

@@ -123,7 +123,7 @@ export default function Login() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder={
                   activeTab === 'admin'
-                    ? 'admin@paygate402.com'
+                    ? 'admin@example.com'
                     : activeTab === 'merchant'
                     ? 'merchant@store.com'
                     : 'pranav@gmail.com'
