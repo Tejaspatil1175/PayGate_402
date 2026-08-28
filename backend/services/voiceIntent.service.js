@@ -13,8 +13,8 @@ const GROQ_API_KEY = process.env.GROQ_API_KEY || '';
  */
 async function transcribeAudioWithWhisper(audioBuffer, mimeType = 'audio/webm') {
   if (!GROQ_API_KEY) {
-    logger.warn('[VOICE_WHISPER] GROQ_API_KEY not configured. Falling back to default audio transcription handler.');
-    return 'buy running shoes under 2000';
+    logger.warn('[VOICE_WHISPER] GROQ_API_KEY not configured.');
+    throw new Error('Groq Whisper API key is not configured on the backend. Please type your query or use browser voice recognition.');
   }
 
   try {
@@ -120,7 +120,7 @@ JSON output only:`;
   });
 
   // Explicit echo confirmation summary for numerical accuracy check (e.g. 2000 vs 20000)
-  const requiresConfirmation = true; // Always require explicit confirmation on parsed voice intent
+  const requiresConfirmation = true;
   const confirmationSummary = `Please confirm: Action '${action.toUpperCase()}' for item "${itemKeywords}" in category '${category}' at budget ₹${budget.toLocaleString('en-IN')}${brandPreference ? ` (Brand: ${brandPreference})` : ''}${scheduleTime ? ` (Scheduled: ${scheduleTime})` : ''}.`;
 
   return {
@@ -146,7 +146,7 @@ JSON output only:`;
 }
 
 /**
- * Fallback regex intent parser for offline / local mode
+ * Fallback regex intent parser with intelligent noise stripping
  */
 function ruleBasedIntentParser(transcript) {
   const lower = transcript.toLowerCase();
@@ -159,9 +159,9 @@ function ruleBasedIntentParser(transcript) {
   }
 
   let category = 'General';
-  if (lower.includes('shoe') || lower.includes('sneaker') || lower.includes('boot')) category = 'Footwear';
-  else if (lower.includes('phone') || lower.includes('laptop') || lower.includes('headphone') || lower.includes('electronic')) category = 'Electronics';
-  else if (lower.includes('shirt') || lower.includes('pant') || lower.includes('jacket') || lower.includes('cloth')) category = 'Apparel';
+  if (lower.includes('shoe') || lower.includes('sneaker') || lower.includes('boot') || lower.includes('footwear')) category = 'Footwear';
+  else if (lower.includes('phone') || lower.includes('laptop') || lower.includes('headphone') || lower.includes('electronic') || lower.includes('airpod')) category = 'Electronics';
+  else if (lower.includes('shirt') || lower.includes('pant') || lower.includes('jacket') || lower.includes('cloth') || lower.includes('tshirt') || lower.includes('hoodie')) category = 'Apparel';
   else if (lower.includes('food') || lower.includes('grocery') || lower.includes('snack')) category = 'Groceries';
 
   // Extract budget / price figures
@@ -183,10 +183,19 @@ function ruleBasedIntentParser(transcript) {
     }
   }
 
+  // Clean itemKeywords: Strip command prefixes and budget suffixes
+  let cleaned = transcript
+    .replace(/\b(buy|purchase|get me|order|find|search for|look for|show me|i want to buy|i want|please)\b/gi, '')
+    .replace(/(?:under|below|for|around|budget|rs\.?|₹|\$)\s*(\d+(?:,\d+)*(?:\.\d+)?)/gi, '')
+    .replace(/(\d+(?:,\d+)*(?:\.\d+)?)\s*(?:rupees|rs|inr|dollars)/gi, '')
+    .replace(/\b(rupees|rs|inr|bucks)\b/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
   return {
     action,
     category,
-    itemKeywords: transcript,
+    itemKeywords: cleaned || transcript,
     budget,
     brandPreference,
     scheduleTime: null,
