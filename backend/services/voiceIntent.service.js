@@ -46,9 +46,11 @@ async function transcribeAudioWithWhisper(audioBuffer, mimeType = 'audio/webm') 
  * Parse structured commerce intent from transcript using Groq LLM (llama-3.3-70b-versatile) with Regex Fallback
  * @param {string} transcript - Input speech transcript text
  * @param {string} [userId] - Optional User ID
+ * @param {Array<{role: string, text: string}>} [history] - Recent conversation turns for context resolution
+ * @param {Object} [lastContext] - Last known resolved intent (category, itemKeywords, budget) to merge follow-ups against
  * @returns {Promise<Object>} Structured intent with confirmation gate details
  */
-async function parseVoiceIntent(transcript, userId) {
+async function parseVoiceIntent(transcript, userId, history = [], lastContext = null) {
   if (!transcript || typeof transcript !== 'string' || !transcript.trim()) {
     throw new Error('Speech transcript text is required');
   }
@@ -56,66 +58,88 @@ async function parseVoiceIntent(transcript, userId) {
   const cleanTranscript = transcript.trim();
   let parsedIntent = null;
 
-  // 1. Try Groq LLM extraction and conversational answer if API key available
-  if (GROQ_API_KEY) {
+  const historyBlock = Array.isArray(history) && history.length > 0
+    ? history.slice(-6).map((h) => `${h.role === 'user' ? 'User' : 'Assistant'}: ${h.text}`).join('\n')
+    : '(no prior conversation)';
+
+  const lastContextBlock = lastContext
+    ? `Last known resolved intent from this conversation: category="${lastContext.category || ''}", item="${lastContext.itemKeywords || ''}", budget=${lastContext.budget || 0}. If the user's new message is a short follow-up (e.g. just a number, "book it", "yes", "confirm", "that one"), resolve it against this last known intent instead of treating it as a brand new unrelated request.`
+    : '(no prior resolved intent yet)';
+
+  // 1. Try Groq or xAI (Grok) LLM extraction and conversational reasoning
+  // 1. Google Gemini 2.5 Flash AI reasoning
+  const geminiKey = process.env.GEMINI_API_KEY || '';
+  if (geminiKey) {
     try {
-      const prompt = `You are an intelligent voice commerce assistant for PayGate 402 (Autonomous Agent Payment Protocol AP2 / x402).
-The user spoke: "${cleanTranscript}"
+      const prompt = `You are KAIRO, an intelligent voice commerce AI for PayGate 402 (Autonomous Agent Payment Protocol AP2 / x402).
 
-Determine if the user is asking a conversational question OR stating a purchase/e-commerce intent.
+Recent conversation:
+${historyBlock}
 
-Respond STRICTLY with a raw JSON object matching this schema:
+${lastContextBlock}
+
+User spoke: "${cleanTranscript}"
+
+Classify intent into JSON:
 {
-  "action": "buy" | "search" | "question" | "topup" | "general",
-  "category": "Electronics" | "Footwear" | "Apparel" | "Groceries" | "General",
+  "action": "buy" | "search" | "question" | "topup" | "general" | "confirm_purchase",
+  "category": "Electronics" | "Footwear" | "Apparel" | "Groceries" | "Books" | "General",
   "itemKeywords": string,
   "budget": number or null,
   "brandPreference": string or null,
-  "answer": string (If the user asked a question, provide a friendly, helpful, concise answer in 1-3 sentences. Otherwise null)
+  "isFollowUp": boolean,
+  "answer": string or null
 }
-JSON output only:`;
+If user is greeting, saying hello, or asking a question, set action to "question" and provide a friendly conversational greeting/answer in "answer". Do NOT set action to "general" or "buy" for greetings. If user is searching or buying a product, extract clean itemKeywords and budget, and set action to "buy" or "search". If user confirms previous proposal (e.g. "purchase it", "buy it", "confirm", "just purchase it"), set action to "confirm_purchase".
+Output raw JSON only:`;
 
       const response = await axios.post(
-        'https://api.groq.com/openai/v1/chat/completions',
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
         {
-          model: 'llama-3.3-70b-versatile',
-          messages: [{ role: 'user', content: prompt }],
-          temperature: 0.2,
-          response_format: { type: 'json_object' },
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${GROQ_API_KEY}`,
-            'Content-Type': 'application/json',
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            responseMimeType: 'application/json',
+            temperature: 0.1,
           },
-          timeout: 10000,
-        }
+        },
+        { timeout: 10000 }
       );
 
-      const content = response.data?.choices?.[0]?.message?.content;
+      let content = response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
       if (content) {
+        content = content.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
         parsedIntent = JSON.parse(content);
       }
     } catch (error) {
-      logger.warn('[VOICE_INTENT_LLM_WARN] Groq LLM parsing failed, using rule-based parser:', error.message);
+      logger.warn('[VOICE_INTENT_GEMINI_WARN] Gemini parsing failed, using rule-based parser:', error.response?.data || error.message);
     }
   }
 
   // 2. Rule-based Regex Fallback Parser if LLM not available or failed
   if (!parsedIntent) {
-    parsedIntent = ruleBasedIntentParser(cleanTranscript);
+    parsedIntent = ruleBasedIntentParser(cleanTranscript, lastContext);
   }
 
   const action = parsedIntent.action || 'buy';
-  const category = parsedIntent.category || 'General';
-  const itemKeywords = parsedIntent.itemKeywords || cleanTranscript;
-  const budget = Number(parsedIntent.budget) || 0;
-  const brandPreference = parsedIntent.brandPreference || '';
+  const category = parsedIntent.category || lastContext?.category || 'General';
+  const itemKeywords = parsedIntent.itemKeywords || (parsedIntent.isFollowUp ? lastContext?.itemKeywords : cleanTranscript) || cleanTranscript;
+  const budget = Number(parsedIntent.budget) || (parsedIntent.isFollowUp ? Number(lastContext?.budget) : 0) || 0;
+  const brandPreference = parsedIntent.brandPreference || lastContext?.brandPreference || '';
   const scheduleTime = parsedIntent.scheduleTime || '';
   const answer = parsedIntent.answer || null;
 
-  // If it's a general question with an answer, return directly without gating confirmation
-  if (action === 'question' && answer) {
+  // Confirm-purchase short-circuit: tells the frontend to trigger checkout directly, no new search needed
+  if (action === 'confirm_purchase') {
+    return {
+      rawTranscript: cleanTranscript,
+      isConfirmPurchase: true,
+      intent: { action: 'confirm_purchase', category, itemKeywords, budget, brandPreference },
+      parsedAt: new Date().toISOString(),
+    };
+  }
+
+  // If it's a general question, greeting, or conversational statement with an answer
+  if ((action === 'question' || action === 'general') && answer) {
     return {
       rawTranscript: cleanTranscript,
       isQuestion: true,
@@ -165,14 +189,45 @@ JSON output only:`;
 
 /**
  * Fallback regex intent parser with intelligent noise stripping
+ * @param {string} transcript
+ * @param {Object} [lastContext] - Last known resolved intent to merge short follow-ups against
  */
-function ruleBasedIntentParser(transcript) {
+function ruleBasedIntentParser(transcript, lastContext = null) {
   const lower = transcript.toLowerCase().trim();
+
+  // Confirmation / Purchase phrases for previously found item ("purchase it", "buy this", "book it", "yes", "confirm", "buy it", "go ahead", "proceed", "do it")
+  const isConfirmPhrase = /^\s*(okay\s*)?(ok\s*)?(purchase\s*it|purchase\s*this|buy\s*it|buy\s*this|book\s*it|book\s*this|confirm|yes|yeah|yep|proceed|go\s*ahead|do\s*it|order\s*it|order\s*this|kharido)\s*[.!]?\s*$/i.test(lower);
+  if (isConfirmPhrase && lastContext) {
+    return {
+      action: 'confirm_purchase',
+      category: lastContext.category || 'General',
+      itemKeywords: lastContext.itemKeywords || '',
+      budget: lastContext.budget || 0,
+      brandPreference: lastContext.brandPreference || '',
+      answer: null,
+    };
+  }
+
+  // Bare number/short budget follow-up (e.g. "3 thousand", "3000", "around 3000") when a prior item exists
+  const bareBudgetMatch = lower.match(/^\s*(?:around|about|budget|rs\.?|₹)?\s*(\d+(?:,\d+)*)\s*(thousand|k)?\s*(?:rupees|rs|inr)?\s*[.!]?\s*$/i);
+  if (bareBudgetMatch && lastContext && lastContext.itemKeywords) {
+    let num = parseFloat(bareBudgetMatch[1].replace(/,/g, ''));
+    if (bareBudgetMatch[2]) num *= 1000; // "3 thousand" -> 3000
+    return {
+      action: 'buy',
+      category: lastContext.category || 'General',
+      itemKeywords: lastContext.itemKeywords,
+      budget: num,
+      brandPreference: lastContext.brandPreference || '',
+      isFollowUp: true,
+      answer: null,
+    };
+  }
 
   // Phonetic & Misspelling Normalization for Indian/Global accents
   const normalized = lower
-    // Kairo name mishearings
-    .replace(/\b(cairo|kyro|kiero|chiro|kero|kayro|karo|kaero|hiro|kiro|hero|keiro|cairo)\b/gi, 'kairo')
+    // Kairo name mishearings & mispronunciations
+    .replace(/\b(kiaro|cairo|kyro|kiero|chiro|kero|kayro|karo|kaero|hiro|kiro|hero|keiro|kairu|kairon|kailo|kaito|kaido|kearo|gyro|caero|kai\s*ro|ki\s*aro|kay\s*ro)\b/gi, 'kairo')
     // Action verb variations
     .replace(/\b(by|bay|kharid|kharido|lena|mangao|mangwana|order|buk|book|booking|layna)\b/gi, 'buy')
     // Track / Delivery variations
@@ -187,12 +242,12 @@ function ruleBasedIntentParser(transcript) {
     // Greeting variations
     .replace(/\b(namaste|namaskar|helo|hlo|heyy|heya)\b/gi, 'hello');
 
-  // Explicit purchase verbs
-  const hasBuyWord = /\b(buy|purchase|order|book|get me|add money|topup|checkout|kharid)\b/i.test(normalized);
-  const hasProductWord = /\b(shoes?|sneakers?|boots?|phones?|laptops?|headphones?|earphones?|earbuds?|watches?|shirts?|tshirts?|hoodies?|grocer(y|ies))\b/i.test(normalized);
+  // Explicit purchase & search verbs
+  const hasBuyOrSearchWord = /\b(buy|purchase|order|book|get me|add money|topup|checkout|kharid|search for|search|find me|find|look for|show me|want)\b/i.test(normalized);
+  const hasProductWord = /\b(shoes?|sneakers?|boots?|phones?|laptops?|headphones?|earphones?|earbuds?|watches?|shirts?|tshirts?|hoodies?|books?|novels?|grocer(y|ies))\b/i.test(normalized);
 
-  // If NOT explicitly asking to buy or book a product, treat as full Conversational AI Assistant
-  if (!hasBuyWord && !hasProductWord) {
+  // If user says "search for books" or "buy shoes" or gives a budget, treat as shopping intent!
+  if (!hasBuyOrSearchWord && !hasProductWord) {
     let answer = 'I am your AP2 Voice Commerce Assistant. I can help you search products, negotiate autonomous discounts, check wallet balances, track orders, and execute cryptographic payments!';
 
     if (normalized.includes('who made') || normalized.includes('who created') || normalized.includes('who built') || normalized.includes('developer') || normalized.includes('founder') || normalized.includes('author') || normalized.includes('kisne banaya')) {
@@ -275,14 +330,19 @@ function ruleBasedIntentParser(transcript) {
     }
   }
 
-  // Clean itemKeywords: Strip command prefixes and budget suffixes
+  // Clean itemKeywords: Strip command prefixes, conversational fillers, and budget suffixes
   let cleaned = transcript
-    .replace(/\b(buy|purchase|get me|order|find|search for|look for|show me|i want to buy|i want|please)\b/gi, '')
+    .replace(/\b(okay|ok|hey|kairo|kiaro|same|there is a product|product|search for|search|find me|find|look for|show me|buy|purchase|get me|order|i want to buy|i want|please)\b/gi, '')
     .replace(/(?:under|below|for|around|budget|rs\.?|₹|\$)\s*(\d+(?:,\d+)*(?:\.\d+)?)/gi, '')
     .replace(/(\d+(?:,\d+)*(?:\.\d+)?)\s*(?:rupees|rs|inr|dollars)/gi, '')
-    .replace(/\b(rupees|rs|inr|bucks)\b/gi, '')
+    .replace(/\b(rupees|rs|inr|bucks|it|this|that)\b/gi, '')
     .replace(/\s+/g, ' ')
     .trim();
+
+  // If after stripping all filler words nothing is left (e.g. user just said "search for it"), fallback to lastContext or clean transcript
+  if (!cleaned && lastContext?.itemKeywords) {
+    cleaned = lastContext.itemKeywords;
+  }
 
   return {
     action,

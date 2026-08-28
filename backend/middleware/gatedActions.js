@@ -41,11 +41,11 @@ async function evaluateGatedAction(params = {}) {
     }
 
     let priorOrderCount = 0;
-    if (buyerQueries.length > 0) {
+    if (buyerQueries.length > 0 && require('mongoose').connection.readyState === 1) {
       priorOrderCount = await Order.countDocuments({
         $or: buyerQueries,
         status: { $in: ['paid', 'fulfilled'] },
-      });
+      }).maxTimeMS(1500).catch(() => 0);
     }
 
     if (priorOrderCount === 0) {

@@ -38,6 +38,10 @@ import {
 import apiClient from '../../api/client';
 import { getOrCreateUserKeys } from '../../utils/keys';
 
+// Confirmation / "book it" style phrases — checked locally first (instant, no network round trip)
+// against whatever's currently pending, so voice can trigger checkout/confirm directly.
+const CONFIRM_PHRASE_REGEX = /^\s*(book\s*it|book\s*this|book\s*that|confirm|yes|yeah|yep|proceed|go\s*ahead|buy\s*it|buy\s*this|do\s*it|purchase\s*it|okay\s*book|ok\s*book|pay\s*now|complete\s*(the\s*)?purchase)\s*[.!]?\s*$/i;
+
 function getProductImage(product) {
   if (!product) return 'https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=400';
   
@@ -104,6 +108,33 @@ export default function VoiceAssistant() {
   const [editBudget, setEditBudget] = useState(0);
   const [pipelineResult, setPipelineResult] = useState(null);
   const [checkoutComplete, setCheckoutComplete] = useState(null);
+  const [continuousMode, setContinuousMode] = useState(false);
+  const [ttsAvailable, setTtsAvailable] = useState(true);
+  const lastContextRef = useRef(null); // { category, itemKeywords, budget, brandPreference } — last resolved intent for follow-up resolution
+
+  useEffect(() => {
+    const available = typeof window !== 'undefined' && !!window.speechSynthesis;
+    setTtsAvailable(available);
+    if (!available) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now(),
+          sender: 'assistant',
+          text: `🔇 Voice output (text-to-speech) isn't available on this device/browser. I'll keep responding in text — voice input still works normally.`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        },
+      ]);
+    }
+  }, []);
+
+  // Builds a lightweight recent-turn history array to send with each request, so follow-ups have context
+  const getRecentHistory = () => {
+    return messages
+      .filter((m) => !m.isWelcome && typeof m.text === 'string')
+      .slice(-6)
+      .map((m) => ({ role: m.sender === 'user' ? 'user' : 'assistant', text: m.text }));
+  };
 
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
@@ -137,7 +168,7 @@ export default function VoiceAssistant() {
   }, [messages, loading, pipelineStage]);
 
   const speakText = (text) => {
-    if (!ttsEnabled || !window.speechSynthesis) return;
+    if (!ttsEnabled || !ttsAvailable || !window.speechSynthesis) return;
     try {
       window.speechSynthesis.cancel();
       const cleanSpeech = text.replace(/[*_#`₹]/g, '').replace(/AP2/g, 'A P 2');
@@ -170,9 +201,11 @@ export default function VoiceAssistant() {
 
   const recognitionRef = useRef(null);
   const silenceTimerRef = useRef(null);
+  const manualStopRef = useRef(false);
 
   const startRecording = async () => {
     try {
+      manualStopRef.current = false;
       // Immediately interrupt any ongoing Assistant TTS speech
       if (window.speechSynthesis && window.speechSynthesis.speaking) {
         window.speechSynthesis.cancel();
@@ -189,7 +222,7 @@ export default function VoiceAssistant() {
         let finalSpeechText = '';
 
         recognition.onresult = (event) => {
-          // If assistant was speaking, instantly mute & cancel it
+          // If assistant was speaking, instantly mute & cancel it (barge-in / interruption)
           if (window.speechSynthesis && window.speechSynthesis.speaking) {
             window.speechSynthesis.cancel();
             setIsSpeaking(false);
@@ -225,6 +258,12 @@ export default function VoiceAssistant() {
           setIsRecording(false);
           clearInterval(recordingTimerRef.current);
           if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+          // Always-Listening mode: auto-restart the mic unless the user explicitly stopped it
+          if (continuousMode && !manualStopRef.current) {
+            setTimeout(() => {
+              if (!manualStopRef.current) startRecording();
+            }, 400);
+          }
         };
 
         recognition.start();
@@ -272,7 +311,8 @@ export default function VoiceAssistant() {
     }
   };
 
-  const stopRecording = () => {
+  const stopRecording = (isManual = false) => {
+    if (isManual) manualStopRef.current = true;
     if (silenceTimerRef.current) {
       clearTimeout(silenceTimerRef.current);
       silenceTimerRef.current = null;
@@ -302,13 +342,15 @@ export default function VoiceAssistant() {
     try {
       const formData = new FormData();
       formData.append('audio', audioBlob, 'recording.webm');
+      formData.append('history', JSON.stringify(getRecentHistory()));
+      if (lastContextRef.current) formData.append('lastContext', JSON.stringify(lastContextRef.current));
 
       const res = await apiClient.post('/voice/transcribe-audio', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
 
       if (res.data?.success) {
-        const { rawTranscript, intent, confirmationGate } = res.data;
+        const { rawTranscript, intent, confirmationGate, isConfirmPurchase } = res.data;
 
         const userMsg = {
           id: Date.now(),
@@ -318,24 +360,47 @@ export default function VoiceAssistant() {
         };
         setMessages((prev) => [...prev, userMsg]);
 
+        // Backend-resolved confirmation (via LLM/rule-based fallback recognizing "book it" style follow-up)
+        if (isConfirmPurchase) {
+          setLoading(false);
+          setPipelineStage('');
+          if (pipelineResult && !checkoutComplete) {
+            handleExecuteCheckout(pipelineResult);
+          } else if (pendingIntent) {
+            handleConfirmIntent();
+          } else {
+            setMessages((prev) => [...prev, { id: Date.now() + 1, sender: 'assistant', text: `I don't have anything pending to confirm yet — tell me what you'd like to search for first.`, timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }]);
+          }
+          return;
+        }
+
         setPendingIntent({ rawTranscript, intent, confirmationGate });
         setEditBudget(intent.budget || 0);
+        lastContextRef.current = { category: intent.category, itemKeywords: intent.itemKeywords, budget: intent.budget || 0, brandPreference: intent.brandPreference };
 
         const summaryText = confirmationGate?.confirmationSummary || 
           `Please confirm: Action '${(intent.action || 'BUY').toUpperCase()}' for item "${intent.itemKeywords}" in category '${intent.category}' at budget ₹${(intent.budget || 0).toLocaleString('en-IN')}.`;
+
+        const finalSummaryText = intent.budget
+          ? summaryText
+          : `${summaryText}\n\n💰 You didn't mention a budget — please set one using the slider below before I can search merchants for you.`;
 
         setMessages((prev) => [
           ...prev,
           {
             id: Date.now() + 1,
             sender: 'assistant',
-            text: summaryText,
+            text: finalSummaryText,
             isGate: true,
             intent,
             confirmationGate,
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           },
         ]);
+
+        speakText(intent.budget
+          ? `Parsed your request for ${intent.itemKeywords} with budget of ${intent.budget} rupees. Please confirm the autonomous guardrail.`
+          : `Parsed your request for ${intent.itemKeywords}. You did not mention a budget. Please set one using the slider before I continue.`);
       }
     } catch (err) {
       const errorMsg = err.error || err.message || 'Voice transcription failed.';
@@ -370,6 +435,22 @@ export default function VoiceAssistant() {
 
     setMessages((prev) => [...prev, userMsg]);
     if (!customText) setTranscript('');
+
+    // Instant local confirmation routing — "book it" / "yes" / "confirm" etc. against whatever's pending,
+    // no network round trip needed since we already have this state on the client.
+    if (CONFIRM_PHRASE_REGEX.test(textToSend.trim())) {
+      if (pipelineResult && !checkoutComplete) {
+        handleExecuteCheckout(pipelineResult);
+        return;
+      }
+      if (pendingIntent) {
+        handleConfirmIntent();
+        return;
+      }
+      setMessages((prev) => [...prev, { id: Date.now() + 1, sender: 'assistant', text: `I don't have anything pending to confirm yet — tell me what you'd like to search for first.`, timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }]);
+      return;
+    }
+
     setLoading(true);
     setPipelineStage('parsing');
 
@@ -529,7 +610,11 @@ export default function VoiceAssistant() {
     }
 
     try {
-      const res = await apiClient.post('/voice/parse-text', { text: textToSend });
+      const res = await apiClient.post('/voice/parse-text', {
+        text: textToSend,
+        history: getRecentHistory(),
+        lastContext: lastContextRef.current,
+      });
       if (res.data?.isQuestion && res.data?.answer) {
         setMessages((prev) => [
           ...prev,
@@ -546,26 +631,49 @@ export default function VoiceAssistant() {
         return;
       }
 
+      // Backend-resolved confirmation (LLM/rule-based fallback recognized a "book it" style follow-up)
+      if (res.data?.isConfirmPurchase) {
+        setLoading(false);
+        setPipelineStage('');
+        if (pipelineResult && !checkoutComplete) {
+          handleExecuteCheckout(pipelineResult);
+        } else if (pendingIntent) {
+          handleConfirmIntent();
+        } else {
+          setMessages((prev) => [...prev, { id: Date.now() + 1, sender: 'assistant', text: `I don't have anything pending to confirm yet — tell me what you'd like to search for first.`, timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }]);
+        }
+        return;
+      }
+
       if (res.data?.success) {
         const { rawTranscript, intent, confirmationGate } = res.data;
         setPendingIntent({ rawTranscript, intent, confirmationGate });
         setEditBudget(intent.budget || 0);
+        lastContextRef.current = { category: intent.category, itemKeywords: intent.itemKeywords, budget: intent.budget || 0, brandPreference: intent.brandPreference };
 
         const summaryText = confirmationGate?.confirmationSummary || 
           `Please confirm: Action '${(intent.action || 'BUY').toUpperCase()}' for item "${intent.itemKeywords}" at budget ₹${(intent.budget || 0).toLocaleString('en-IN')}.`;
+
+        const finalSummaryText = intent.budget
+          ? summaryText
+          : `${summaryText}\n\n💰 You didn't mention a budget — please set one using the slider below before I can search merchants for you.`;
 
         setMessages((prev) => [
           ...prev,
           {
             id: Date.now() + 1,
             sender: 'assistant',
-            text: summaryText,
+            text: finalSummaryText,
             isGate: true,
             intent,
             confirmationGate,
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           },
         ]);
+
+        speakText(intent.budget
+          ? `Parsed request for ${intent.itemKeywords} with budget of ${intent.budget} rupees. Please confirm the autonomous guardrail.`
+          : `Parsed request for ${intent.itemKeywords}. You did not mention a budget. Please set one using the slider before I continue.`);
       }
     } catch (err) {
       const errorMsg = err.error || err.message || 'Unable to parse text.';
@@ -998,7 +1106,7 @@ export default function VoiceAssistant() {
                 <span className="relative flex h-2.5 w-2.5"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span></span>
                 <span className="font-semibold">Recording microphone audio... <span className="font-normal text-rose-700">({recordingDuration}s)</span></span>
               </div>
-              <button type="button" onClick={stopRecording} className="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-[11px] font-bold cursor-pointer transition shadow-xs">Stop & Transcribe</button>
+              <button type="button" onClick={() => stopRecording(true)} className="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-[11px] font-bold cursor-pointer transition shadow-xs">Stop & Transcribe</button>
             </div>
           )}
           <div className="flex items-center gap-2.5 bg-white/95 backdrop-blur-md border border-slate-200/90 rounded-2xl p-2 shadow-[0_4px_20px_-2px_rgba(0,0,0,0.08),0_2px_6px_rgba(0,0,0,0.04)] transition-all duration-300 hover:shadow-[0_6px_24px_-2px_rgba(0,0,0,0.12)]">
@@ -1007,7 +1115,7 @@ export default function VoiceAssistant() {
               <div className="absolute -inset-0.5 bg-gradient-to-r from-cyan-400 via-indigo-500 to-purple-500 rounded-2xl blur-xs opacity-75 group-hover:opacity-100 transition duration-300"></div>
               <button
                 type="button"
-                onClick={isRecording ? stopRecording : startRecording}
+                onClick={isRecording ? () => stopRecording(true) : startRecording}
                 className={`relative p-3 rounded-2xl transition-all duration-300 shadow-sm cursor-pointer flex items-center justify-center shrink-0 ${
                   isRecording ? 'bg-rose-600 text-white animate-pulse' : 'bg-[#0B101B] text-sky-400 hover:text-sky-300'
                 }`}
@@ -1016,6 +1124,27 @@ export default function VoiceAssistant() {
                 {isRecording ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5 text-[#818CF8]" />}
               </button>
             </div>
+
+            {/* Always-Listening toggle: keeps the mic open continuously so you can interrupt KAIRO just by speaking */}
+            <button
+              type="button"
+              onClick={() => {
+                const next = !continuousMode;
+                setContinuousMode(next);
+                if (next && !isRecording) {
+                  manualStopRef.current = false;
+                  startRecording();
+                } else if (!next) {
+                  stopRecording(true);
+                }
+              }}
+              title={continuousMode ? 'Always-Listening mode is ON — click to turn off' : 'Turn on Always-Listening mode (like Alexa/Siri, interrupt anytime by speaking)'}
+              className={`shrink-0 p-2.5 rounded-xl border transition cursor-pointer flex items-center justify-center ${
+                continuousMode ? 'bg-emerald-50 border-emerald-300 text-emerald-700' : 'bg-white border-slate-200 text-slate-400 hover:text-slate-600'
+              }`}
+            >
+              <Radio className="w-4 h-4" />
+            </button>
 
             {/* Input Field with Waveform Graphic on Right */}
             <div className="flex-1 flex items-center gap-2 px-3 py-1.5">

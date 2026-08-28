@@ -12,7 +12,7 @@ const upload = multer({
 // @route   POST /api/voice/parse-text
 router.post('/parse-text', async (req, res) => {
   try {
-    const { text, userId } = req.body;
+    const { text, userId, history, lastContext } = req.body;
 
     if (!text || typeof text !== 'string') {
       return res.status(400).json({
@@ -21,16 +21,17 @@ router.post('/parse-text', async (req, res) => {
       });
     }
 
-    const result = await parseVoiceIntent(text, userId);
+    const result = await parseVoiceIntent(text, userId, history, lastContext);
 
     res.status(200).json({
       success: true,
       ...result,
     });
   } catch (error) {
+    console.error('[VOICE_PARSE_TEXT_ERROR]', error);
     res.status(500).json({
       success: false,
-      error: error.message,
+      error: error.message || 'Error processing voice intent',
     });
   }
 });
@@ -61,8 +62,16 @@ router.post('/transcribe-audio', upload.single('audio'), async (req, res) => {
 
     const transcript = await transcribeAudioWithWhisper(audioBuffer, mimeType);
     const userId = req.body.userId || req.headers['x-user-id'];
+    let history = [];
+    let lastContext = null;
+    try {
+      if (req.body.history) history = JSON.parse(req.body.history);
+      if (req.body.lastContext) lastContext = JSON.parse(req.body.lastContext);
+    } catch (e) {
+      // ignore malformed history/context, proceed without it
+    }
 
-    const result = await parseVoiceIntent(transcript, userId);
+    const result = await parseVoiceIntent(transcript, userId, history, lastContext);
 
     res.status(200).json({
       success: true,

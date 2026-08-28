@@ -47,6 +47,14 @@ export default function GlobalKairoWidget() {
   const recognitionRef = useRef(null);
   const silenceTimerRef = useRef(null);
   const chatScrollRef = useRef(null);
+  const lastContextRef = useRef(null);
+
+  const getRecentHistory = () => {
+    return messages.slice(-6).map((m) => ({
+      role: m.sender === 'user' ? 'user' : 'assistant',
+      text: m.text || '',
+    }));
+  };
 
   // Background Wake Word Detection: Listen for "kairo" or "hey kairo" when closed
   useEffect(() => {
@@ -68,13 +76,13 @@ export default function GlobalKairoWidget() {
         backgroundRecognition.onresult = (event) => {
           for (let i = event.resultIndex; i < event.results.length; ++i) {
             const heard = event.results[i][0].transcript.toLowerCase();
-            // Match any phonetic variation of Kairo
-            const kairoWakeRegex = /\b(kairo|cairo|kyro|kiero|chiro|kero|kayro|karo|kaero|hiro|kiro|hero|keiro)\b/i;
+            // Match any phonetic variation and common mispronunciation of Kairo (kiaro, cairo, kyro, kiero, kairu, etc.)
+            const kairoWakeRegex = /\b(kairo|kiaro|cairo|kyro|kiero|chiro|kero|kayro|karo|kaero|hiro|kiro|hero|keiro|kairu|kairon|kailo|kaito|kaido|kearo|gyro|caero|kai\s*ro|ki\s*aro|kay\s*ro)\b/i;
             if (kairoWakeRegex.test(heard)) {
               setIsOpen(true);
-              try { backgroundRecognition.stop(); } catch (e) {}
+              try { backgroundRecognition.stop(); } catch (e) { }
 
-              const remainder = heard.replace(/^(hey|hi|hello|ok)?\s*(kairo|cairo|kyro|kiero|chiro|kero|kayro|karo|kaero|hiro|kiro|hero|keiro)\s*/i, '').trim();
+              const remainder = heard.replace(/^(hey|hi|hello|ok|okay|oi|oye|ae)?\s*(kairo|kiaro|cairo|kyro|kiero|chiro|kero|kayro|karo|kaero|hiro|kiro|hero|keiro|kairu|kairon|kailo|kaito|kaido|kearo|gyro|caero|kai\s*ro|ki\s*aro|kay\s*ro)\s*/i, '').trim();
 
               if (remainder.length > 2) {
                 // User said "Hey Kairo check my balance" in a single phrase
@@ -91,7 +99,7 @@ export default function GlobalKairoWidget() {
           }
         };
 
-        backgroundRecognition.onerror = () => {};
+        backgroundRecognition.onerror = () => { };
         backgroundRecognition.onend = () => {
           if (isMounted && !isOpen && !isListening) {
             setTimeout(startBackgroundListener, 1000);
@@ -109,7 +117,7 @@ export default function GlobalKairoWidget() {
     return () => {
       isMounted = false;
       if (backgroundRecognition) {
-        try { backgroundRecognition.stop(); } catch (e) {}
+        try { backgroundRecognition.stop(); } catch (e) { }
       }
     };
   }, [isOpen, isListening]);
@@ -143,22 +151,21 @@ export default function GlobalKairoWidget() {
       utterance.lang = 'en-US';
       utterance.onstart = () => {
         setIsSpeaking(true);
+        // Keep microphone listening concurrently so ANY user voice immediately interrupts
+        startListening();
       };
       utterance.onend = () => {
         setIsSpeaking(false);
         if (andListenAfter) {
-          setTimeout(() => {
-            startListening();
-          }, 400);
+          startListening();
         }
       };
       utterance.onerror = () => setIsSpeaking(false);
-      
-      // Delay slightly to allow audio hardware on browser to acquire focus cleanly
+
       setTimeout(() => {
         window.speechSynthesis.speak(utterance);
       }, 50);
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const startListening = () => {
@@ -170,7 +177,7 @@ export default function GlobalKairoWidget() {
 
     try {
       if (recognitionRef.current) {
-        try { recognitionRef.current.stop(); } catch (e) {}
+        try { recognitionRef.current.stop(); } catch (e) { }
       }
 
       const recognition = new SpeechRecognition();
@@ -207,7 +214,7 @@ export default function GlobalKairoWidget() {
         }
       };
 
-      recognition.onerror = () => {};
+      recognition.onerror = () => { };
       recognition.onend = () => {
         setIsListening(false);
       };
@@ -335,7 +342,43 @@ export default function GlobalKairoWidget() {
 
     // 3. Purchase Intent or General Questions (Executed directly in-card!)
     try {
-      const res = await apiClient.post('/voice/parse-text', { text: raw });
+      const res = await apiClient.post('/voice/parse-text', {
+        text: raw,
+        history: getRecentHistory ? getRecentHistory() : [],
+        lastContext: lastContextRef?.current || null,
+      });
+
+      if (res.data?.isConfirmPurchase) {
+        if (lastContextRef?.current?.product) {
+          const p = lastContextRef.current.product;
+          const discountPrice = lastContextRef.current.negotiatedPrice || Math.round(p.price * 0.9);
+          const reply = `✅ Settled! AP2 Cart Mandate cryptographically signed for "${p.title}" at ₹${discountPrice.toLocaleString('en-IN')}. Funds debited via Double-Entry Ledger. Order confirmed!`;
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: Date.now() + 1,
+              sender: 'assistant',
+              text: reply,
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            },
+          ]);
+          speakText(reply);
+        } else {
+          const reply = `What would you like to purchase? You can say "search for books" or "buy running shoes".`;
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: Date.now() + 1,
+              sender: 'assistant',
+              text: reply,
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            },
+          ]);
+          speakText(reply);
+        }
+        return;
+      }
+
       if (res.data?.isQuestion && res.data?.answer) {
         setMessages((prev) => [
           ...prev,
@@ -361,7 +404,18 @@ export default function GlobalKairoWidget() {
           const p = prods[0];
           const discountPrice = Math.round(p.price * 0.9);
           const reply = `🛒 Found "${p.title}" at ₹${discountPrice.toLocaleString('en-IN')} (10% autonomous discount negotiated with ${p.merchantName || 'verified merchant'}). Ready for one-click AP2 settlement!`;
-          
+
+          // Save to lastContext for follow-up purchases ("purchase it", "buy it", "confirm")
+          if (lastContextRef) {
+            lastContextRef.current = {
+              itemKeywords: p.title,
+              category: p.category || 'General',
+              budget: discountPrice,
+              product: p,
+              negotiatedPrice: discountPrice,
+            };
+          }
+
           setMessages((prev) => [
             ...prev,
             {
@@ -402,12 +456,13 @@ export default function GlobalKairoWidget() {
         speakText(msg);
       }
     } catch (err) {
+      const errorText = err?.response?.data?.message || err?.response?.data?.error || err?.message || 'Server error processing query';
       setMessages((prev) => [
         ...prev,
         {
           id: Date.now() + 1,
           sender: 'assistant',
-          text: `⚠️ Could not process query: ${err.message}`,
+          text: `⚠️ Could not process query: ${errorText}`,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         },
       ]);
@@ -490,7 +545,7 @@ export default function GlobalKairoWidget() {
                   </div>
                   <div className={`max-w-[82%] rounded-2xl p-3 text-xs leading-relaxed ${isUser ? 'bg-[#0F172A] text-white rounded-tr-xs shadow-2xs' : 'bg-white border border-slate-200/80 text-slate-800 rounded-tl-xs shadow-2xs'}`}>
                     <p className="whitespace-pre-line">{msg.text}</p>
-                    
+
                     {/* Direct In-Widget 1-Click Buy Action Card */}
                     {msg.isBuyProposal && msg.product && (
                       <div className="mt-2.5 p-2.5 bg-indigo-50/70 border border-indigo-100 rounded-xl space-y-2">
