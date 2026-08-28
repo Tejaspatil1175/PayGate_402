@@ -189,12 +189,11 @@ export default function UserLayout() {
           <div className="flex items-center gap-4">
             
             {/* Gemini API Status Indicator */}
-            <div className="hidden sm:flex items-center gap-2 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-200 cursor-default" title="Gemini API Connected">
-              <span className="relative flex h-2 w-2">
+            <div className="hidden sm:flex items-center justify-center w-8 h-8 bg-emerald-50 rounded-full border border-emerald-200 cursor-default" title="Gemini API Connected">
+              <span className="relative flex h-2.5 w-2.5">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
               </span>
-              <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wide">Gemini API Connected</span>
             </div>
 
             <button className="p-2 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-50 relative transition">

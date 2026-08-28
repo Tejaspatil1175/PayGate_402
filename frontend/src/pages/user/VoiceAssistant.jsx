@@ -40,7 +40,7 @@ import { getOrCreateUserKeys } from '../../utils/keys';
 
 // Confirmation / "book it" style phrases — checked locally first (instant, no network round trip)
 // against whatever's currently pending, so voice can trigger checkout/confirm directly.
-const CONFIRM_PHRASE_REGEX = /^\s*(book\s*it|book\s*this|book\s*that|confirm|yes|yeah|yep|proceed|go\s*ahead|buy\s*it|buy\s*this|do\s*it|purchase\s*it|okay\s*book|ok\s*book|pay\s*now|complete\s*(the\s*)?purchase|do\s*(the\s*)?payment|ok(\s*do\s*payment)?|all\s*ok|done)\s*[.!]?\s*$/i;
+const CONFIRM_PHRASE_REGEX = /^\s*(book\s*it|book\s*this|book\s*that|confirm|yes|yeah|yep|proceed|go\s*ahead|buy\s*it|buy\s*this|do\s*it|purchase\s*it|okay\s*book|ok\s*book|pay\s*now|complete\s*(the\s*)?purchase|do\s*(the\s*)?payment|ok(\s*do\s*payment)?|all\s*ok|done\s*done|done|pay\s*it)\s*[.!]?\s*$/i;
 
 function getProductImage(product) {
   if (!product) return 'https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=400';
@@ -106,6 +106,7 @@ export default function VoiceAssistant() {
   const [loading, setLoading] = useState(false);
   const [pipelineStage, setPipelineStage] = useState(''); 
   const [pendingIntent, setPendingIntent] = useState(null);
+  const [pendingNegotiation, setPendingNegotiation] = useState(null);
   const [editBudget, setEditBudget] = useState(0);
   const [pipelineResult, setPipelineResult] = useState(null);
   const [checkoutComplete, setCheckoutComplete] = useState(null);
@@ -263,11 +264,13 @@ export default function VoiceAssistant() {
   // Fix React Closure Trap for async event handlers
   const handleSendTextRef = useRef(null);
   const handleAudioUploadRef = useRef(null);
+  const handleExecuteNegotiationRef = useRef(null);
   
   useEffect(() => {
     // These get updated on every render so they always close over the latest state
     handleSendTextRef.current = handleSendText;
     handleAudioUploadRef.current = handleAudioUpload;
+    handleExecuteNegotiationRef.current = handleExecuteNegotiation;
   });
 
   const startRecording = async () => {
@@ -537,7 +540,60 @@ export default function VoiceAssistant() {
         };
         setMessages((prev) => [...prev, userMsg]);
 
-        // Backend-resolved confirmation (via LLM/rule-based fallback recognizing "book it" style follow-up)
+        const textLower = (rawTranscript || '').toLowerCase();
+
+        // --- Local Intent Routing ---
+        // 1. Budget parsing
+        if (pendingIntent && (!pendingIntent.intent.budget || pendingIntent.intent.budget === 0)) {
+          let parsedBudget = 0;
+          const digits = textLower.match(/\d+/g);
+          if (digits) {
+            parsedBudget = parseInt(digits.join(''), 10);
+            if (textLower.includes('thousand') || textLower.includes('k')) {
+              if (parsedBudget < 1000) parsedBudget *= 1000;
+            } else if (textLower.includes('hundred')) {
+              if (parsedBudget < 100) parsedBudget *= 100;
+            }
+          }
+          if (parsedBudget > 0) {
+            setEditBudget(parsedBudget);
+            handleConfirmIntent(parsedBudget);
+            return;
+          }
+        }
+
+        // 2. State-aware fuzzy routing
+        if (pendingNegotiation) {
+          const isNegotiate = textLower.includes('negotiat') || textLower.includes('bargain') || textLower.includes('yes') || textLower.includes('go') || textLower.includes('do it') || textLower.includes('ok') || textLower.includes('next');
+          if (isNegotiate && handleExecuteNegotiationRef.current) {
+            handleExecuteNegotiationRef.current(pendingNegotiation);
+            return;
+          }
+        }
+
+        if (pipelineResult && !checkoutComplete) {
+          const isPay = textLower.includes('pay') || textLower.includes('buy') || textLower.includes('book') || textLower.includes('ok') || textLower.includes('done') || textLower.includes('yes') || textLower.includes('proceed') || textLower.includes('go') || textLower.includes('next');
+          if (isPay) {
+            handleExecuteCheckout(pipelineResult);
+            return;
+          }
+        }
+
+        if (pendingIntent) {
+          const isConfirm = textLower.includes('ok') || textLower.includes('yes') || textLower.includes('proceed');
+          if (isConfirm || CONFIRM_PHRASE_REGEX.test(rawTranscript.trim())) {
+            handleConfirmIntent();
+            return;
+          }
+        }
+        
+        // Explicit deny for confirm if they just said ok but nothing pending
+        if (CONFIRM_PHRASE_REGEX.test(rawTranscript.trim())) {
+           setMessages((prev) => [...prev, { id: Date.now() + 1, sender: 'assistant', text: `I don't have anything pending to confirm yet — tell me what you'd like to search for first.`, timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }]);
+           return;
+        }
+
+        // Backend-resolved confirmation (fallback)
         if (isConfirmPurchase) {
           setLoading(false);
           setPipelineStage('');
@@ -577,7 +633,7 @@ export default function VoiceAssistant() {
 
         speakText(intent.budget
           ? `Parsed your request for ${intent.itemKeywords} with budget of ${intent.budget} rupees. Please confirm the autonomous guardrail.`
-          : `Parsed your request for ${intent.itemKeywords}. You did not mention a budget. Please set one using the slider before I continue.`);
+          : `Before I can search for ${intent.itemKeywords}, I need a budget. What is your budget?`);
       }
     } catch (err) {
       const errorMsg = err.error || err.message || 'Voice transcription failed.';
@@ -634,17 +690,33 @@ export default function VoiceAssistant() {
       }
     }
 
-    // Instant local confirmation routing — "book it" / "yes" / "confirm" etc. against whatever's pending,
-    // no network round trip needed since we already have this state on the client.
-    if (CONFIRM_PHRASE_REGEX.test(textToSend.trim())) {
-      if (pipelineResult && !checkoutComplete) {
+    // State-aware fuzzy routing
+    if (pendingNegotiation) {
+      const isNegotiate = textLower.includes('negotiat') || textLower.includes('bargain') || textLower.includes('yes') || textLower.includes('go') || textLower.includes('do it') || textLower.includes('ok') || textLower.includes('next');
+      if (isNegotiate && handleExecuteNegotiationRef.current) {
+        handleExecuteNegotiationRef.current(pendingNegotiation);
+        return;
+      }
+    }
+
+    if (pipelineResult && !checkoutComplete) {
+      const isPay = textLower.includes('pay') || textLower.includes('buy') || textLower.includes('book') || textLower.includes('ok') || textLower.includes('done') || textLower.includes('yes') || textLower.includes('proceed') || textLower.includes('go') || textLower.includes('next');
+      if (isPay) {
         handleExecuteCheckout(pipelineResult);
         return;
       }
-      if (pendingIntent) {
+    }
+
+    if (pendingIntent) {
+      const isConfirm = textLower.includes('ok') || textLower.includes('yes') || textLower.includes('proceed');
+      if (isConfirm || CONFIRM_PHRASE_REGEX.test(textToSend.trim())) {
         handleConfirmIntent();
         return;
       }
+    }
+
+    // Explicit deny for confirm if they just said ok but nothing pending
+    if (CONFIRM_PHRASE_REGEX.test(textToSend.trim())) {
       setMessages((prev) => [...prev, { id: Date.now() + 1, sender: 'assistant', text: `I don't have anything pending to confirm yet — tell me what you'd like to search for first.`, timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }]);
       return;
     }
@@ -871,7 +943,7 @@ export default function VoiceAssistant() {
 
         speakText(intent.budget
           ? `Parsed request for ${intent.itemKeywords} with budget of ${intent.budget} rupees. Please confirm the autonomous guardrail.`
-          : `Parsed request for ${intent.itemKeywords}. You did not mention a budget. Please set one using the slider before I continue.`);
+          : `Before I can search for ${intent.itemKeywords}, I need a budget. What is your budget?`);
       }
     } catch (err) {
       const errorMsg = err.error || err.message || 'Unable to parse text.';
@@ -915,86 +987,37 @@ export default function VoiceAssistant() {
 
       const productsFound = discoveryRes.data?.products || [];
       if (productsFound.length === 0) {
-        throw new Error('No matching products found.');
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: Date.now() + 2,
+            sender: 'assistant',
+            text: `Sorry for the inconvenience, I couldn't find a great match for that budget.`,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          },
+        ]);
+        speakText(`Sorry for the inconvenience, I couldn't find a great match for that budget.`);
+        setPendingIntent(null);
+        setLoading(false);
+        setPipelineStage('');
+        return;
       }
 
       const topProduct = productsFound[0];
-
-      const intentRes = await apiClient.post('/agent/intent', {
-        agentId: userId,
-        category: topProduct.category || intent.category || 'General',
-        keywords: intent.itemKeywords ? [intent.itemKeywords] : [topProduct.title],
-        budgetCap: finalBudget > 0 ? finalBudget : (topProduct.price || 50000),
-        currency: topProduct.currency || 'INR',
-        merchantPreferences: topProduct.merchant?.id ? [topProduct.merchant.id] : [],
-      });
-
-      const createdIntent = intentRes.data?.intent;
-      const intentId = createdIntent?.id || createdIntent?._id;
-
-      setPipelineStage('negotiating');
-      const originalPrice = topProduct.price || (finalBudget > 0 ? finalBudget : 3000);
-      const proposedPrice = Math.max(1, Math.round(originalPrice * 0.9));
-
-      const negotiationRes = await apiClient.post('/agent/negotiation', {
-        intentId,
-        productId: topProduct.id || topProduct._id,
-        proposedPrice,
-        quantity: 1,
-        agentId: userId,
-      });
-
-      const negotiationDoc = negotiationRes.data?.negotiation;
-      const negotiatedPrice = negotiationDoc?.agreedPrice || proposedPrice;
-      const savings = Math.max(0, originalPrice - negotiatedPrice);
-
-      setPipelineStage('contracting');
-      const merchantId = topProduct.merchant?.id || topProduct.merchant?._id || negotiationDoc?.merchant;
-      const userKeys = await getOrCreateUserKeys(userId);
-
-      const contractRes = await apiClient.post('/agent/contract', {
-        intentId,
-        merchantId,
-        items: [{ product: topProduct._id || topProduct.id, productId: topProduct._id || topProduct.id, title: topProduct.title, quantity: 1, unitPrice: negotiatedPrice, totalPrice: negotiatedPrice, subtotal: negotiatedPrice }],
-        agreedAmount: negotiatedPrice,
-        userPrivateKey: userKeys.privateKey,
-        userPublicKey: userKeys.publicKey,
-        expiresInMinutes: 60,
-      });
-
-      const contractDoc = contractRes.data?.contract;
-      if (!contractDoc) {
-        throw new Error(contractRes.data?.error || 'Failed to generate signed contract from backend');
-      }
-
-      const resultData = {
-        product: topProduct,
-        allProducts: productsFound,
-        originalPrice,
-        finalPrice: negotiatedPrice,
-        savings,
-        discountPercent: Math.round(((originalPrice - negotiatedPrice) / originalPrice) * 100),
-        merchant: topProduct.merchant || { name: 'Verified AP2 Merchant' },
-        contractId: contractDoc.contractId || contractDoc._id,
-        status: contractDoc.status || 'signed',
-      };
-
-      setPipelineResult(resultData);
+      setPendingNegotiation({ topProduct, finalBudget, intent, userId });
+      setPendingIntent(null);
 
       setMessages((prev) => [
         ...prev,
         {
           id: Date.now() + 2,
           sender: 'assistant',
-          text: `I found matching products from onboarded merchants. Here is the negotiated offer for "${topProduct.title}" signed via AP2 RSA-PSS Mandate:`,
-          isResult: true,
-          pipeline: resultData,
+          text: `I found a great match: "${topProduct.title}" for ₹${topProduct.price?.toLocaleString('en-IN')}. Do you want me to negotiate or take it?`,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         },
       ]);
-      setPendingIntent(null);
+      speakText(`I found a great match! Do you want me to negotiate or take it?`);
       
-      speakText(`I found ${topProduct.title}. I am negotiating. The merchant set the last price to ${negotiatedPrice} rupees. Shall I do the payment?`);
     } catch (err) {
       const pipeErrMsg = err?.error || err?.message || (typeof err === 'string' ? err : 'Something went wrong. Please try again.');
       setMessages((prev) => [...prev, { id: Date.now() + 2, sender: 'assistant', text: `⚠️ Error: ${pipeErrMsg}`, isError: true, timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }]);
@@ -1002,6 +1025,116 @@ export default function VoiceAssistant() {
       setLoading(false);
       setPipelineStage('');
     }
+  };
+
+  const handleExecuteNegotiation = async (searchData) => {
+    const { topProduct, finalBudget, intent, userId } = searchData;
+    setPendingNegotiation(null);
+    setLoading(true);
+    setPipelineStage('negotiating');
+    
+    const originalPrice = topProduct.price || (finalBudget > 0 ? finalBudget : 3000);
+    const proposedPrice = Math.max(1, Math.round(originalPrice * 0.9));
+
+    // Show simulated chat UI
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: Date.now() + 3,
+        sender: 'assistant',
+        isNegotiationChat: true,
+        negotiationData: {
+           merchantPrice: originalPrice,
+           buyerPrice: proposedPrice,
+           status: 'negotiating'
+        },
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      },
+    ]);
+
+    // Simulate negotiation delay and backend call
+    setTimeout(async () => {
+       try {
+          const intentRes = await apiClient.post('/agent/intent', {
+            agentId: userId,
+            category: topProduct.category || intent.category || 'General',
+            keywords: intent.itemKeywords ? [intent.itemKeywords] : [topProduct.title],
+            budgetCap: finalBudget > 0 ? finalBudget : (topProduct.price || 50000),
+            currency: topProduct.currency || 'INR',
+            merchantPreferences: topProduct.merchant?.id ? [topProduct.merchant.id] : [],
+          });
+          const createdIntent = intentRes.data?.intent;
+          const intentId = createdIntent?.id || createdIntent?._id;
+
+          const negotiationRes = await apiClient.post('/agent/negotiation', {
+            intentId,
+            productId: topProduct.id || topProduct._id,
+            proposedPrice,
+            quantity: 1,
+            agentId: userId,
+          });
+
+          const negotiationDoc = negotiationRes.data?.negotiation;
+          const negotiatedPrice = negotiationDoc?.agreedPrice || proposedPrice;
+          const savings = Math.max(0, originalPrice - negotiatedPrice);
+
+          setPipelineStage('contracting');
+          const merchantId = topProduct.merchant?.id || topProduct.merchant?._id || negotiationDoc?.merchant;
+          const userKeys = await getOrCreateUserKeys(userId);
+
+          const contractRes = await apiClient.post('/agent/contract', {
+            intentId,
+            merchantId,
+            items: [{ product: topProduct._id || topProduct.id, productId: topProduct._id || topProduct.id, title: topProduct.title, quantity: 1, unitPrice: negotiatedPrice, totalPrice: negotiatedPrice, subtotal: negotiatedPrice }],
+            agreedAmount: negotiatedPrice,
+            userPrivateKey: userKeys.privateKey,
+            userPublicKey: userKeys.publicKey,
+            expiresInMinutes: 60,
+          });
+
+          const contractDoc = contractRes.data?.contract;
+          if (!contractDoc) {
+            throw new Error(contractRes.data?.error || 'Failed to generate signed contract from backend');
+          }
+
+          const resultData = {
+            product: topProduct,
+            allProducts: [topProduct],
+            originalPrice,
+            finalPrice: negotiatedPrice,
+            savings,
+            discountPercent: Math.round(((originalPrice - negotiatedPrice) / originalPrice) * 100),
+            merchant: topProduct.merchant || { name: 'Verified AP2 Merchant' },
+            contractId: contractDoc.contractId || contractDoc._id,
+            status: contractDoc.status || 'signed',
+          };
+
+          setPipelineResult(resultData);
+
+          // Update negotiation chat message to finished
+          setMessages((prev) => prev.map(m => m.isNegotiationChat ? { ...m, negotiationData: { ...m.negotiationData, finalPrice: negotiatedPrice, status: 'agreed' } } : m));
+
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: Date.now() + 4,
+              sender: 'assistant',
+              text: `The price is fixed at ₹${negotiatedPrice.toLocaleString('en-IN')}. The contract is signed. Shall I pay it?`,
+              isResult: true,
+              pipeline: resultData,
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            },
+          ]);
+          
+          speakText(`The price is fixed at ${negotiatedPrice} rupees. Shall I pay it?`);
+       } catch (err) {
+          const pipeErrMsg = err?.error || err?.message || (typeof err === 'string' ? err : 'Something went wrong. Please try again.');
+          setMessages((prev) => [...prev, { id: Date.now() + 2, sender: 'assistant', text: `⚠️ Error: ${pipeErrMsg}`, isError: true, timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }]);
+       } finally {
+         setLoading(false);
+         setPipelineStage('');
+       }
+    }, 2500);
   };
 
   const handleExecuteCheckout = async (pipeline) => {
@@ -1110,6 +1243,42 @@ export default function VoiceAssistant() {
                       <button type="button" onClick={handleConfirmIntent} disabled={loading || Number(editBudget) <= 0} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl py-2.5 flex items-center justify-center gap-2 transition cursor-pointer disabled:opacity-50">
                         <CheckCircle2 className="w-4 h-4" /> <span>{loading ? 'Executing AP2 Pipeline...' : 'Confirm Parsed Intent & Find Merchant'}</span>
                       </button>
+                    </div>
+                  )}
+                  {msg.isNegotiationChat && msg.negotiationData && (
+                    <div className="mt-4 bg-white border border-indigo-100 shadow-sm rounded-2xl overflow-hidden text-sm">
+                      <div className="bg-indigo-50 border-b border-indigo-100 px-4 py-2 flex items-center gap-2">
+                        <Bot className="w-4 h-4 text-indigo-600" />
+                        <span className="font-bold text-indigo-900 text-xs uppercase tracking-wide">Agent Negotiation Logs</span>
+                        {msg.negotiationData.status === 'negotiating' && <span className="ml-auto text-[10px] text-indigo-500 font-bold animate-pulse">NEGOTIATING...</span>}
+                      </div>
+                      <div className="p-4 space-y-3">
+                        <div className="flex gap-2">
+                           <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center shrink-0 border border-slate-200"><User className="w-3 h-3 text-slate-500" /></div>
+                           <div className="bg-slate-100 rounded-2xl rounded-tl-sm px-3 py-2 text-slate-700 text-xs">
+                             <p className="font-bold text-[10px] text-slate-400 mb-0.5">Merchant Agent</p>
+                             This is my price: <strong className="text-slate-900">₹{msg.negotiationData.merchantPrice?.toLocaleString('en-IN')}</strong>
+                           </div>
+                        </div>
+                        {msg.negotiationData.buyerPrice && (
+                          <div className="flex gap-2 flex-row-reverse">
+                             <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center shrink-0 border border-indigo-200"><Bot className="w-3 h-3 text-indigo-600" /></div>
+                             <div className="bg-indigo-50 rounded-2xl rounded-tr-sm px-3 py-2 text-indigo-900 text-xs">
+                               <p className="font-bold text-[10px] text-indigo-400 mb-0.5">Buyer Agent</p>
+                               I want it in this price: <strong className="text-indigo-700">₹{msg.negotiationData.buyerPrice?.toLocaleString('en-IN')}</strong>
+                             </div>
+                          </div>
+                        )}
+                        {msg.negotiationData.finalPrice && (
+                          <div className="flex gap-2">
+                             <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center shrink-0 border border-slate-200"><User className="w-3 h-3 text-slate-500" /></div>
+                             <div className="bg-emerald-50 rounded-2xl rounded-tl-sm px-3 py-2 text-emerald-900 text-xs border border-emerald-100">
+                               <p className="font-bold text-[10px] text-emerald-600 mb-0.5">Merchant Agent</p>
+                               Ok, you are our loyal customer, so we go with this price: <strong className="text-emerald-700">₹{msg.negotiationData.finalPrice?.toLocaleString('en-IN')}</strong>
+                             </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
                   {msg.isResult && msg.pipeline && (
