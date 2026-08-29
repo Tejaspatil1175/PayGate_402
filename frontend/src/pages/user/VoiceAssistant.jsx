@@ -1327,7 +1327,7 @@ export default function VoiceAssistant() {
       {/* Scrollable Messages Stream */}
       <div
         ref={chatScrollRef}
-        className="flex-1 overflow-y-auto no-scrollbar px-4 sm:px-6 pt-4 pb-32 space-y-6 scroll-smooth w-full"
+        className="flex-1 overflow-y-auto no-scrollbar px-3 sm:px-6 pt-3 sm:pt-4 pb-48 lg:pb-32 space-y-4 sm:space-y-6 scroll-smooth w-full"
       >
         {messages.map((msg) => {
           const isUser = msg.sender === 'user';
@@ -1711,7 +1711,7 @@ export default function VoiceAssistant() {
       </div>
 
       {/* ── Always-Listening Orb ────────────────────────────────────────── */}
-      <div className="absolute bottom-0 left-0 right-0 flex flex-col items-center pb-6 pt-2 z-30 pointer-events-none">
+      <div className="absolute bottom-14 lg:bottom-0 left-0 right-0 flex flex-col items-center pb-3 lg:pb-6 pt-2 z-30 pointer-events-none">
 
         {/* Live transcript bubble — shows what Tejas hears in real time */}
         {transcript && (

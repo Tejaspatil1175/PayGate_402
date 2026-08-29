@@ -55,48 +55,48 @@ export default function OrderTracking() {
   }, []);
 
   return (
-    <div className="relative min-h-[calc(100vh-4rem)] p-6 md:p-10 space-y-8 max-w-7xl mx-auto w-full font-sans overflow-hidden">
+    <div className="relative min-h-[calc(100vh-4rem)] p-3 sm:p-6 md:p-8 space-y-4 sm:space-y-6 max-w-7xl mx-auto w-full font-sans overflow-hidden">
       {/* Header */}
-      <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-6 pb-2">
-        <div className="flex items-center gap-4">
-          <div className="p-4 rounded-3xl bg-slate-900 text-white shadow-xl shadow-slate-900/10">
-            <Package className="w-8 h-8" />
+      <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2">
+        <div className="flex items-center gap-3 sm:gap-4">
+          <div className="p-3 sm:p-4 rounded-2xl sm:rounded-3xl bg-slate-900 text-white shadow-xl shadow-slate-900/10">
+            <Package className="w-6 h-6 sm:w-8 sm:h-8" />
           </div>
           <div>
-            <h1 className="text-3xl font-black tracking-tight text-slate-900 flex items-center gap-2">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-black tracking-tight text-slate-900 flex items-center gap-2">
               Order Tracking
-              <Sparkles className="w-6 h-6 text-slate-400" />
+              <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-slate-400" />
             </h1>
-            <p className="text-sm font-medium text-slate-500 mt-1">
+            <p className="text-xs sm:text-sm font-medium text-slate-500 mt-0.5 sm:mt-1">
               Live AP2 settlement and delivery fulfillment tracking
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2 text-sm font-bold bg-white/60 backdrop-blur-xl border border-white/50 px-4 py-2 rounded-2xl shadow-sm text-slate-700 self-start md:self-auto">
+        <div className="flex items-center gap-2 text-xs sm:text-sm font-bold bg-white/60 backdrop-blur-xl border border-white/50 px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-2xl shadow-2xs text-slate-700 self-start md:self-auto">
           <Box className="w-4 h-4 text-indigo-600" />
           <span>{orders.length} Total Orders</span>
         </div>
       </div>
 
       {error && (
-        <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-700 text-sm font-semibold backdrop-blur-md">
+        <div className="p-3.5 sm:p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-700 text-xs sm:text-sm font-semibold backdrop-blur-md">
           {error}
         </div>
       )}
 
       {loading ? (
-        <div className="flex flex-col items-center justify-center py-32 space-y-4 relative z-10">
-          <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
-          <div className="text-slate-500 font-medium">Syncing orders securely...</div>
+        <div className="flex flex-col items-center justify-center py-24 sm:py-32 space-y-4 relative z-10">
+          <div className="w-10 h-10 sm:w-12 sm:h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+          <div className="text-slate-500 font-medium text-xs sm:text-sm">Syncing orders securely...</div>
         </div>
       ) : orders.length === 0 ? (
-        <div className="text-center py-32 bg-white/40 backdrop-blur-xl border border-white/50 rounded-3xl text-slate-500 text-sm shadow-xl shadow-slate-200/50 relative z-10">
-          <Package className="w-16 h-16 mx-auto mb-4 text-slate-300" />
-          <p className="font-bold text-lg text-slate-700">No orders found</p>
-          <p>Your purchase history is currently empty.</p>
+        <div className="text-center py-20 sm:py-32 bg-white/40 backdrop-blur-xl border border-white/50 rounded-3xl text-slate-500 text-xs sm:text-sm shadow-xl shadow-slate-200/50 relative z-10 p-6">
+          <Package className="w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-4 text-slate-300" />
+          <p className="font-bold text-base sm:text-lg text-slate-700">No orders found</p>
+          <p className="text-xs sm:text-sm mt-1">Your purchase history is currently empty.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 relative z-10">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 lg:gap-8 relative z-10">
           
           {/* Orders List Sidebar (Glassmorphism) */}
           <div className="lg:col-span-4 space-y-4">

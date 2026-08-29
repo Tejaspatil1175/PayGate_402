@@ -92,18 +92,18 @@ export default function Wishlist() {
   };
 
   return (
-    <div className="p-6 md:p-8 space-y-6 max-w-7xl mx-auto w-full">
-      <div className="space-y-6">
+    <div className="p-3 sm:p-6 md:p-8 space-y-4 sm:space-y-6 max-w-7xl mx-auto w-full">
+      <div className="space-y-4 sm:space-y-6">
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-4 sm:pb-6">
           <div className="flex items-center gap-3">
-            <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600">
-              <Heart className="w-6 h-6 fill-rose-500 text-rose-500" />
+            <div className="p-2.5 sm:p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600">
+              <Heart className="w-5 h-5 sm:w-6 sm:h-6 fill-rose-500 text-rose-500" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
                 My Saved Wishlist
-                <Sparkles className="w-5 h-5 text-indigo-600" />
+                <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600" />
               </h1>
               <p className="text-sm text-slate-500">
                 Bookmarked merchant products with automated price-drop alerts

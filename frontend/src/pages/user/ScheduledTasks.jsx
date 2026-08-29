@@ -119,18 +119,18 @@ export default function ScheduledTasks() {
   };
 
   return (
-    <div className="p-6 md:p-8 space-y-6 max-w-7xl mx-auto w-full">
-      <div className="space-y-6">
+    <div className="p-3 sm:p-6 md:p-8 space-y-4 sm:space-y-6 max-w-7xl mx-auto w-full">
+      <div className="space-y-4 sm:space-y-6">
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-4 sm:pb-6">
           <div className="flex items-center gap-3">
-            <div className="p-3 rounded-2xl bg-amber-50 border border-amber-200 text-amber-600">
-              <Clock className="w-6 h-6" />
+            <div className="p-2.5 sm:p-3 rounded-2xl bg-amber-50 border border-amber-200 text-amber-600">
+              <Clock className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
                 Scheduled Tasks Engine
-                <Sparkles className="w-5 h-5 text-indigo-600" />
+                <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600" />
               </h1>
               <p className="text-sm text-slate-500">
                 Automated future orders ("Buy at 6 PM") with fresh price & stock re-verification

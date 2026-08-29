@@ -221,16 +221,16 @@ export default function UserWallet() {
   const capPercent = Math.min(100, Math.round((dailySpent / (dailyCap || 1)) * 100));
 
   return (
-    <div className="p-6 md:p-8 space-y-6 max-w-7xl mx-auto w-full">
-      <div className="space-y-6">
+    <div className="p-3 sm:p-6 md:p-8 space-y-4 sm:space-y-6 max-w-7xl mx-auto w-full">
+      <div className="space-y-4 sm:space-y-6">
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-4 sm:pb-6">
           <div className="flex items-center gap-3">
-            <div className="p-3 rounded-2xl bg-indigo-50 border border-indigo-100 text-indigo-600">
-              <WalletIcon className="w-6 h-6" />
+            <div className="p-2.5 sm:p-3 rounded-2xl bg-indigo-50 border border-indigo-100 text-indigo-600">
+              <WalletIcon className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
                 AP2 Agent Wallet
               </h1>
               <p className="text-sm text-slate-500">
@@ -687,7 +687,7 @@ export default function UserWallet() {
           </div>
 
           {/* Ledger Volume Statistics Bar */}
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3">
             <div className="bg-[#F8FAFC] border border-slate-200/80 rounded-xl p-3">
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Total Recorded</span>
               <span className="text-sm font-black text-slate-800">{history.length} Transactions</span>
