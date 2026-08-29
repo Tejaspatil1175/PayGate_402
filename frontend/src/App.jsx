@@ -21,6 +21,7 @@ import {
 import ProtectedRoute from './components/ProtectedRoute';
 import UserLayout from './components/UserLayout';
 import MerchantLayout from './components/MerchantLayout';
+import AdminLayout from './components/AdminLayout';
 import GlobalKairoWidget from './components/GlobalKairoWidget';
 
 // Buyer Pages
@@ -127,6 +128,14 @@ export default function App() {
     '/merchant/orders',
     '/merchant/copilot',
   ];
+
+  const adminRoutePrefixes = [
+    '/admin/overview',
+    '/admin/monitoring',
+    '/admin/merchant-health',
+    '/admin/system-health',
+    '/admin/config',
+  ];
   
   const isUserRoute =
     activeRole === 'user' ||
@@ -136,8 +145,12 @@ export default function App() {
     activeRole === 'merchant' ||
     merchantRoutePrefixes.some((p) => location.pathname === p || location.pathname.startsWith(`${p}/`));
 
-  // We hide the global navbar on auth pages and any routes that have their own sidebar layouts (User & Merchant)
-  const shouldHideNavbar = isAuthPage || isUserRoute || isMerchantRoute;
+  const isAdminRoute =
+    activeRole === 'admin' ||
+    adminRoutePrefixes.some((p) => location.pathname === p || location.pathname.startsWith(`${p}/`));
+
+  // We hide the global navbar on auth pages and any routes that have their own sidebar layouts (User, Merchant & Admin)
+  const shouldHideNavbar = isAuthPage || isUserRoute || isMerchantRoute || isAdminRoute;
 
   // Determine default authenticated redirect
   const getDefaultRedirect = () => {
@@ -643,47 +656,20 @@ export default function App() {
             }
           />
 
-          {/* Protected Admin Mesh Routes */}
+          {/* Protected Admin Mesh Routes (Wrapped in AdminLayout) */}
           <Route
-            path="/admin/overview"
             element={
               <ProtectedRoute allowedRoles={['admin']}>
-                <AdminOverview />
+                <AdminLayout />
               </ProtectedRoute>
             }
-          />
-          <Route
-            path="/admin/monitoring"
-            element={
-              <ProtectedRoute allowedRoles={['admin']}>
-                <AdminMonitoring />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin/merchant-health"
-            element={
-              <ProtectedRoute allowedRoles={['admin']}>
-                <AdminMerchantHealth />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin/system-health"
-            element={
-              <ProtectedRoute allowedRoles={['admin']}>
-                <AdminSystemHealth />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin/config"
-            element={
-              <ProtectedRoute allowedRoles={['admin']}>
-                <AdminConfig />
-              </ProtectedRoute>
-            }
-          />
+          >
+            <Route path="/admin/overview" element={<AdminOverview />} />
+            <Route path="/admin/monitoring" element={<AdminMonitoring />} />
+            <Route path="/admin/merchant-health" element={<AdminMerchantHealth />} />
+            <Route path="/admin/system-health" element={<AdminSystemHealth />} />
+            <Route path="/admin/config" element={<AdminConfig />} />
+          </Route>
 
           {/* Fallback */}
           <Route
