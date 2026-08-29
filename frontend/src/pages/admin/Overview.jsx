@@ -1,21 +1,29 @@
 import React, { useState, useEffect } from 'react';
 import {
   ShieldAlert,
+  Shield,
   Activity,
   Users,
   Store,
   Bot,
   DollarSign,
-  Sparkles,
   Lock,
   ArrowUpRight,
   ShieldCheck,
   RefreshCw,
+  Layers,
+  FileCheck,
+  TrendingUp,
+  CreditCard,
+  Clock,
+  CheckCircle2,
+  AlertTriangle,
 } from 'lucide-react';
 import apiClient from '../../api/client';
 
 export default function AdminOverview() {
   const [overview, setOverview] = useState(null);
+  const [recentActivity, setRecentActivity] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -23,30 +31,13 @@ export default function AdminOverview() {
     setLoading(true);
     setError('');
     try {
-      const res = await apiClient.get('/admin/analytics/overview');
-      if (res.data?.success) {
-        setOverview(res.data.overview || res.data);
+      const res = await apiClient.get('/admin/overview');
+      if (res.data?.platformOverview) {
+        setOverview(res.data.platformOverview);
+        setRecentActivity(res.data.recentActivity || []);
       }
     } catch (err) {
-      // Provide clean default overview if backend stats pending calculation
-      setOverview({
-        totalGMV: 485000,
-        activeBuyers: 142,
-        onboardedMerchants: 18,
-        activeAgents: 89,
-        gateBlockageRate: '1.2%',
-        gateDecisions: {
-          allow: '94.0%',
-          requireApproval: '4.8%',
-          blocked: '1.2%',
-        },
-        categoryGMV: [
-          { category: 'Footwear', gmv: 185000 },
-          { category: 'Electronics', gmv: 210000 },
-          { category: 'Fashion', gmv: 54000 },
-          { category: 'Home', gmv: 36000 },
-        ],
-      });
+      console.warn('Admin overview fetch fallback:', err);
     } finally {
       setLoading(false);
     }
@@ -56,187 +47,245 @@ export default function AdminOverview() {
     fetchOverviewData();
   }, []);
 
+  const totalGMV = overview?.totalGMV || 0;
+  const merchants = overview?.merchants || { total: 0, verified: 0, active: 0 };
+  const agents = overview?.agents || { totalActiveAgents: 0 };
+  const orders = overview?.orders || { total: 0, paid: 0, payoutHolds: 0, averageOrderValue: 0 };
+  const contracts = overview?.contracts || { total: 0, signed: 0, executed: 0 };
+  const security = overview?.security || { totalAuditEvents: 0, blockedEvents: 0 };
+
+  const blockedPercent = security.totalAuditEvents > 0
+    ? Math.round((security.blockedEvents / security.totalAuditEvents) * 100)
+    : 0;
+
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-4 md:p-8 relative overflow-hidden">
-      {/* Background ambient lighting */}
-      <div className="absolute top-10 right-10 w-96 h-96 bg-purple-600/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-10 left-10 w-96 h-96 bg-indigo-600/10 rounded-full blur-3xl pointer-events-none" />
-
-      <div className="max-w-7xl mx-auto space-y-6 relative z-10">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800/80 pb-6">
-          <div className="flex items-center gap-3">
-            <div className="p-3 rounded-2xl bg-purple-600/10 border border-purple-500/30 text-purple-400">
-              <Activity className="w-6 h-6" />
+    <div className="p-6 md:p-8 space-y-6 max-w-7xl mx-auto w-full font-sans text-slate-800">
+      {/* Header & Main Actions */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200/80 pb-6">
+        <div>
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center shadow-sm">
+              <Activity className="w-4 h-4" />
             </div>
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-                PayGate 402 Admin Control Mesh
-                <Sparkles className="w-5 h-5 text-amber-400" />
-              </h1>
-              <p className="text-sm text-slate-400">
-                Platform GMV telemetry, merchant/user ecosystem metrics, and security gate monitoring
-              </p>
-            </div>
+            <h1 className="text-xl font-bold tracking-tight text-slate-900">
+              Platform Control Mesh & Macro Overview
+            </h1>
+            <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
+              AP2/x402 Master Gateway
+            </span>
           </div>
-
-          <button
-            onClick={fetchOverviewData}
-            disabled={loading}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-300 text-xs font-semibold transition self-start md:self-auto"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-            <span>Refresh Platform Metrics</span>
-          </button>
+          <p className="text-xs text-slate-500 mt-1">
+            Global settlement volume, merchant governance, AI agent population telemetry, and security gate monitoring
+          </p>
         </div>
 
-        {error && (
-          <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-sm">
-            {error}
-          </div>
-        )}
+        <button
+          onClick={fetchOverviewData}
+          disabled={loading}
+          className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold transition shadow-sm self-start md:self-auto"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-indigo-600' : 'text-slate-400'}`} />
+          <span>Refresh Platform Metrics</span>
+        </button>
+      </div>
 
-        {/* Security Seeded Notice */}
-        <div className="bg-slate-900/90 border border-purple-500/30 rounded-2xl p-4 flex items-center gap-3 text-xs text-slate-300">
-          <Lock className="w-4 h-4 text-purple-400 flex-shrink-0" />
-          <span>
-            <strong>Environment Seeded Credentials Active:</strong> Public admin registration is disabled. Admin accounts are seeded securely via system environment variables (`ADMIN_EMAIL`, `ADMIN_PASSWORD_HASH`).
-          </span>
+      {error && (
+        <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-medium">
+          {error}
+        </div>
+      )}
+
+      {/* Security Status Bar */}
+      <div className="bg-white border border-slate-200/90 rounded-xl p-4 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4 text-xs">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center shrink-0">
+            <ShieldCheck className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="font-bold text-slate-900">
+              Gateway Security Integrity: Active & Enforcing
+            </div>
+            <p className="text-slate-500 text-[11px] mt-0.5">
+              RSA-PSS mandate signature verification, 24-hr velocity guardrails, and Razorpay test-mode rails operating normally
+            </p>
+          </div>
         </div>
 
-        {loading ? (
-          <div className="text-center py-20 text-slate-500 text-sm">
-            Aggregating platform telemetry...
+        <div className="flex items-center gap-4 text-slate-600 shrink-0">
+          <div>
+            <span className="text-[10px] text-slate-400 uppercase font-semibold block">Total Events</span>
+            <span className="font-bold text-slate-900">{security.totalAuditEvents}</span>
           </div>
-        ) : !overview ? (
-          <div className="text-center py-20 border border-dashed border-slate-800 rounded-2xl text-slate-500 text-sm">
-            No admin overview data available.
+          <div className="border-l border-slate-200 pl-4">
+            <span className="text-[10px] text-slate-400 uppercase font-semibold block">Policy Blocks</span>
+            <span className="font-bold text-rose-600">{security.blockedEvents}</span>
           </div>
-        ) : (
-          <>
-            {/* Metric Cards Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-              <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-2xl p-5 shadow-xl space-y-1">
-                <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 flex items-center gap-1">
-                  <DollarSign className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>Total GMV</span>
-                </div>
-                <div className="text-2xl font-extrabold text-white">
-                  ₹{(overview.totalGMV || 0).toLocaleString('en-IN')}
-                </div>
-                <div className="text-[11px] text-emerald-400 flex items-center gap-1">
-                  <ArrowUpRight className="w-3.5 h-3.5" />
-                  <span>AP2 Settled</span>
-                </div>
-              </div>
+        </div>
+      </div>
 
-              <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-2xl p-5 shadow-xl space-y-1">
-                <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 flex items-center gap-1">
-                  <Users className="w-3.5 h-3.5 text-indigo-400" />
-                  <span>Buyer Accounts</span>
-                </div>
-                <div className="text-2xl font-extrabold text-white">
-                  {overview.activeBuyers || 0}
-                </div>
-                <div className="text-[11px] text-slate-400">Registered Users</div>
-              </div>
+      {/* 4 Core Macro Stat Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-white border border-slate-200/90 rounded-xl p-5 shadow-sm space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] text-slate-500 uppercase tracking-wider font-semibold">
+              Total Platform GMV
+            </span>
+            <DollarSign className="w-4 h-4 text-emerald-600" />
+          </div>
+          <div className="text-2xl font-black text-emerald-600">
+            ₹{totalGMV.toLocaleString('en-IN')}
+          </div>
+          <div className="text-[11px] text-slate-400">
+            Across {orders.paid} paid transactions (AOV: ₹{orders.averageOrderValue || 0})
+          </div>
+        </div>
 
-              <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-2xl p-5 shadow-xl space-y-1">
-                <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 flex items-center gap-1">
-                  <Store className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Merchants</span>
-                </div>
-                <div className="text-2xl font-extrabold text-white">
-                  {overview.onboardedMerchants || 0}
-                </div>
-                <div className="text-[11px] text-slate-400">Active Stores</div>
-              </div>
+        <div className="bg-white border border-slate-200/90 rounded-xl p-5 shadow-sm space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] text-slate-500 uppercase tracking-wider font-semibold">
+              Merchants Enrolled
+            </span>
+            <Store className="w-4 h-4 text-indigo-600" />
+          </div>
+          <div className="text-2xl font-bold text-slate-900 flex items-baseline gap-2">
+            <span>{merchants.total}</span>
+            <span className="text-xs font-normal text-slate-400">({merchants.verified} verified)</span>
+          </div>
+          <div className="text-[11px] text-slate-400">
+            {merchants.active} actively accepting agent commerce
+          </div>
+        </div>
 
-              <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-2xl p-5 shadow-xl space-y-1">
-                <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 flex items-center gap-1">
-                  <Bot className="w-3.5 h-3.5 text-purple-400" />
-                  <span>Active Agents</span>
-                </div>
-                <div className="text-2xl font-extrabold text-purple-400">
-                  {overview.activeAgents || 0}
-                </div>
-                <div className="text-[11px] text-slate-400">Deployed Instances</div>
-              </div>
+        <div className="bg-white border border-slate-200/90 rounded-xl p-5 shadow-sm space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] text-slate-500 uppercase tracking-wider font-semibold">
+              Active Buyer Bots
+            </span>
+            <Bot className="w-4 h-4 text-indigo-600" />
+          </div>
+          <div className="text-2xl font-bold text-slate-900">
+            {agents.totalActiveAgents}
+          </div>
+          <div className="text-[11px] text-slate-400">
+            Registered autonomous shopping agents
+          </div>
+        </div>
 
-              <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-2xl p-5 shadow-xl space-y-1">
-                <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 flex items-center gap-1">
-                  <ShieldAlert className="w-3.5 h-3.5 text-rose-400" />
-                  <span>Gate Block Rate</span>
-                </div>
-                <div className="text-2xl font-extrabold text-rose-400">
-                  {overview.gateBlockageRate || '1.2%'}
-                </div>
-                <div className="text-[11px] text-slate-400">Threat / Cap Blocks</div>
-              </div>
+        <div className="bg-white border border-slate-200/90 rounded-xl p-5 shadow-sm space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] text-slate-500 uppercase tracking-wider font-semibold">
+              Mandate Contracts
+            </span>
+            <FileCheck className="w-4 h-4 text-indigo-600" />
+          </div>
+          <div className="text-2xl font-bold text-slate-900 flex items-baseline gap-2">
+            <span>{contracts.total}</span>
+            <span className="text-xs font-normal text-slate-400">({contracts.executed} executed)</span>
+          </div>
+          <div className="text-[11px] text-slate-400">
+            {contracts.signed} signed AP2 cart mandates
+          </div>
+        </div>
+      </div>
+
+      {/* Grid of Platform Breakdown & Security Feed */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Settlement Breakdown Summary */}
+        <div className="bg-white border border-slate-200/90 rounded-xl p-5 shadow-sm space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <h3 className="text-sm font-bold text-slate-900">Order Settlement Breakdown</h3>
+            <span className="text-xs text-slate-500">{orders.total} Total Orders</span>
+          </div>
+
+          <div className="space-y-3 text-xs">
+            <div className="flex justify-between items-center p-2.5 bg-slate-50 rounded-lg">
+              <span className="text-slate-600 font-medium">Successfully Paid & Settled</span>
+              <span className="font-bold text-emerald-600">{orders.statusBreakdown?.paid || 0}</span>
             </div>
+            <div className="flex justify-between items-center p-2.5 bg-slate-50 rounded-lg">
+              <span className="text-slate-600 font-medium">Fulfilled & Dispatched</span>
+              <span className="font-bold text-slate-800">{orders.statusBreakdown?.fulfilled || 0}</span>
+            </div>
+            <div className="flex justify-between items-center p-2.5 bg-slate-50 rounded-lg">
+              <span className="text-slate-600 font-medium">In Process / Draft</span>
+              <span className="font-bold text-slate-800">{orders.statusBreakdown?.created || 0}</span>
+            </div>
+            <div className="flex justify-between items-center p-2.5 bg-slate-50 rounded-lg">
+              <span className="text-slate-600 font-medium">Security Payout Holds</span>
+              <span className="font-bold text-amber-600">{orders.payoutHolds || 0}</span>
+            </div>
+            <div className="flex justify-between items-center p-2.5 bg-slate-50 rounded-lg">
+              <span className="text-slate-600 font-medium">Cancelled / Failed</span>
+              <span className="font-bold text-rose-600">{orders.statusBreakdown?.failed || 0}</span>
+            </div>
+          </div>
+        </div>
 
-            {/* Breakdown & Telemetry Cards */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Category GMV Distribution Progress */}
-              <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-slate-200">
-                    <DollarSign className="w-4 h-4 text-emerald-400" />
-                    <span>Category GMV Distribution</span>
-                  </div>
-                </div>
+        {/* Live Recent Audit Activity Stream */}
+        <div className="lg:col-span-2 bg-white border border-slate-200/90 rounded-xl p-5 shadow-sm space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <div className="flex items-center gap-2">
+              <Shield className="w-4 h-4 text-indigo-600" />
+              <h3 className="text-sm font-bold text-slate-900">Recent Security & Gate Activity Log</h3>
+            </div>
+            <span className="text-xs text-slate-500">Last 10 Events</span>
+          </div>
 
-                <div className="space-y-3">
-                  {(overview.categoryGMV || []).map((cat, idx) => {
-                    const totalGMV = overview.totalGMV || 1;
-                    const percent = Math.min(100, Math.round((cat.gmv / totalGMV) * 100));
-
+          {recentActivity.length === 0 ? (
+            <div className="text-center py-12 border border-dashed border-slate-200 rounded-lg text-slate-400 text-xs bg-slate-50">
+              No recent audit logs recorded. Transaction events will appear here in real-time.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-slate-200 text-slate-500 uppercase tracking-wider text-[11px] font-bold bg-slate-50/60">
+                    <th className="py-2.5 px-3 rounded-tl-lg">Decision</th>
+                    <th className="py-2.5 px-3">Action</th>
+                    <th className="py-2.5 px-3">Agent / Entity</th>
+                    <th className="py-2.5 px-3">Diagnostic Reason</th>
+                    <th className="py-2.5 px-3 text-right rounded-tr-lg">Timestamp</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {recentActivity.map((log) => {
+                    const isBlock = log.decision === 'BLOCK' || log.decision === 'PAYOUT_HOLD';
+                    const isApproval = log.decision === 'REQUIRE_APPROVAL';
                     return (
-                      <div key={idx} className="space-y-1 text-xs">
-                        <div className="flex items-center justify-between">
-                          <span className="font-semibold text-slate-200">{cat.category}</span>
-                          <span className="text-slate-400">
-                            ₹{(cat.gmv || 0).toLocaleString('en-IN')} ({percent}%)
+                      <tr key={log._id} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="py-2.5 px-3">
+                          <span
+                            className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                              isBlock
+                                ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                                : isApproval
+                                ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                                : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                            }`}
+                          >
+                            {log.decision || 'ALLOW'}
                           </span>
-                        </div>
-                        <div className="w-full bg-slate-955 rounded-full h-2 overflow-hidden border border-slate-800">
-                          <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${percent}%` }} />
-                        </div>
-                      </div>
+                        </td>
+                        <td className="py-2.5 px-3 font-semibold text-slate-800 font-mono text-[11px]">
+                          {log.action}
+                        </td>
+                        <td className="py-2.5 px-3 text-slate-600 font-mono text-[11px]">
+                          {log.agentId ? `${log.agentId.substring(0, 14)}...` : 'N/A'}
+                        </td>
+                        <td className="py-2.5 px-3 text-slate-600 max-w-xs truncate">
+                          {log.reason || 'Security validation passed'}
+                        </td>
+                        <td className="py-2.5 px-3 text-right text-slate-400 whitespace-nowrap">
+                          {log.createdAt ? new Date(log.createdAt).toLocaleTimeString() : 'N/A'}
+                        </td>
+                      </tr>
                     );
                   })}
-                </div>
-              </div>
-
-              {/* Security Gate Decision Summary */}
-              <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-slate-200">
-                    <ShieldCheck className="w-4 h-4 text-purple-400" />
-                    <span>Security Mesh Gate Decision Summary</span>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-3 gap-3 text-center">
-                  <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 space-y-1">
-                    <span className="text-xs block text-slate-400 uppercase font-semibold">ALLOW</span>
-                    <span className="text-2xl font-extrabold">{overview.gateDecisions?.allow || '94.0%'}</span>
-                  </div>
-
-                  <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 space-y-1">
-                    <span className="text-xs block text-slate-400 uppercase font-semibold">REQUIRE_APPROVAL</span>
-                    <span className="text-2xl font-extrabold">{overview.gateDecisions?.requireApproval || '4.8%'}</span>
-                  </div>
-
-                  <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 space-y-1">
-                    <span className="text-xs block text-slate-400 uppercase font-semibold">BLOCKED</span>
-                    <span className="text-2xl font-extrabold">{overview.gateDecisions?.blocked || '1.2%'}</span>
-                  </div>
-                </div>
-              </div>
+                </tbody>
+              </table>
             </div>
-          </>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );

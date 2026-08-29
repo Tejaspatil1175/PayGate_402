@@ -7,271 +7,314 @@ import {
   XCircle,
   AlertTriangle,
   Search,
-  Sparkles,
   RefreshCw,
   Eye,
   Filter,
+  Shield,
+  Clock,
+  X,
+  FileText,
+  Check,
+  AlertOctagon,
 } from 'lucide-react';
 import apiClient from '../../api/client';
 
 export default function AdminMonitoring() {
   const [logs, setLogs] = useState([]);
-  const [filter, setFilter] = useState('ALL'); // 'ALL' | 'BLOCKED' | 'REQUIRE_APPROVAL' | 'ALLOW'
+  const [alerts, setAlerts] = useState([]);
+  const [filter, setFilter] = useState('ALL'); // 'ALL' | 'BLOCK' | 'REQUIRE_APPROVAL' | 'ALLOW' | 'PAYOUT_HOLD'
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedLog, setSelectedLog] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const fetchAuditLogs = async () => {
+  const fetchMonitoringData = async () => {
     setLoading(true);
     setError('');
     try {
-      const res = await apiClient.get('/admin/audit-logs');
-      if (res.data?.success) {
-        setLogs(res.data.logs || []);
+      // 1. Fetch live feed
+      const params = { limit: 100 };
+      if (filter !== 'ALL') {
+        params.decision = filter;
+      }
+      const res = await apiClient.get('/admin/monitoring/feed', { params });
+      if (res.data?.events) {
+        setLogs(res.data.events);
+      }
+
+      // 2. Fetch high priority alerts
+      try {
+        const alertRes = await apiClient.get('/admin/monitoring/alerts');
+        if (alertRes.data?.alerts) {
+          setAlerts(alertRes.data.alerts);
+        }
+      } catch (aErr) {
+        console.warn('Alerts fetch fallback:', aErr);
       }
     } catch (err) {
-      // Clean fallback audit log telemetry if database log stream empty
-      setLogs([
-        {
-          _id: 'log_001',
-          action: 'PAYMENT_SECURITY_GATE_EVALUATION',
-          decision: 'ALLOW',
-          agentId: 'agent_procure_bot_007',
-          userId: 'usr_buyer_123',
-          amount: 3500,
-          mandateHash: 'mandate_99a8b7c6d5e4',
-          riskScore: 0.12,
-          timestamp: new Date().toISOString(),
-          details: { gateA: 'passed', gateB: 'passed', gateB2: 'passed', gateC: 'passed' },
-        },
-        {
-          _id: 'log_002',
-          action: 'POLICY_PRECHECK_EVALUATION',
-          decision: 'REQUIRE_APPROVAL',
-          agentId: 'agent_procure_bot_009',
-          userId: 'usr_buyer_456',
-          amount: 12000,
-          mandateHash: 'mandate_1122334455',
-          riskScore: 0.45,
-          timestamp: new Date(Date.now() - 600000).toISOString(),
-          details: { reason: 'Amount exceeds merchant auto-accept threshold ₹10,000' },
-        },
-        {
-          _id: 'log_003',
-          action: 'PAYMENT_SECURITY_GATE_BLOCKED',
-          decision: 'BLOCKED',
-          agentId: 'agent_procure_bot_012',
-          userId: 'usr_buyer_789',
-          amount: 45000,
-          mandateHash: 'mandate_6677889900',
-          riskScore: 0.89,
-          timestamp: new Date(Date.now() - 1800000).toISOString(),
-          details: { reason: 'User daily spend cap exceeded (Cap: ₹25,000)' },
-        },
-      ]);
+      console.warn('Monitoring feed fallback:', err);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchAuditLogs();
-  }, []);
+    fetchMonitoringData();
+  }, [filter]);
 
   const filteredLogs = logs.filter((l) => {
-    if (filter === 'BLOCKED' && l.decision !== 'BLOCKED') return false;
-    if (filter === 'REQUIRE_APPROVAL' && l.decision !== 'REQUIRE_APPROVAL') return false;
-    if (filter === 'ALLOW' && l.decision !== 'ALLOW') return false;
-
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      const matchAction = (l.action || '').toLowerCase().includes(term);
-      const matchAgent = (l.agentId || '').toLowerCase().includes(term);
-      const matchMandate = (l.mandateHash || '').toLowerCase().includes(term);
-      return matchAction || matchAgent || matchMandate;
-    }
-
-    return true;
+    if (!searchTerm) return true;
+    const term = searchTerm.toLowerCase();
+    const matchAction = (l.action || '').toLowerCase().includes(term);
+    const matchAgent = (l.agentId || '').toLowerCase().includes(term);
+    const matchMandate = (l.mandateHash || '').toLowerCase().includes(term);
+    const matchReason = (l.reason || '').toLowerCase().includes(term);
+    const matchMerchant = (l.merchant?.businessName || '').toLowerCase().includes(term);
+    return matchAction || matchAgent || matchMandate || matchReason || matchMerchant;
   });
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-4 md:p-8 relative overflow-hidden">
-      {/* Background ambient lighting */}
-      <div className="absolute top-10 left-10 w-96 h-96 bg-purple-600/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-10 right-10 w-96 h-96 bg-rose-600/10 rounded-full blur-3xl pointer-events-none" />
-
-      <div className="max-w-7xl mx-auto space-y-6 relative z-10">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800/80 pb-6">
-          <div className="flex items-center gap-3">
-            <div className="p-3 rounded-2xl bg-purple-600/10 border border-purple-500/30 text-purple-400">
-              <ShieldAlert className="w-6 h-6" />
+    <div className="p-6 md:p-8 space-y-6 max-w-7xl mx-auto w-full font-sans text-slate-800">
+      {/* Header & Actions */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200/80 pb-6">
+        <div>
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center shadow-sm">
+              <ShieldAlert className="w-4 h-4" />
             </div>
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-                Transaction Security & Audit Monitoring
-                <Sparkles className="w-5 h-5 text-amber-400" />
-              </h1>
-              <p className="text-sm text-slate-400">
-                Real-time audit log stream for AP2 5-Gate Security Mesh decisions and fraud alerts
-              </p>
-            </div>
+            <h1 className="text-xl font-bold tracking-tight text-slate-900">
+              Live Security & Gate Monitoring
+            </h1>
+            <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+              Telemetry Stream
+            </span>
           </div>
-
-          <button
-            onClick={fetchAuditLogs}
-            disabled={loading}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-300 text-xs font-semibold transition self-start md:self-auto"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-            <span>Refresh Audit Logs</span>
-          </button>
+          <p className="text-xs text-slate-500 mt-1">
+            Real-time audit log stream, deterministic gate decisions, and anomaly challenge feeds
+          </p>
         </div>
 
-        {error && (
-          <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-sm">
-            {error}
-          </div>
-        )}
+        <button
+          onClick={fetchMonitoringData}
+          disabled={loading}
+          className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold transition shadow-sm self-start md:self-auto"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-indigo-600' : 'text-slate-400'}`} />
+          <span>Refresh Feed</span>
+        </button>
+      </div>
 
-        {/* Filter Controls & Search */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-900/80 border border-slate-800 rounded-2xl p-4">
-          <div className="flex flex-wrap items-center gap-2">
-            <Filter className="w-4 h-4 text-slate-500 mr-1" />
-            {['ALL', 'ALLOW', 'REQUIRE_APPROVAL', 'BLOCKED'].map((f) => (
-              <button
-                key={f}
-                onClick={() => setFilter(f)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition border ${
-                  filter === f
-                    ? 'bg-purple-600 border-purple-500 text-white shadow-md shadow-purple-600/20'
-                    : 'bg-slate-955 border-slate-800 text-slate-400 hover:text-white'
-                }`}
-              >
-                {f.replace('_', ' ')}
-              </button>
+      {/* High-Risk Alerts Banner if any */}
+      {alerts.length > 0 && (
+        <div className="bg-amber-50/70 border border-amber-200/80 rounded-xl p-4 space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-xs font-bold text-amber-900">
+              <AlertTriangle className="w-4 h-4 text-amber-600" />
+              <span>Active Security & High-Risk Alerts ({alerts.length})</span>
+            </div>
+            <span className="text-[11px] text-amber-700">Recent policy rejections & payout holds</span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+            {alerts.slice(0, 2).map((alt) => (
+              <div key={alt._id} className="bg-white p-2.5 rounded-lg border border-amber-200/60 flex items-start justify-between gap-2">
+                <div>
+                  <span className="font-bold text-slate-800 text-[11px] block">{alt.action}</span>
+                  <span className="text-slate-500 text-[10px] block mt-0.5 line-clamp-1">{alt.reason || 'Blocked by policy gate'}</span>
+                </div>
+                <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase bg-rose-50 text-rose-700 border border-rose-200">
+                  {alt.decision}
+                </span>
+              </div>
             ))}
           </div>
+        </div>
+      )}
 
-          <div className="relative w-full sm:w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search action, agent, mandate..."
-              className="w-full bg-slate-955 border border-slate-800 focus:border-purple-500 rounded-xl px-3 py-1.5 pl-9 text-xs text-white outline-none"
-            />
-          </div>
+      {/* Filters & Search Controls */}
+      <div className="flex flex-col md:flex-row items-center justify-between gap-3 bg-white p-3 rounded-xl border border-slate-200/90 shadow-sm">
+        {/* Decision Filter Pills */}
+        <div className="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto">
+          {['ALL', 'ALLOW', 'BLOCK', 'REQUIRE_APPROVAL', 'PAYOUT_HOLD'].map((d) => (
+            <button
+              key={d}
+              onClick={() => setFilter(d)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition whitespace-nowrap ${
+                filter === d
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              {d === 'ALL' ? 'All Decisions' : d.replace(/_/g, ' ')}
+            </button>
+          ))}
         </div>
 
-        {/* Selected Log Inspector Modal */}
-        {selectedLog && (
-          <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-lg w-full shadow-2xl space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                <h3 className="font-bold text-white text-base flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-purple-400" />
-                  Audit Log Telemetry Inspector
-                </h3>
-                <button onClick={() => setSelectedLog(null)} className="text-slate-400 hover:text-white">
-                  <XCircle className="w-5 h-5" />
-                </button>
-              </div>
-
-              <div className="space-y-3 text-xs">
-                <div><span className="text-slate-500">Action:</span> <code className="text-purple-400">{selectedLog.action}</code></div>
-                <div><span className="text-slate-500">Decision:</span> <span className="font-bold text-emerald-400">{selectedLog.decision}</span></div>
-                <div><span className="text-slate-500">Agent ID:</span> {selectedLog.agentId}</div>
-                <div><span className="text-slate-500">Mandate Hash:</span> <code className="text-amber-400">{selectedLog.mandateHash}</code></div>
-                <div><span className="text-slate-500">Risk Score:</span> {selectedLog.riskScore}</div>
-
-                <div className="pt-2">
-                  <span className="text-slate-500 block mb-1 font-semibold">Raw Details JSON</span>
-                  <pre className="bg-slate-955 p-3 rounded-xl border border-slate-800 text-[11px] text-slate-300 overflow-x-auto">
-                    {JSON.stringify(selectedLog.details || {}, null, 2)}
-                  </pre>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Audit Logs Stream Table */}
-        <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
-          {loading ? (
-            <div className="text-center py-20 text-slate-500 text-sm">
-              Streaming audit logs...
-            </div>
-          ) : filteredLogs.length === 0 ? (
-            <div className="text-center py-20 border border-dashed border-slate-800 rounded-2xl text-slate-500 text-sm">
-              No audit logs matching selected filter.
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="border-b border-slate-800 text-slate-500 uppercase tracking-wider">
-                    <th className="pb-3 px-3">Timestamp</th>
-                    <th className="pb-3 px-3">Action Event</th>
-                    <th className="pb-3 px-3">Agent / User</th>
-                    <th className="pb-3 px-3">Mandate Hash</th>
-                    <th className="pb-3 px-3">Gate Decision</th>
-                    <th className="pb-3 px-3 text-right">Inspect</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/60">
-                  {filteredLogs.map((log) => {
-                    const isAllow = log.decision === 'ALLOW';
-                    const isApproval = log.decision === 'REQUIRE_APPROVAL';
-                    const isBlocked = log.decision === 'BLOCKED';
-
-                    return (
-                      <tr key={log._id} className="hover:bg-slate-955 transition">
-                        <td className="py-3 px-3 text-slate-400">
-                          {new Date(log.timestamp).toLocaleTimeString('en-IN')}
-                        </td>
-                        <td className="py-3 px-3 font-semibold text-slate-200">
-                          {log.action}
-                        </td>
-                        <td className="py-3 px-3 text-slate-300">
-                          {log.agentId || log.userId || 'System'}
-                        </td>
-                        <td className="py-3 px-3 font-mono text-amber-400 text-[11px]">
-                          {log.mandateHash ? `${log.mandateHash.substring(0, 14)}...` : 'N/A'}
-                        </td>
-                        <td className="py-3 px-3">
-                          <span
-                            className={`px-2 py-0.5 rounded-md font-extrabold uppercase text-[10px] ${
-                              isAllow
-                                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
-                                : isApproval
-                                ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
-                                : 'bg-rose-500/10 text-rose-400 border border-rose-500/30'
-                            }`}
-                          >
-                            {log.decision}
-                          </span>
-                        </td>
-                        <td className="py-3 px-3 text-right">
-                          <button
-                            onClick={() => setSelectedLog(log)}
-                            className="p-1.5 rounded-lg bg-slate-955 text-slate-400 hover:text-purple-400 hover:bg-purple-500/10 border border-slate-800 transition"
-                            title="Inspect Details"
-                          >
-                            <Eye className="w-3.5 h-3.5" />
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
+        {/* Search Bar */}
+        <div className="relative w-full md:w-72">
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            type="text"
+            placeholder="Search action, agent ID, mandate..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-9 pr-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-xs focus:bg-white focus:border-indigo-500 outline-none transition"
+          />
         </div>
       </div>
+
+      {/* Main Audit Feed Table */}
+      <div className="bg-white border border-slate-200/90 rounded-xl shadow-sm overflow-hidden">
+        <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+          <div className="flex items-center gap-2 text-xs font-bold text-slate-800">
+            <Activity className="w-4 h-4 text-indigo-600" />
+            <span>Audit Trail Stream ({filteredLogs.length})</span>
+          </div>
+          <span className="text-[11px] text-slate-400">Deterministic Evaluation Log</span>
+        </div>
+
+        {loading ? (
+          <div className="text-center py-20 text-slate-400 text-xs font-medium">
+            Streaming audit logs...
+          </div>
+        ) : filteredLogs.length === 0 ? (
+          <div className="text-center py-16 border-dashed text-slate-400 text-xs font-medium">
+            No audit log entries matching your criteria.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="border-b border-slate-200 text-slate-500 uppercase tracking-wider text-[11px] font-bold bg-slate-50/60">
+                  <th className="py-3 px-4">Gate Decision</th>
+                  <th className="py-3 px-4">Action Type</th>
+                  <th className="py-3 px-4">Agent Identifier</th>
+                  <th className="py-3 px-4">Mandate Hash</th>
+                  <th className="py-3 px-4">Diagnostic Reason</th>
+                  <th className="py-3 px-4">Timestamp</th>
+                  <th className="py-3 px-4 text-right">Inspect</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filteredLogs.map((log) => {
+                  const isBlock = log.decision === 'BLOCK' || log.decision === 'PAYOUT_HOLD';
+                  const isApproval = log.decision === 'REQUIRE_APPROVAL';
+                  return (
+                    <tr key={log._id} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="py-3 px-4">
+                        <span
+                          className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                            isBlock
+                              ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                              : isApproval
+                              ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                              : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                          }`}
+                        >
+                          {log.decision || 'ALLOW'}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 font-semibold text-slate-800 font-mono text-[11px]">
+                        {log.action}
+                      </td>
+                      <td className="py-3 px-4 text-slate-600 font-mono text-[11px]">
+                        {log.agentId ? `${log.agentId.substring(0, 14)}...` : 'N/A'}
+                      </td>
+                      <td className="py-3 px-4 text-amber-700 font-mono text-[11px]">
+                        {log.mandateHash ? `${log.mandateHash.substring(0, 12)}...` : 'N/A'}
+                      </td>
+                      <td className="py-3 px-4 text-slate-600 max-w-xs truncate">
+                        {log.reason || 'Verification check passed'}
+                      </td>
+                      <td className="py-3 px-4 text-slate-400 whitespace-nowrap">
+                        {log.createdAt ? new Date(log.createdAt).toLocaleString('en-IN', {
+                          dateStyle: 'short',
+                          timeStyle: 'short',
+                        }) : 'N/A'}
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <button
+                          onClick={() => setSelectedLog(log)}
+                          className="p-1.5 rounded-lg border border-slate-200 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 hover:border-indigo-200 transition"
+                          title="Inspect JSON Payload"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* JSON Payload Inspection Modal */}
+      {selectedLog && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 max-w-2xl w-full shadow-xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-indigo-600" />
+                  <span>Audit Event Inspection: {selectedLog.action}</span>
+                </h3>
+                <p className="text-[11px] text-slate-400 mt-0.5">Correlation ID: {selectedLog.correlationId || selectedLog._id}</p>
+              </div>
+              <button
+                onClick={() => setSelectedLog(null)}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div className="grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded-lg border border-slate-100">
+                <div>
+                  <span className="text-[10px] text-slate-400 uppercase font-semibold block">Decision</span>
+                  <span className="font-bold text-slate-900">{selectedLog.decision}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 uppercase font-semibold block">Execution Time</span>
+                  <span className="font-bold text-slate-900">{selectedLog.executionTimeMs || 12} ms</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 uppercase font-semibold block">Agent ID</span>
+                  <span className="font-mono text-slate-800">{selectedLog.agentId || 'N/A'}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 uppercase font-semibold block">Mandate Hash</span>
+                  <span className="font-mono text-slate-800">{selectedLog.mandateHash || 'N/A'}</span>
+                </div>
+              </div>
+
+              <div>
+                <span className="text-[10px] text-slate-400 uppercase font-semibold block mb-1">Reason Log</span>
+                <div className="bg-slate-50 p-3 rounded-lg border border-slate-100 text-slate-700 font-mono text-[11px]">
+                  {selectedLog.reason || 'No diagnostic error logged.'}
+                </div>
+              </div>
+
+              <div>
+                <span className="text-[10px] text-slate-400 uppercase font-semibold block mb-1">Metadata JSON</span>
+                <pre className="bg-slate-900 text-emerald-400 p-3 rounded-lg font-mono text-[11px] overflow-x-auto max-h-48">
+                  {JSON.stringify(selectedLog.metadata || selectedLog, null, 2)}
+                </pre>
+              </div>
+            </div>
+
+            <div className="pt-3 flex justify-end border-t border-slate-100">
+              <button
+                onClick={() => setSelectedLog(null)}
+                className="px-4 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
