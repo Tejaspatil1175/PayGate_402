@@ -91,11 +91,10 @@ export default function Login() {
                   setActiveTab(tab.id);
                   setError('');
                 }}
-                className={`flex-1 flex items-center justify-center gap-1.5 sm:gap-2 py-2 sm:py-2.5 rounded-lg text-xs font-semibold tracking-wide transition cursor-pointer ${
-                  isActive
+                className={`flex-1 flex items-center justify-center gap-1.5 sm:gap-2 py-2 sm:py-2.5 rounded-lg text-xs font-semibold tracking-wide transition cursor-pointer ${isActive
                     ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
                     : 'text-[#57534E] hover:text-[#120F0B] hover:bg-white/60'
-                }`}
+                  }`}
               >
                 <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 <span>{tab.label}</span>
@@ -126,8 +125,8 @@ export default function Login() {
                   activeTab === 'admin'
                     ? 'admin@example.com'
                     : activeTab === 'merchant'
-                    ? 'merchant@store.com'
-                    : 'pranav@gmail.com'
+                      ? 'merchant@store.com'
+                      : 'pranav@gmail.com'
                 }
                 className="w-full bg-white border border-[#E7E2D6] focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600 rounded-xl px-3.5 py-2.5 sm:py-3 pl-10 sm:pl-11 text-xs sm:text-sm text-[#120F0B] placeholder-[#A8A29E] outline-none transition shadow-2xs"
               />

@@ -300,6 +300,17 @@ export default function VoiceAssistant() {
     handleExecuteNegotiationRef.current = handleExecuteNegotiation;
   });
 
+  const isMobile = typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+  const getSupportedAudioMimeType = () => {
+    if (typeof MediaRecorder === 'undefined' || !MediaRecorder.isTypeSupported) return 'audio/webm';
+    const types = ['audio/webm', 'audio/mp4', 'audio/aac', 'audio/ogg', 'audio/wav'];
+    for (const t of types) {
+      if (MediaRecorder.isTypeSupported(t)) return t;
+    }
+    return 'audio/webm';
+  };
+
   const startRecording = async () => {
     try {
       manualStopRef.current = false;
@@ -311,79 +322,94 @@ export default function VoiceAssistant() {
 
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (SpeechRecognition) {
-        const recognition = new SpeechRecognition();
-        recognition.continuous = true;
-        recognition.interimResults = true;
-        recognition.lang = 'en-IN';
+        try {
+          const recognition = new SpeechRecognition();
+          recognition.continuous = !isMobile;
+          recognition.interimResults = true;
+          recognition.lang = 'en-IN';
 
-        let finalSpeechText = '';
+          let finalSpeechText = '';
 
-        recognition.onresult = (event) => {
-          // If assistant was speaking, instantly mute & cancel it
-          if (window.speechSynthesis && window.speechSynthesis.speaking) {
-            window.speechSynthesis.cancel();
-            setIsSpeaking(false);
-          }
-
-          let interimText = '';
-          for (let i = event.resultIndex; i < event.results.length; ++i) {
-            if (event.results[i].isFinal) {
-              finalSpeechText += ' ' + event.results[i][0].transcript;
-            } else {
-              interimText += ' ' + event.results[i][0].transcript;
+          recognition.onresult = (event) => {
+            if (window.speechSynthesis && window.speechSynthesis.speaking) {
+              window.speechSynthesis.cancel();
+              setIsSpeaking(false);
             }
-          }
-          const currentText = (finalSpeechText || interimText).trim();
-          if (currentText && !manualStopRef.current) {
-            setTranscript(currentText);
 
-            // Auto-send after 1.6s of speech silence
-            if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
-            silenceTimerRef.current = setTimeout(() => {
-              if (currentText.length > 1 && !manualStopRef.current) {
-                const textToSend = currentText;
-                setTranscript('');
-                stopRecording(false);
-                if (handleSendTextRef.current) {
-                  handleSendTextRef.current(textToSend);
-                }
+            let interimText = '';
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+              if (event.results[i].isFinal) {
+                finalSpeechText += ' ' + event.results[i][0].transcript;
+              } else {
+                interimText += ' ' + event.results[i][0].transcript;
               }
-            }, 1600);
-          }
-        };
+            }
+            const currentText = (finalSpeechText || interimText).trim();
+            if (currentText && !manualStopRef.current) {
+              setTranscript(currentText);
 
-        recognition.onerror = (e) => {
-          console.warn('SpeechRecognition error:', e);
-        };
+              if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+              silenceTimerRef.current = setTimeout(() => {
+                if (currentText.length > 1 && !manualStopRef.current) {
+                  const textToSend = currentText;
+                  setTranscript('');
+                  stopRecording(false);
+                  if (handleSendTextRef.current) {
+                    handleSendTextRef.current(textToSend);
+                  }
+                }
+              }, 1500);
+            }
+          };
 
-        recognition.onend = () => {
-          setIsRecording(false);
-          clearInterval(recordingTimerRef.current);
-          if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
-          // Only auto-restart if user did not manually tap stop and assistant is not actively speaking/loading
-          if (!manualStopRef.current && !isSpeaking) {
-            setTimeout(() => {
-              if (!manualStopRef.current && !isSpeaking) startRecording();
-            }, 500);
-          }
-        };
+          recognition.onerror = (e) => {
+            console.warn('SpeechRecognition error, falling back to MediaRecorder:', e);
+            try {
+              recognition.abort();
+            } catch (_) {}
+            recognitionRef.current = null;
+            startMediaRecorderFallback();
+          };
 
-        recognition.start();
-        recognitionRef.current = recognition;
-        setIsRecording(true);
-        setRecordingDuration(0);
+          recognition.onend = () => {
+            setIsRecording(false);
+            clearInterval(recordingTimerRef.current);
+            if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+            if (!manualStopRef.current && !isSpeaking) {
+              setTimeout(() => {
+                if (!manualStopRef.current && !isSpeaking) startRecording();
+              }, 400);
+            }
+          };
 
-        recordingTimerRef.current = setInterval(() => {
-          setRecordingDuration((prev) => prev + 1);
-        }, 1000);
-        return;
+          recognition.start();
+          recognitionRef.current = recognition;
+          setIsRecording(true);
+          setRecordingDuration(0);
+
+          recordingTimerRef.current = setInterval(() => {
+            setRecordingDuration((prev) => prev + 1);
+          }, 1000);
+          return;
+        } catch (e) {
+          console.warn('SpeechRecognition start failed, using MediaRecorder:', e);
+        }
       }
 
-      // Fallback: MediaRecorder Audio Blob with Voice Activity Detection (VAD)
+      await startMediaRecorderFallback();
+    } catch (err) {
+      console.error('Error accessing microphone:', err);
+      setIsRecording(false);
+    }
+  };
+
+  const startMediaRecorderFallback = async () => {
+    try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       audioChunksRef.current = [];
 
-      const mediaRecorder = new MediaRecorder(stream);
+      const mimeType = getSupportedAudioMimeType();
+      const mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
       mediaRecorderRef.current = mediaRecorder;
 
       const audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -401,7 +427,7 @@ export default function VoiceAssistant() {
       let vadInterval;
 
       mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
+        if (event.data && event.data.size > 0) {
           audioChunksRef.current.push(event.data);
         }
       };
@@ -409,22 +435,26 @@ export default function VoiceAssistant() {
       mediaRecorder.onstop = () => {
         clearInterval(vadInterval);
         if (audioContext.state !== 'closed') {
-          audioContext.close();
+          try {
+            audioContext.close();
+          } catch (_) {}
         }
         stream.getTracks().forEach((track) => track.stop());
         clearInterval(recordingTimerRef.current);
-        
-        // Only upload audio if not a manual stop cancellation
+
         if (!manualStopRef.current && audioChunksRef.current.length > 0) {
-          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-          if (handleAudioUploadRef.current) handleAudioUploadRef.current(audioBlob);
+          const recordedMime = mediaRecorder.mimeType || mimeType || 'audio/webm';
+          const audioBlob = new Blob(audioChunksRef.current, { type: recordedMime });
+          if (handleAudioUploadRef.current) {
+            handleAudioUploadRef.current(audioBlob, recordedMime);
+          }
         }
         audioChunksRef.current = [];
-        
+
         if (!manualStopRef.current && !isSpeaking) {
           setTimeout(() => {
             if (!manualStopRef.current && !isSpeaking) startRecording();
-          }, 500);
+          }, 400);
         }
       };
 
@@ -437,14 +467,11 @@ export default function VoiceAssistant() {
         const sum = dataArray.reduce((a, b) => a + b, 0);
         const avg = sum / bufferLength;
 
-        if (avg > 10) { // Speech detected
-          if (!isSpeakingNow) {
-            isSpeakingNow = true;
-          }
+        if (avg > 10) {
+          if (!isSpeakingNow) isSpeakingNow = true;
           silenceStart = Date.now();
         } else {
-          // 1.8 seconds of silence -> auto send
-          if (isSpeakingNow && (Date.now() - silenceStart > 1800)) {
+          if (isSpeakingNow && Date.now() - silenceStart > 1600) {
             isSpeakingNow = false;
             if (mediaRecorder.state !== 'inactive') {
               stopRecording(false);
@@ -457,7 +484,7 @@ export default function VoiceAssistant() {
         setRecordingDuration((prev) => prev + 1);
       }, 1000);
     } catch (err) {
-      console.error('Error accessing microphone:', err);
+      console.error('MediaRecorder fallback error:', err);
       setIsRecording(false);
     }
   };
@@ -547,19 +574,19 @@ export default function VoiceAssistant() {
     return () => clearTimeout(timer);
   }, []);
 
-  const handleAudioUpload = async (audioBlob) => {
+  const handleAudioUpload = async (audioBlob, mimeType = 'audio/webm') => {
     setLoading(true);
     setPipelineStage('transcribing');
 
     try {
+      const ext = mimeType.includes('mp4') ? 'mp4' : mimeType.includes('aac') ? 'aac' : mimeType.includes('ogg') ? 'ogg' : 'webm';
       const formData = new FormData();
-      formData.append('audio', audioBlob, 'recording.webm');
+      formData.append('audio', audioBlob, `recording_${Date.now()}.${ext}`);
+      formData.append('mimeType', mimeType);
       formData.append('history', JSON.stringify(getRecentHistory()));
       if (lastContextRef.current) formData.append('lastContext', JSON.stringify(lastContextRef.current));
 
-      const res = await apiClient.post('/voice/transcribe-audio', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+      const res = await apiClient.post('/voice/transcribe-audio', formData);
 
       if (res.data?.success) {
         const { rawTranscript, intent, confirmationGate, isConfirmPurchase } = res.data;

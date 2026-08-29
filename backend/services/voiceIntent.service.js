@@ -71,7 +71,7 @@ async function parseVoiceIntent(transcript, userId, history = [], lastContext = 
   const geminiKey = process.env.GEMINI_API_KEY || '';
   if (geminiKey) {
     try {
-      const prompt = `You are KAIRO, an intelligent voice commerce AI for PayGate 402 (Autonomous Agent Payment Protocol AP2 / x402).
+      const prompt = `You are Tejas, an intelligent voice commerce AI for PayGate 402 (Autonomous Agent Payment Protocol AP2 / x402).
 
 Recent conversation:
 ${historyBlock}
@@ -226,8 +226,8 @@ function ruleBasedIntentParser(transcript, lastContext = null) {
 
   // Phonetic & Misspelling Normalization for Indian/Global accents
   const normalized = lower
-    // Kairo name mishearings & mispronunciations
-    .replace(/\b(kiaro|cairo|kyro|kiero|chiro|kero|kayro|karo|kaero|hiro|kiro|hero|keiro|kairu|kairon|kailo|kaito|kaido|kearo|gyro|caero|kai\s*ro|ki\s*aro|kay\s*ro)\b/gi, 'kairo')
+    // Tejas name mishearings & mispronunciations
+    .replace(/\b(tejas|tejaz|tijas|tijaz|tejus|thejas|kiaro|cairo|kyro|kiero|chiro|kero|kayro|karo|kaero|hiro|kiro|hero|keiro|kairu|kairon|kailo|kaito|kaido|kearo|gyro|caero|kai\s*ro|ki\s*aro|kay\s*ro)\b/gi, 'tejas')
     // Action verb variations
     .replace(/\b(by|bay|kharid|kharido|lena|mangao|mangwana|order|buk|book|booking|layna)\b/gi, 'buy')
     // Track / Delivery variations
@@ -255,11 +255,11 @@ function ruleBasedIntentParser(transcript, lastContext = null) {
     } else if (normalized.includes('what are you doing') || normalized.includes('what r u doing') || normalized.includes('kya kar rahe')) {
       answer = 'I am actively monitoring merchant catalogs, evaluating cryptographic payment mandates, and standing by to help you buy products or track orders!';
     } else if (normalized.includes('stop') || normalized.includes('pause') || normalized.includes('wait') || normalized.includes('hold on') || normalized.includes('ruko') || normalized.includes('bas')) {
-      answer = 'Understood! I will pause here. Whenever you are ready to shop, negotiate deals, or check orders, just say "Hey Kairo".';
+      answer = 'Understood! I will pause here. Whenever you are ready to shop, negotiate deals, or check orders, just say "Hey Tejas".';
     } else if (normalized.includes('feature') || normalized.includes('what can you do') || normalized.includes('capabilities') || normalized.includes('what you provide')) {
-      answer = 'Here are my core capabilities as Kairo:\n• 🎙️ Natural Voice Commerce: Speak or type in real-time.\n• 🤝 Autonomous Price Negotiation: Negotiate 10-15% discounts with merchants.\n• 🔐 Cryptographic Cart Mandates: RSA-PSS 2048-bit mandate signing.\n• 💳 Real-time AP2 Wallet: Instant ledger debit and zero-double-credit idempotency.\n• 📦 Autonomous Order Tracking: Live fulfillment and delivery status.';
-    } else if (normalized.includes('name') || normalized.includes('who are you') || normalized.includes('naam') || normalized.includes('kairo')) {
-      answer = 'Hello! I am KAIRO — your Crypto-Agent Payment Intelligence Assistant for PayGate 402. I handle machine-to-machine negotiations, client-side mandate signing, and autonomous payments.';
+      answer = 'Here are my core capabilities as Tejas:\n• 🎙️ Natural Voice Commerce: Speak or type in real-time.\n• 🤝 Autonomous Price Negotiation: Negotiate 10-15% discounts with merchants.\n• 🔐 Cryptographic Cart Mandates: RSA-PSS 2048-bit mandate signing.\n• 💳 Real-time AP2 Wallet: Instant ledger debit and zero-double-credit idempotency.\n• 📦 Autonomous Order Tracking: Live fulfillment and delivery status.';
+    } else if (normalized.includes('name') || normalized.includes('who are you') || normalized.includes('naam') || normalized.includes('tejas')) {
+      answer = 'Hello! I am Tejas — your Crypto-Agent Payment Intelligence Assistant for PayGate 402. I handle machine-to-machine negotiations, client-side mandate signing, and autonomous payments.';
     } else if (normalized.includes('ap2') || normalized.includes('paygate') || normalized.includes('mesh')) {
       answer = 'PayGate 402 is an Agentic Payment Integrity Mesh implementing the AP2 & x402 protocols for secure, machine-to-machine autonomous commerce with client-side RSA-PSS mandates.';
     } else if (normalized.includes('negotiat') || normalized.includes('discount') || normalized.includes('bargain') || normalized.includes('offer')) {
@@ -277,13 +277,13 @@ function ruleBasedIntentParser(transcript, lastContext = null) {
     } else if (normalized.includes('thank') || normalized.includes('dhanyawad') || normalized.includes('shukriya') || normalized.includes('great')) {
       answer = "You're very welcome! Let me know whenever you want to search products, check deals, or settle orders.";
     } else if (normalized.includes('bye') || normalized.includes('goodbye') || normalized.includes('alvida')) {
-      answer = 'Goodbye! Have a great day ahead. Feel free to say "Hey Kairo" whenever you need anything!';
+      answer = 'Goodbye! Have a great day ahead. Feel free to say "Hey Tejas" whenever you need anything!';
     } else if (normalized.includes('joke') || normalized.includes('hasao')) {
       answer = 'Why did the autonomous agent go to the store? To negotiate a deal it could not refuse!';
     } else if (normalized.includes('weather') || normalized.includes('time') || normalized.includes('samay')) {
       answer = `Right now the local time is ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}. For commerce and shopping, it's always a good time to find deals!`;
     } else {
-      answer = `I am KAIRO, listening! You can ask me questions about your wallet, orders, or ask me to find products like "Buy running shoes under 3000". How can I assist you?`;
+      answer = `I am Tejas, listening! You can ask me questions about your wallet, orders, or ask me to find products like "Buy running shoes under 3000". How can I assist you?`;
     }
 
     return {

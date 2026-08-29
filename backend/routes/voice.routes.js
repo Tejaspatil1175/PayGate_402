@@ -83,7 +83,7 @@ router.post('/execute-purchase', async (req, res) => {
     const newOrder = await Order.create({
       merchant: merchantDoc._id,
       orderId,
-      agentId: 'kairo_voice_agent',
+      agentId: 'tejas_voice_agent',
       mandateHash,
       items: [{
         product: product._id || undefined,
@@ -95,7 +95,7 @@ router.post('/execute-purchase', async (req, res) => {
       }],
       amount,
       status: 'paid',
-      customer: { name: 'KAIRO Voice Buyer' },
+      customer: { name: 'Tejas Voice Buyer' },
       gateDecision: { passed: true, reason: 'AP2 autonomous voice mandate signed' },
     });
 
