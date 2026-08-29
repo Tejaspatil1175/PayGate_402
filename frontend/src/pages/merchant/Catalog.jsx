@@ -47,7 +47,8 @@ export default function MerchantCatalog() {
       const merchantId = merchant?._id || merchant?.id;
 
       const res = await apiClient.get('/catalog', {
-        params: { merchantId },
+        params: { merchantId, merchant: merchantId },
+        headers: merchantId ? { 'x-merchant-id': merchantId } : {},
       });
 
       if (res.data?.success) {

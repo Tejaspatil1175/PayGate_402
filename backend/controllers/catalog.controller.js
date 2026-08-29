@@ -312,11 +312,12 @@ exports.createProduct = async (req, res) => {
 // @route   GET /api/catalog
 exports.getProducts = async (req, res) => {
   try {
-    const { merchant, category, search, availableOnly } = req.query;
+    const { merchant, merchantId, category, search, availableOnly } = req.query;
     const filter = {};
 
-    if (merchant || req.headers['x-merchant-id']) {
-      filter.merchant = merchant || req.headers['x-merchant-id'];
+    const targetMerchant = merchant || merchantId || req.headers['x-merchant-id'];
+    if (targetMerchant && targetMerchant !== 'undefined' && targetMerchant !== 'null') {
+      filter.merchant = targetMerchant;
     }
 
     if (category) {
