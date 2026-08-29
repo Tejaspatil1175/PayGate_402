@@ -415,11 +415,11 @@ export default function MerchantCatalog() {
           {products.map((p) => (
             <div
               key={p._id}
-              className="bg-white border border-slate-200 hover:border-indigo-300 rounded-2xl p-4 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between group relative"
+              className="bg-white border border-slate-200 hover:border-indigo-300 rounded-2xl p-4 shadow-xs hover:shadow-md transition duration-150 flex flex-col justify-between group relative h-full"
             >
               <div className="space-y-3">
                 {/* Product Image Banner */}
-                <div className="relative w-full h-44 rounded-xl overflow-hidden bg-slate-50 border border-slate-100 group/img">
+                <div className="relative w-full h-44 rounded-xl overflow-hidden bg-slate-100 border border-slate-100 shrink-0">
                   <img
                     src={
                       p.images && p.images.length > 0 && p.images[0]
@@ -427,26 +427,27 @@ export default function MerchantCatalog() {
                         : '/image.png'
                     }
                     alt={p.title}
+                    loading="lazy"
                     onError={(e) => {
                       e.currentTarget.onerror = null;
                       e.currentTarget.src = '/image.png';
                     }}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200 transform-gpu"
                   />
-                  {/* Category Badge overlay */}
-                  <div className="absolute top-2.5 left-2.5">
-                    <span className="px-2.5 py-0.5 rounded-lg bg-white/90 backdrop-blur-md border border-slate-200 text-indigo-700 font-bold text-[10px] shadow-sm">
+                  {/* Category Badge overlay (solid bg, no blur thrashing) */}
+                  <div className="absolute top-2.5 left-2.5 z-10 pointer-events-none">
+                    <span className="px-2.5 py-0.5 rounded-md bg-white border border-slate-200 text-indigo-700 font-bold text-[10px] shadow-xs">
                       {p.category || 'General'}
                     </span>
                   </div>
                   {/* Delete Overlay */}
-                  <div className="absolute top-2.5 right-2.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="absolute top-2.5 right-2.5 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         handleDeleteProduct(p._id, p.title);
                       }}
-                      className="p-2 rounded-lg bg-white/90 backdrop-blur-md border border-slate-200 text-rose-500 hover:bg-rose-50 hover:text-rose-600 transition shadow-sm"
+                      className="p-1.5 rounded-lg bg-white border border-slate-200 text-rose-500 hover:bg-rose-50 hover:text-rose-600 transition shadow-xs"
                       title="Delete Product"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -454,7 +455,7 @@ export default function MerchantCatalog() {
                   </div>
                 </div>
 
-                <div>
+                <div className="min-h-[52px]">
                   <h3 className="font-bold text-slate-900 text-sm line-clamp-1 group-hover:text-indigo-600 transition">
                     {p.title}
                   </h3>
@@ -465,8 +466,8 @@ export default function MerchantCatalog() {
               </div>
 
               {/* Pricing & Stock */}
-              <div className="pt-4 border-t border-slate-100 mt-4 flex items-baseline justify-between">
-                <span className="text-lg font-black text-slate-900">
+              <div className="pt-3 border-t border-slate-100 mt-3 flex items-baseline justify-between">
+                <span className="text-base font-black text-slate-900">
                   ₹{(p.price || 0).toLocaleString('en-IN')}
                 </span>
                 <span
