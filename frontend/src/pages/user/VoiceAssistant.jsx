@@ -34,6 +34,7 @@ import {
   Star,
   Flame,
   Package,
+  Trash2,
 } from 'lucide-react';
 import apiClient from '../../api/client';
 import { getOrCreateUserKeys } from '../../utils/keys';
@@ -108,11 +109,37 @@ export default function VoiceAssistant() {
   const [pendingIntent, setPendingIntent] = useState(null);
   const [pendingNegotiation, setPendingNegotiation] = useState(null);
   const [editBudget, setEditBudget] = useState(0);
+  const [inputText, setInputText] = useState('');
   const [pipelineResult, setPipelineResult] = useState(null);
   const [checkoutComplete, setCheckoutComplete] = useState(null);
   const [continuousMode, setContinuousMode] = useState(true); // always-listening by default
   const [ttsAvailable, setTtsAvailable] = useState(true);
   const lastContextRef = useRef(null); // { category, itemKeywords, budget, brandPreference } — last resolved intent for follow-up resolution
+
+  const handleInputSubmit = (e) => {
+    e.preventDefault();
+    if (inputText.trim() && !loading) {
+      const text = inputText.trim();
+      setInputText('');
+      handleSendText(text);
+    }
+  };
+
+  const handleClearHistory = () => {
+    if (window.speechSynthesis && window.speechSynthesis.speaking) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+    }
+    setMessages([
+      {
+        id: Date.now(),
+        sender: 'assistant',
+        isWelcome: true,
+        text: `Hello! I am Tejas — your Crypto-Agent Payment Intelligence Assistant. I can help you find products, negotiate discounts, track orders, and execute cryptographic payments.\n\nHere are some things you can try:`,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      },
+    ]);
+  };
 
   useEffect(() => {
     const available = typeof window !== 'undefined' && !!window.speechSynthesis;
@@ -1322,65 +1349,145 @@ export default function VoiceAssistant() {
   };
 
   return (
-    <div className="h-[calc(100vh-4rem)] w-full flex flex-col relative overflow-hidden bg-transparent">
+    <div className="h-[calc(100vh-4rem)] w-full flex flex-col relative overflow-hidden bg-slate-50/50 font-sans">
       
-      {/* Scrollable Messages Stream */}
+      {/* ── Minimalist Top Status Strip ───────────────────────────── */}
+      <div className="bg-white/80 backdrop-blur-md border-b border-slate-200/70 px-3 sm:px-6 py-2 flex items-center justify-between gap-2 shrink-0 z-10">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+          </span>
+          <span className="font-bold text-slate-800 text-xs sm:text-sm truncate">Tejas AI Assistant</span>
+          <span className="hidden sm:inline-block text-[10px] text-slate-400 font-mono">AP2-MESH-V2</span>
+        </div>
+
+        {/* Action Controls & Balance Badge */}
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          <Link
+            to="/wallet"
+            className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-indigo-50 hover:bg-indigo-100 border border-indigo-100 text-indigo-700 text-[11px] font-bold transition shadow-2xs"
+            title="View Wallet Balance"
+          >
+            <Wallet className="w-3 h-3" />
+            <span>₹{(walletBalance || 0).toLocaleString('en-IN')}</span>
+          </Link>
+
+          <button
+            type="button"
+            onClick={() => setTtsEnabled(!ttsEnabled)}
+            className={`p-1.5 rounded-full border text-xs font-semibold transition cursor-pointer ${
+              ttsEnabled
+                ? 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                : 'bg-rose-50 border-rose-200 text-rose-600'
+            }`}
+            title={ttsEnabled ? 'Mute AI Voice' : 'Unmute AI Voice'}
+          >
+            {ttsEnabled ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
+          </button>
+
+          <button
+            type="button"
+            onClick={handleClearHistory}
+            className="p-1.5 rounded-full border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition cursor-pointer"
+            title="Clear Chat History"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
+
+      {/* ── Live Soundwave Equalizer Banner ───────────────────────── */}
+      {(isRecording || isSpeaking) && (
+        <div className="bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-indigo-500/10 border-b border-indigo-100 px-4 py-1.5 flex items-center justify-center gap-2.5 shrink-0 animate-in fade-in duration-150">
+          <div className="flex items-center gap-1 h-3.5">
+            {audioLevel.map((lvl, idx) => (
+              <span
+                key={idx}
+                className="w-0.5 sm:w-1 rounded-full bg-gradient-to-t from-indigo-600 to-violet-500 transition-all duration-75"
+                style={{ height: `${Math.max(3, Math.min(14, (lvl / 100) * 14))}px` }}
+              />
+            ))}
+          </div>
+          <span className="text-[10px] sm:text-[11px] font-bold text-indigo-700 tracking-wide uppercase">
+            {isRecording ? '🎙️ Listening to your voice...' : '◎ Tejas is speaking...'}
+          </span>
+        </div>
+      )}
+
+      {/* ── Scrollable Messages Stream (Clean, Zero Overlap) ─────────── */}
       <div
         ref={chatScrollRef}
-        className="flex-1 overflow-y-auto no-scrollbar px-3 sm:px-6 pt-3 sm:pt-4 pb-48 lg:pb-32 space-y-4 sm:space-y-6 scroll-smooth w-full"
+        className="flex-1 overflow-y-auto no-scrollbar px-3 sm:px-6 py-4 space-y-3 sm:space-y-4 scroll-smooth w-full"
       >
         {messages.map((msg) => {
           const isUser = msg.sender === 'user';
           return (
-            <div key={msg.id} className={`flex items-start gap-3.5 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
-              <div className={`w-9 h-9 rounded-2xl flex items-center justify-center shrink-0 shadow-2xs ${isUser ? 'bg-[#0F172A] text-white' : 'bg-[#EEF2FF] text-[#6366F1] border border-indigo-100/80'}`}>
-                {isUser ? <User className="w-4 h-4" /> : <Bot className="w-5 h-5" />}
+            <div key={msg.id} className={`flex items-start gap-2 sm:gap-3 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
+              <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center shrink-0 shadow-2xs mt-0.5 ${isUser ? 'bg-slate-900 text-white' : 'bg-indigo-600 text-white'}`}>
+                {isUser ? <User className="w-3.5 h-3.5" /> : <Bot className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
               </div>
-              <div className={`max-w-2xl space-y-1.5 ${isUser ? 'items-end' : 'items-start'}`}>
-                <div className={`rounded-3xl p-5 text-sm leading-relaxed transition shadow-2xs ${isUser ? 'bg-[#0F172A] text-white rounded-tr-sm' : msg.isError ? 'bg-rose-50/90 border border-rose-200 text-rose-900 rounded-tl-sm' : 'bg-[#F0F5FF] border border-[#DCE7FC] text-slate-800 rounded-tl-sm'}`}>
+              <div className={`max-w-[85%] sm:max-w-xl space-y-1 ${isUser ? 'items-end' : 'items-start'}`}>
+                <div className={`rounded-2xl p-3.5 sm:p-4 text-xs sm:text-sm leading-relaxed transition shadow-2xs ${isUser ? 'bg-slate-900 text-white rounded-tr-xs' : msg.isError ? 'bg-rose-50 border border-rose-200 text-rose-900 rounded-tl-xs' : 'bg-white border border-slate-200/80 text-slate-800 rounded-tl-xs'}`}>
                   <p className={`whitespace-pre-line font-normal leading-relaxed ${isUser ? 'text-white' : 'text-slate-800'}`}>
                     {msg.text}
                   </p>
+
+                  {/* Welcome Prompt Suggestions */}
                   {msg.isWelcome && (
-                    <div className="flex flex-wrap gap-2 pt-4">
+                    <div className="flex flex-col gap-1.5 pt-3">
                       {[
                         { label: 'Running shoes under ₹3000', icon: '👟', query: 'Buy running shoes under 3000 rupees' },
                         { label: 'Track my last order', icon: '📦', query: 'Track my last order' },
                         { label: 'Check wallet balance', icon: '💳', query: 'Check wallet balance' },
                         { label: "Today's top deals", icon: '🔥', query: 'Show me best deals on shoes and fashion' },
                       ].map((item, idx) => (
-                        <button key={idx} type="button" onClick={() => handleSendText(item.query)} disabled={loading} className="bg-white hover:bg-slate-50 border border-slate-200/90 hover:border-indigo-300 text-slate-700 text-xs font-semibold px-3.5 py-2 rounded-2xl transition shadow-2xs flex items-center gap-1.5 cursor-pointer hover:scale-102 active:scale-98">
-                          <span>{item.icon}</span> <span>{item.label}</span>
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => handleSendText(item.query)}
+                          disabled={loading}
+                          className="bg-slate-50 hover:bg-indigo-50/70 border border-slate-200/80 hover:border-indigo-200 text-slate-700 text-xs font-semibold px-3 py-2 rounded-xl transition flex items-center justify-between text-left cursor-pointer group"
+                        >
+                          <span className="flex items-center gap-2">
+                            <span>{item.icon}</span>
+                            <span>{item.label}</span>
+                          </span>
+                          <ArrowRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-indigo-600 transition" />
                         </button>
                       ))}
                     </div>
                   )}
+
+                  {/* Intent Confirmation Gate Card */}
                   {msg.isGate && pendingIntent && (
-                    <div className="mt-4 p-4 rounded-2xl bg-white border border-amber-300 shadow-sm space-y-3">
-                      <div className="flex items-center justify-between pb-2 border-b border-amber-100">
-                        <div className="flex items-center gap-2 text-xs font-bold text-amber-900"><AlertCircle className="w-4 h-4 text-amber-600" /> <span>Confirmation Gate (Autonomous Guardrail)</span></div>
-                        <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 text-[10px] font-bold uppercase">Numerical Echo Check</span>
+                    <div className="mt-3 p-3.5 rounded-xl bg-amber-50/80 border border-amber-200 space-y-2.5 text-xs">
+                      <div className="flex items-center justify-between pb-1.5 border-b border-amber-200/60">
+                        <div className="flex items-center gap-1.5 font-bold text-amber-900">
+                          <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
+                          <span>Confirmation Gate</span>
+                        </div>
+                        <span className="px-1.5 py-0.5 rounded bg-amber-200/70 text-amber-900 text-[9px] font-bold uppercase">AP2 Echo</span>
                       </div>
-                      <div className="grid grid-cols-2 gap-2 text-xs text-slate-700 bg-amber-50/70 p-3 rounded-xl border border-amber-100">
-                        <div><span className="text-slate-500 font-medium">Item:</span> <strong className="text-slate-900">{pendingIntent.intent.itemKeywords}</strong></div>
-                        <div><span className="text-slate-500 font-medium">Category:</span> {pendingIntent.intent.category}</div>
-                        <div><span className="text-slate-500 font-medium">Echoed Budget:</span> <strong className="text-indigo-700">{Number(editBudget) > 0 ? `₹${Number(editBudget).toLocaleString('en-IN')}` : 'Not set'}</strong></div>
-                        <div><span className="text-slate-500 font-medium">Brand:</span> {pendingIntent.intent.brandPreference || 'Any'}</div>
+                      <div className="grid grid-cols-2 gap-1.5 text-slate-700 bg-white/80 p-2.5 rounded-lg border border-amber-100">
+                        <div><span className="text-slate-400">Item:</span> <strong className="text-slate-900">{pendingIntent.intent.itemKeywords}</strong></div>
+                        <div><span className="text-slate-400">Category:</span> {pendingIntent.intent.category}</div>
+                        <div className="col-span-2"><span className="text-slate-400">Budget:</span> <strong className="text-indigo-700">{Number(editBudget) > 0 ? `₹${Number(editBudget).toLocaleString('en-IN')}` : 'Not set'}</strong></div>
                       </div>
-                      <div className="space-y-1.5 pt-1">
-                        <div className="flex justify-between text-xs text-slate-600 font-medium"><span>Set Budget:</span> <span className="font-bold text-indigo-700">{Number(editBudget) > 0 ? `₹${Number(editBudget).toLocaleString('en-IN')}` : 'Not set'}</span></div>
+                      <div className="space-y-1 pt-1">
                         <input type="range" min="0" max="25000" step="100" value={editBudget} onChange={(e) => setEditBudget(e.target.value)} className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600" />
-                        {Number(editBudget) <= 0 && <p className="text-[11px] text-amber-700 font-semibold pt-1">⚠️ Please set a budget slider above to continue.</p>}
                       </div>
-                      <button type="button" onClick={handleConfirmIntent} disabled={loading || Number(editBudget) <= 0} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl py-2.5 flex items-center justify-center gap-2 transition cursor-pointer disabled:opacity-50">
-                        <CheckCircle2 className="w-4 h-4" /> <span>{loading ? 'Executing AP2 Pipeline...' : 'Confirm Parsed Intent & Find Merchant'}</span>
+                      <button type="button" onClick={handleConfirmIntent} disabled={loading || Number(editBudget) <= 0} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl py-2 flex items-center justify-center gap-1.5 transition cursor-pointer disabled:opacity-50">
+                        <CheckCircle2 className="w-3.5 h-3.5" /> <span>Confirm & Find Merchant</span>
                       </button>
                     </div>
                   )}
+
+                  {/* Verified Product Proposal Card */}
                   {msg.isProductProposal && msg.proposal && (
-                    <div className="mt-4 bg-white border border-slate-200/90 rounded-2xl p-4 shadow-xs space-y-3">
-                      <div className="flex items-center gap-3.5">
-                        <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden bg-slate-50 border border-slate-100 shrink-0">
+                    <div className="mt-3 bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2.5">
+                      <div className="flex items-center gap-3">
+                        <div className="w-16 h-16 rounded-xl overflow-hidden bg-white border border-slate-200 shrink-0">
                           <img
                             src={getProductImage(msg.proposal.topProduct)}
                             alt={msg.proposal.topProduct?.title || 'Product'}
@@ -1388,50 +1495,41 @@ export default function VoiceAssistant() {
                               e.currentTarget.onerror = null;
                               e.currentTarget.src = 'https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=400';
                             }}
-                            className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                            className="w-full h-full object-cover"
                           />
                         </div>
-                        <div className="flex-1 min-w-0 space-y-1">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1 flex-wrap">
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-indigo-100 text-indigo-800">
                               {msg.proposal.topProduct?.category || 'Footwear'}
                             </span>
-                            <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
-                              ✓ Verified Merchant
+                            <span className="text-[9px] font-semibold text-emerald-700 bg-emerald-50 px-1 py-0.5 rounded">
+                              ✓ Verified
                             </span>
                           </div>
-                          <h4 className="font-bold text-slate-900 text-sm truncate">{msg.proposal.topProduct?.title}</h4>
-                          <p className="text-xs text-slate-500 line-clamp-1">{msg.proposal.topProduct?.description || `${msg.proposal.topProduct?.title}, in stock`}</p>
-                          <div className="flex items-baseline gap-2 pt-0.5">
-                            <span className="text-base font-black text-slate-900">₹{msg.proposal.topProduct?.price?.toLocaleString('en-IN')}</span>
-                            <span className="text-[11px] text-emerald-600 font-semibold">In Stock</span>
+                          <h4 className="font-bold text-slate-900 text-xs truncate mt-0.5">{msg.proposal.topProduct?.title}</h4>
+                          <div className="flex items-baseline gap-1.5 pt-0.5">
+                            <span className="text-sm font-black text-slate-900">₹{msg.proposal.topProduct?.price?.toLocaleString('en-IN')}</span>
+                            <span className="text-[10px] text-emerald-600 font-semibold">In Stock</span>
                           </div>
                         </div>
-                      </div>
-
-                      <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 text-xs text-slate-600 flex items-center justify-between flex-wrap gap-2">
-                        <div className="flex items-center gap-1 text-amber-500 font-bold">
-                          <span>⭐⭐⭐⭐⭐</span>
-                          <span className="text-slate-500 font-medium text-[11px]">4.9 (Safe Merchant)</span>
-                        </div>
-                        <span className="text-indigo-600 font-bold text-[11px]">✓ AP2 Discount Eligible</span>
                       </div>
 
                       {!checkoutComplete && (
-                        <div className="pt-1 flex items-center gap-2">
+                        <div className="pt-1 flex flex-col sm:flex-row items-stretch gap-1.5">
                           <button
                             type="button"
                             onClick={() => handleExecuteNegotiation(msg.proposal)}
                             disabled={loading}
-                            className="flex-1 py-2.5 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-2 shadow-xs cursor-pointer disabled:opacity-50"
+                            className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer disabled:opacity-50"
                           >
                             <Sparkles className="w-3.5 h-3.5" />
-                            <span>✨ Yes, Negotiate & Place Order</span>
+                            <span>✨ Negotiate & Place Order</span>
                           </button>
                           <button
                             type="button"
                             onClick={() => handleSendText('show more options')}
-                            className="px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition cursor-pointer"
+                            className="py-2 px-3 bg-white border border-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition cursor-pointer text-center"
                           >
                             Keep Looking
                           </button>
@@ -1439,298 +1537,133 @@ export default function VoiceAssistant() {
                       )}
                     </div>
                   )}
+
+                  {/* Negotiation Streaming Logs */}
                   {msg.isNegotiationChat && msg.negotiationData && (
-                    <div className="mt-4 bg-white border border-indigo-100 shadow-sm rounded-2xl overflow-hidden text-sm">
-                      <div className="bg-indigo-50 border-b border-indigo-100 px-4 py-2 flex items-center gap-2">
-                        <Bot className="w-4 h-4 text-indigo-600" />
-                        <span className="font-bold text-indigo-900 text-xs uppercase tracking-wide">Agent Negotiation Logs</span>
-                        {msg.negotiationData.status === 'negotiating' && <span className="ml-auto text-[10px] text-indigo-500 font-bold animate-pulse">NEGOTIATING...</span>}
+                    <div className="mt-3 bg-slate-50 border border-indigo-100 rounded-xl overflow-hidden text-xs">
+                      <div className="bg-indigo-50/80 px-3 py-1.5 flex items-center justify-between border-b border-indigo-100">
+                        <span className="font-bold text-indigo-900 text-[10px] uppercase">Negotiation Logs</span>
+                        {msg.negotiationData.status === 'negotiating' && <span className="text-[9px] text-indigo-600 font-bold animate-pulse">NEGOTIATING...</span>}
                       </div>
-                      <div className="p-4 space-y-3">
-                        <div className="flex gap-2">
-                           <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center shrink-0 border border-slate-200"><User className="w-3 h-3 text-slate-500" /></div>
-                           <div className="bg-slate-100 rounded-2xl rounded-tl-sm px-3 py-2 text-slate-700 text-xs">
-                             <p className="font-bold text-[10px] text-slate-400 mb-0.5">Merchant Agent</p>
-                             This is my price: <strong className="text-slate-900">₹{msg.negotiationData.merchantPrice?.toLocaleString('en-IN')}</strong>
-                           </div>
+                      <div className="p-2.5 space-y-2">
+                        <div className="bg-white p-2 rounded-lg border border-slate-100">
+                          <span className="text-[9px] text-slate-400 block font-bold">Merchant Agent</span>
+                          Price: <strong className="text-slate-900">₹{msg.negotiationData.merchantPrice?.toLocaleString('en-IN')}</strong>
                         </div>
                         {msg.negotiationData.buyerPrice && (
-                          <div className="flex gap-2 flex-row-reverse">
-                             <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center shrink-0 border border-indigo-200"><Bot className="w-3 h-3 text-indigo-600" /></div>
-                             <div className="bg-indigo-50 rounded-2xl rounded-tr-sm px-3 py-2 text-indigo-900 text-xs">
-                               <p className="font-bold text-[10px] text-indigo-400 mb-0.5">Buyer Agent</p>
-                               I want it in this price: <strong className="text-indigo-700">₹{msg.negotiationData.buyerPrice?.toLocaleString('en-IN')}</strong>
-                             </div>
+                          <div className="bg-indigo-50/80 p-2 rounded-lg border border-indigo-100">
+                            <span className="text-[9px] text-indigo-400 block font-bold">Buyer Agent</span>
+                            Counter: <strong className="text-indigo-700">₹{msg.negotiationData.buyerPrice?.toLocaleString('en-IN')}</strong>
                           </div>
                         )}
                         {msg.negotiationData.finalPrice && (
-                          <div className="flex gap-2">
-                             <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center shrink-0 border border-slate-200"><User className="w-3 h-3 text-slate-500" /></div>
-                             <div className="bg-emerald-50 rounded-2xl rounded-tl-sm px-3 py-2 text-emerald-900 text-xs border border-emerald-100">
-                               <p className="font-bold text-[10px] text-emerald-600 mb-0.5">Merchant Agent</p>
-                               Ok, you are our loyal customer, so we go with this price: <strong className="text-emerald-700">₹{msg.negotiationData.finalPrice?.toLocaleString('en-IN')}</strong>
-                             </div>
+                          <div className="bg-emerald-50 p-2 rounded-lg border border-emerald-100">
+                            <span className="text-[9px] text-emerald-600 block font-bold">Agreed Price</span>
+                            Final: <strong className="text-emerald-700">₹{msg.negotiationData.finalPrice?.toLocaleString('en-IN')}</strong>
                           </div>
                         )}
                       </div>
                     </div>
                   )}
-                  {msg.isResult && msg.pipeline && (
-                    <div className="mt-4 space-y-3">
-                      <div className="bg-white border border-slate-200/90 hover:border-indigo-300 rounded-2xl p-4 shadow-xs flex items-center gap-4 transition group">
-                        <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden bg-slate-50 border border-slate-100 shrink-0">
-                          <img
-                            src={getProductImage(msg.pipeline.product)}
-                            alt={msg.pipeline.product?.title || 'Product'}
-                            onError={(e) => {
-                              e.currentTarget.onerror = null;
-                              e.currentTarget.src = 'https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=400';
-                            }}
-                            className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
-                          />
-                        </div>
-                        <div className="flex-1 min-w-0 space-y-0.5">
-                          <h4 className="font-bold text-slate-900 text-sm truncate group-hover:text-indigo-600 transition">{msg.pipeline.product?.title}</h4>
-                          <p className="text-xs text-slate-500 line-clamp-1">{msg.pipeline.product?.description || `${msg.pipeline.product?.title}, verified AP2 merchant product`}</p>
-                          <div className="flex items-baseline gap-2 pt-0.5">
-                            <span className="font-black text-slate-900 text-sm sm:text-base">₹{msg.pipeline.finalPrice?.toLocaleString('en-IN')}</span>
-                            {msg.pipeline.originalPrice > msg.pipeline.finalPrice && <span className="text-[11px] text-slate-400 line-through">Price: ₹{msg.pipeline.originalPrice?.toLocaleString('en-IN')}</span>}
-                          </div>
-                          <div className="flex items-center gap-1 text-[11px] text-amber-500 font-bold">
-                            <span>⭐⭐⭐⭐⭐</span>
-                            <span className="text-slate-400 font-normal text-[10px]">(3)</span>
-                          </div>
-                        </div>
-                        {!checkoutComplete && (
-                          <button type="button" onClick={() => handleExecuteCheckout(msg.pipeline)} disabled={loading} className="px-3.5 py-2.5 bg-[#0F172A] hover:bg-[#1E293B] text-white text-xs font-bold rounded-xl flex items-center gap-1.5 transition shadow-xs shrink-0 cursor-pointer disabled:opacity-50">
-                            <Zap className="w-3.5 h-3.5 text-cyan-400" /> <span>{loading ? 'Settling...' : 'Buy via Agent'}</span>
-                          </button>
-                        )}
-                      </div>
-                      <div className="flex items-center justify-between text-[11px] text-slate-500 bg-white/80 border border-slate-200/80 rounded-xl px-3 py-1.5 font-mono">
-                        <span>Mandate: <strong className="text-indigo-700">{msg.pipeline.contractId}</strong></span>
-                        <span className="text-emerald-700 font-bold">RSA-PSS Signed</span>
-                      </div>
-                    </div>
-                  )}
-                  {msg.isInsufficientBalance && msg.pipeline && (
-                    <div className="mt-4 p-4 rounded-2xl bg-white border border-rose-200 shadow-xs space-y-3">
-                      <div className="flex items-center justify-between pb-2 border-b border-rose-100">
-                        <div className="flex items-center gap-2 text-rose-700 font-bold text-xs">
-                          <AlertCircle className="w-4 h-4 text-rose-500" />
-                          <span>Action Blocked: Insufficient Balance</span>
-                        </div>
-                        <span className="px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 text-[10px] font-bold border border-rose-200">
-                          Wallet Check Failed
-                        </span>
-                      </div>
 
-                      <div className="grid grid-cols-2 gap-2 text-xs bg-rose-50/50 p-3 rounded-xl border border-rose-100">
-                        <div>
-                          <span className="text-slate-500 block text-[10px]">Agreed Order Total</span>
-                          <strong className="text-slate-900 font-black">₹{msg.requiredAmount?.toLocaleString('en-IN')}</strong>
-                        </div>
-                        <div>
-                          <span className="text-slate-500 block text-[10px]">Available in Wallet</span>
-                          <strong className="text-slate-700 font-bold">₹{msg.currentBalance?.toLocaleString('en-IN')}</strong>
-                        </div>
-                        <div className="col-span-2 pt-1 border-t border-rose-100/80 flex justify-between items-center">
-                          <span className="text-rose-700 font-bold text-[11px]">Shortage / Required Top-up:</span>
-                          <span className="text-rose-700 font-black text-xs">₹{msg.shortage?.toLocaleString('en-IN')}</span>
-                        </div>
+                  {/* Insufficient Balance Card */}
+                  {msg.isInsufficientBalance && msg.insufficientData && (
+                    <div className="mt-3 p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs space-y-2">
+                      <div className="flex items-center justify-between text-amber-900 font-bold">
+                        <span>Insufficient Balance</span>
+                        <span className="text-rose-600 font-mono">Need: ₹{msg.insufficientData.shortage?.toLocaleString('en-IN')}</span>
                       </div>
-
-                      <div className="flex items-center gap-2 pt-1">
+                      <div className="flex items-center gap-1.5 pt-1">
+                        <Link
+                          to="/wallet"
+                          className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition flex items-center justify-center gap-1 shadow-2xs text-center"
+                        >
+                          <Wallet className="w-3 h-3" />
+                          <span>Top Up Wallet</span>
+                        </Link>
                         <button
                           type="button"
-                          onClick={() => navigate('/wallet')}
-                          className="flex-1 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                          onClick={() => handleExecuteNegotiation(msg.insufficientData.proposal)}
+                          className="px-3 py-2 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl"
                         >
-                          <Wallet className="w-3.5 h-3.5" />
-                          <span>Top Up Wallet (₹{msg.shortage?.toLocaleString('en-IN')})</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleExecuteCheckout(msg.pipeline)}
-                          className="px-3.5 py-2.5 bg-[#0F172A] hover:bg-[#1E293B] text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 cursor-pointer"
-                        >
-                          <span>Retry Payment</span>
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                  {msg.isWalletCard && msg.walletData && (
-                    <div className="mt-4 p-4 rounded-2xl bg-white border border-indigo-100 shadow-xs space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-slate-500 font-medium">Available Wallet Balance</span>
-                        <span className="text-lg font-black text-slate-900">₹{msg.walletData.balance?.toLocaleString('en-IN')}</span>
-                      </div>
-                      <div className="space-y-1">
-                        <div className="flex justify-between text-[11px] text-slate-500 font-medium">
-                          <span>Daily Spend Quota</span>
-                          <span>₹{msg.walletData.dailySpent?.toLocaleString('en-IN')} / ₹{msg.walletData.perDayCap?.toLocaleString('en-IN')}</span>
-                        </div>
-                        <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-gradient-to-r from-emerald-500 to-indigo-600 rounded-full transition-all duration-500"
-                            style={{ width: `${Math.min(100, ((msg.walletData.dailySpent || 0) / (msg.walletData.perDayCap || 1)) * 100)}%` }}
-                          />
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 pt-1">
-                        <button
-                          type="button"
-                          onClick={() => navigate('/wallet')}
-                          className="flex-1 py-2 bg-[#0F172A] hover:bg-[#1E293B] text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
-                        >
-                          <Wallet className="w-3.5 h-3.5 text-cyan-400" />
-                          <span>Top Up & Ledger History</span>
+                          Retry
                         </button>
                       </div>
                     </div>
                   )}
 
-                  {msg.isOrderCard && msg.orderData && (
-                    <div className="mt-4 p-4 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-3">
-                      <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                        <div>
-                          <span className="text-[10px] text-slate-400 block font-mono">ORDER ID</span>
-                          <strong className="text-xs font-bold text-slate-900">{msg.orderData.orderId || msg.orderData._id}</strong>
-                        </div>
-                        <span className="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[11px] font-bold uppercase border border-emerald-200">
-                          {msg.orderData.status || 'Confirmed'}
-                        </span>
-                      </div>
-                      <div className="text-xs text-slate-600 space-y-1">
-                        <div className="flex justify-between">
-                          <span className="text-slate-400">Total Paid:</span>
-                          <strong className="text-slate-900 font-bold">₹{(msg.orderData.totalAmount || msg.orderData.amount)?.toLocaleString('en-IN')}</strong>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-slate-400">Settlement:</span>
-                          <span className="text-emerald-600 font-medium">AP2 Autonomous Mandate</span>
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => navigate('/orders')}
-                        className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer"
-                      >
-                        <span>Track Delivery Timeline</span>
-                        <ArrowRight className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  )}
-
-                  {msg.isDealsCard && msg.deals && (
-                    <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {msg.deals.map((item, idx) => (
-                        <div key={idx} className="bg-white border border-slate-200/90 rounded-2xl p-3 shadow-xs space-y-2 flex flex-col justify-between hover:border-indigo-300 transition">
-                          <div className="flex items-center gap-3">
-                            <div className="w-14 h-14 rounded-xl overflow-hidden bg-slate-50 border border-slate-100 shrink-0">
-                              <img
-                                src={getProductImage(item)}
-                                alt={item.title}
-                                onError={(e) => {
-                                  e.currentTarget.onerror = null;
-                                  e.currentTarget.src = 'https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=400';
-                                }}
-                                className="w-full h-full object-cover"
-                              />
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <h5 className="text-xs font-bold text-slate-900 truncate">{item.title}</h5>
-                              <span className="text-[11px] font-black text-indigo-700">₹{item.price?.toLocaleString('en-IN')}</span>
-                            </div>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => handleSendText(`Buy ${item.title}`)}
-                            className="w-full py-1.5 bg-[#0F172A] hover:bg-[#1E293B] text-white text-[11px] font-bold rounded-xl transition flex items-center justify-center gap-1 cursor-pointer"
-                          >
-                            <Zap className="w-3 h-3 text-cyan-400" />
-                            <span>Negotiate & Buy</span>
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {msg.isSecurityCard && (
-                    <div className="mt-4 p-4 rounded-2xl bg-white border border-indigo-200 shadow-xs space-y-2.5 text-xs text-slate-700">
-                      <div className="flex items-center gap-2 text-indigo-900 font-bold">
-                        <ShieldCheck className="w-4 h-4 text-indigo-600" />
-                        <span>AP2 Cryptographic Security Protocol</span>
-                      </div>
-                      <div className="space-y-2 pt-1">
-                        <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
-                          <strong className="text-slate-900 block">🔑 RSA-PSS 2048-bit Mandates</strong>
-                          <span className="text-[11px] text-slate-500">Every autonomous purchase generates a cryptographically signed contract with your private key.</span>
-                        </div>
-                        <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
-                          <strong className="text-slate-900 block">⚡ Double-Entry Idempotency</strong>
-                          <span className="text-[11px] text-slate-500">Atomic ledger updates guarantee 0 duplicate debits or stale balance states.</span>
-                        </div>
-                        <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
-                          <strong className="text-slate-900 block">🛡️ Safety Velocity Gates</strong>
-                          <span className="text-[11px] text-slate-500">Autonomous spend limits enforce numerical echo verification before executing payments.</span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
+                  {/* Order Receipt */}
                   {msg.isReceipt && msg.receipt && (
-                    <div className="mt-3 p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-slate-900 space-y-2 text-xs">
-                      <div className="flex items-center gap-2 font-bold text-emerald-800"><PackageCheck className="w-4 h-4 text-emerald-600" /> <span>Order Generated & Wallet Settled</span></div>
-                      <div className="grid grid-cols-2 gap-2 font-medium text-slate-700 pt-1">
-                        <div><span className="text-slate-500">Order ID:</span> <strong className="text-slate-900">{msg.receipt.orderId}</strong></div>
-                        <div><span className="text-slate-500">Paid:</span> <strong className="text-emerald-700">₹{msg.receipt.amount}</strong></div>
+                    <div className="mt-2.5 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-slate-900 space-y-1 text-xs">
+                      <div className="flex items-center gap-1.5 font-bold text-emerald-800">
+                        <PackageCheck className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Order Placed & Settled</span>
+                      </div>
+                      <div className="flex justify-between text-slate-600 pt-0.5">
+                        <span>Order #{msg.receipt.orderId}</span>
+                        <strong className="text-emerald-700">₹{msg.receipt.amount?.toLocaleString('en-IN')}</strong>
                       </div>
                     </div>
                   )}
                 </div>
-                <span className="text-[10px] text-slate-400 px-1 block">{msg.timestamp}</span>
+                <span className="text-[9px] text-slate-400 px-1 block">{msg.timestamp}</span>
               </div>
             </div>
           );
         })}
+
+        {/* Loading State */}
         {loading && (
-          <div className="flex items-center gap-3 animate-pulse">
-            <div className="w-9 h-9 rounded-2xl bg-indigo-50 border border-indigo-100 text-indigo-600 flex items-center justify-center shadow-2xs"><Bot className="w-5 h-5 animate-spin" /></div>
-            <div className="text-xs text-slate-600 font-medium flex items-center gap-2">
-              {pipelineStage === 'transcribing' && <span>Transcribing voice with Groq Whisper...</span>}
-              {pipelineStage === 'parsing' && <span>Parsing commerce intent & evaluating guardrails...</span>}
-              {pipelineStage === 'matching' && <span>Searching merchant catalog for products...</span>}
-              {pipelineStage === 'negotiating' && <span>Autonomous agent negotiating price terms...</span>}
-              {pipelineStage === 'contracting' && <span>Generating RSA-PSS signed AP2 Cart Mandate...</span>}
-              {pipelineStage === 'paying' && <span>Verifying safety gates & debiting internal wallet...</span>}
-              {!pipelineStage && <span>Processing AP2 commerce flow...</span>}
-            </div>
+          <div className="flex items-center gap-2 animate-pulse text-xs text-slate-500 py-1">
+            <Bot className="w-4 h-4 text-indigo-600 animate-spin" />
+            <span>
+              {pipelineStage === 'transcribing' && 'Transcribing voice...'}
+              {pipelineStage === 'parsing' && 'Understanding intent...'}
+              {pipelineStage === 'matching' && 'Searching products...'}
+              {pipelineStage === 'negotiating' && 'Negotiating price...'}
+              {pipelineStage === 'paying' && 'Settling payment...'}
+              {!pipelineStage && 'Processing...'}
+            </span>
           </div>
         )}
       </div>
 
-      {/* ── Always-Listening Orb ────────────────────────────────────────── */}
-      <div className="absolute bottom-14 lg:bottom-0 left-0 right-0 flex flex-col items-center pb-3 lg:pb-6 pt-2 z-30 pointer-events-none">
-
-        {/* Live transcript bubble — shows what Tejas hears in real time */}
+      {/* ── Fixed Clean Bottom Dock (No Overlap) ───────────────────── */}
+      <div className="shrink-0 bg-white/95 backdrop-blur-md border-t border-slate-200/80 p-2.5 sm:p-3.5 z-20">
+        
+        {/* Real-Time Live Transcript Preview (If Speaking) */}
         {transcript && (
-          <div className="mb-4 max-w-sm w-full mx-auto px-4 pointer-events-none">
-            <div className="bg-white/90 backdrop-blur border border-slate-200 rounded-2xl px-4 py-2.5 text-xs text-slate-700 font-medium shadow-md text-center animate-in fade-in duration-200">
-              🎙️ <span className="italic">{transcript}</span>
+          <div className="mb-2 max-w-md mx-auto px-1 animate-in fade-in duration-100">
+            <div className="bg-indigo-50 border border-indigo-200 text-indigo-900 rounded-xl px-3 py-1.5 text-xs text-center font-medium">
+              🎙️ <span>"{transcript}"</span>
             </div>
           </div>
         )}
 
-        {/* Speaking status */}
-        {isSpeaking && !isRecording && (
-          <div className="mb-3 text-xs text-indigo-600 font-semibold animate-pulse tracking-wide">
-            Tejas is speaking...
-          </div>
-        )}
+        <div className="max-w-2xl mx-auto flex items-center gap-2">
+          {/* Main Input Form */}
+          <form onSubmit={handleInputSubmit} className="flex-1 flex items-center bg-slate-100 border border-slate-200 focus-within:border-indigo-500 focus-within:bg-white rounded-2xl px-3 py-1.5 transition">
+            <input
+              type="text"
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              placeholder={isRecording ? 'Listening to voice...' : 'Type or speak your request...'}
+              disabled={loading || isRecording}
+              className="w-full bg-transparent text-xs sm:text-sm text-slate-800 placeholder-slate-400 outline-none font-medium"
+            />
+            {inputText.trim() ? (
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-7 h-7 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white flex items-center justify-center shrink-0 cursor-pointer shadow-2xs transition"
+                title="Send text command"
+              >
+                <Send className="w-3.5 h-3.5" />
+              </button>
+            ) : null}
+          </form>
 
-        {/* Mic orb */}
-        <div className="pointer-events-auto flex flex-col items-center gap-2">
+          {/* Dedicated Floating Voice Orb Toggle */}
           <button
             type="button"
             onClick={() => {
@@ -1741,50 +1674,23 @@ export default function VoiceAssistant() {
                 startRecording();
               }
             }}
-            title={isRecording ? 'Tap to stop' : 'Tap to speak'}
-            style={{
-              width: 72,
-              height: 72,
-              borderRadius: '50%',
-              border: 'none',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              position: 'relative',
-              background: isRecording
-                ? 'linear-gradient(135deg, #ef4444, #dc2626)'
+            title={isRecording ? 'Stop recording' : 'Tap to speak'}
+            className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 transition-all duration-200 cursor-pointer shadow-sm ${
+              isRecording
+                ? 'bg-rose-500 text-white shadow-rose-500/30 scale-105 animate-pulse'
                 : isSpeaking
-                ? 'linear-gradient(135deg, #6366f1, #8b5cf6)'
-                : 'linear-gradient(135deg, #0f172a, #1e293b)',
-              boxShadow: isRecording
-                ? '0 0 0 12px rgba(239,68,68,0.15), 0 4px 24px rgba(239,68,68,0.4)'
-                : isSpeaking
-                ? '0 0 0 12px rgba(99,102,241,0.15), 0 4px 24px rgba(99,102,241,0.45)'
-                : '0 4px 24px rgba(0,0,0,0.3)',
-              transition: 'all 0.3s ease',
-              animation: isRecording ? 'pulse 1.2s ease-in-out infinite' : 'none',
-            }}
+                ? 'bg-indigo-600 text-white shadow-indigo-500/30 animate-pulse'
+                : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+            }`}
           >
-            {isRecording
-              ? <MicOff style={{ color: 'white', width: 28, height: 28 }} />
-              : <Mic style={{ color: isRecording ? 'white' : '#818cf8', width: 28, height: 28 }} />
-            }
+            {isRecording ? (
+              <MicOff className="w-4 h-4 text-white" />
+            ) : (
+              <Mic className="w-4 h-4 text-white" />
+            )}
           </button>
-
-          {/* Status label under orb */}
-          <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-            {isRecording ? '● Listening' : isSpeaking ? '◎ Speaking' : '○ Tap to speak'}
-          </span>
         </div>
       </div>
-
-      <style>{`
-        @keyframes pulse {
-          0%, 100% { box-shadow: 0 0 0 12px rgba(239,68,68,0.15), 0 4px 24px rgba(239,68,68,0.4); }
-          50% { box-shadow: 0 0 0 22px rgba(239,68,68,0.06), 0 4px 32px rgba(239,68,68,0.6); }
-        }
-      `}</style>
 
     </div>
   );

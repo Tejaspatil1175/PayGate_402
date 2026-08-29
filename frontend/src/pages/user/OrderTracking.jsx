@@ -55,7 +55,7 @@ export default function OrderTracking() {
   }, []);
 
   return (
-    <div className="relative min-h-[calc(100vh-4rem)] p-3 sm:p-6 md:p-8 space-y-4 sm:space-y-6 max-w-7xl mx-auto w-full font-sans overflow-hidden">
+    <div className="relative min-h-[calc(100vh-4rem)] p-3 sm:p-6 md:p-8 space-y-4 sm:space-y-6 max-w-7xl mx-auto w-full font-sans">
       {/* Header */}
       <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2">
         <div className="flex items-center gap-3 sm:gap-4">
@@ -99,11 +99,11 @@ export default function OrderTracking() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 lg:gap-8 relative z-10">
           
           {/* Orders List Sidebar (Glassmorphism) */}
-          <div className="lg:col-span-4 space-y-4">
+          <div className="lg:col-span-4 space-y-3 sm:space-y-4">
             <h2 className="text-xs font-black uppercase tracking-widest text-slate-400 pl-2">
               Purchase History
             </h2>
-            <div className="space-y-4 max-h-[75vh] overflow-y-auto pr-2 no-scrollbar pb-10">
+            <div className="space-y-3 sm:space-y-4 lg:max-h-[75vh] lg:overflow-y-auto lg:pr-2 lg:no-scrollbar pb-6 lg:pb-10">
               {orders.map((ord) => {
                 const isSelected = selectedOrder === ord._id || selectedOrder === ord.orderId;
                 const isFulfilled = ord.status === 'fulfilled' || ord.status === 'DELIVERED';

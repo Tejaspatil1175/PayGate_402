@@ -36,7 +36,7 @@ export default function GlobalKairoWidget() {
     <button
       onClick={handleClick}
       title="Open Voice Assistant"
-      className="fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full bg-gradient-to-tr from-indigo-600 to-violet-600 text-white flex items-center justify-center shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer group"
+      className="hidden lg:flex fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full bg-gradient-to-tr from-indigo-600 to-violet-600 text-white items-center justify-center shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer group"
       aria-label="Open Voice Assistant"
     >
       <Mic className="w-6 h-6 group-hover:scale-110 transition-transform duration-200" />
