@@ -1,5 +1,15 @@
+const mongoose = require('mongoose');
 const Order = require('../models/Order');
 const logger = require('../utils/logger');
+
+function toValidObjectId(id) {
+  if (!id || id === 'undefined' || id === 'null') return null;
+  if (typeof id === 'string' && mongoose.Types.ObjectId.isValid(id)) {
+    return new mongoose.Types.ObjectId(id);
+  }
+  if (id instanceof mongoose.Types.ObjectId) return id;
+  return null;
+}
 
 /**
  * Get comprehensive revenue analytics and GMV breakdown for a merchant
@@ -10,9 +20,10 @@ const logger = require('../utils/logger');
  */
 async function getRevenueAnalytics(merchantId = null, startDate = null, endDate = null) {
   const matchFilter = {};
+  const validMerchantId = toValidObjectId(merchantId);
 
-  if (merchantId) {
-    matchFilter.merchant = typeof merchantId === 'string' ? new (require('mongoose').Types.ObjectId)(merchantId) : merchantId;
+  if (validMerchantId) {
+    matchFilter.merchant = validMerchantId;
   }
 
   if (startDate || endDate) {
@@ -68,7 +79,7 @@ async function getRevenueAnalytics(merchantId = null, startDate = null, endDate 
 
   return {
     protocol: 'AP2/x402',
-    merchantId,
+    merchantId: validMerchantId ? validMerchantId.toString() : null,
     summary: {
       totalGMV,
       totalOrdersCount,
@@ -90,12 +101,16 @@ async function getRevenueAnalytics(merchantId = null, startDate = null, endDate 
  */
 async function getAgentAnalytics(merchantId = null) {
   const matchFilter = {};
-  if (merchantId) {
-    matchFilter.merchant = typeof merchantId === 'string' ? new (require('mongoose').Types.ObjectId)(merchantId) : merchantId;
+  const validMerchantId = toValidObjectId(merchantId);
+  if (validMerchantId) {
+    matchFilter.merchant = validMerchantId;
   }
 
-  const agentSummary = await Order.aggregate([
-    { $match: matchFilter },
+  const pipeline = [];
+  if (Object.keys(matchFilter).length > 0) {
+    pipeline.push({ $match: matchFilter });
+  }
+  pipeline.push(
     {
       $group: {
         _id: '$agentId',
@@ -113,11 +128,13 @@ async function getAgentAnalytics(merchantId = null) {
         lastActive: { $max: '$createdAt' },
       },
     },
-    { $sort: { totalSpend: -1 } },
-  ]);
+    { $sort: { totalSpend: -1 } }
+  );
+
+  const agentSummary = await Order.aggregate(pipeline);
 
   const formattedAgents = agentSummary.map((a) => ({
-    agentId: a._id || 'agent_anonymous',
+    agentId: a._id || 'agent_autonomous_buyer',
     totalOrders: a.totalOrders,
     paidOrders: a.paidOrders,
     totalSpend: a.totalSpend,
@@ -127,7 +144,7 @@ async function getAgentAnalytics(merchantId = null) {
 
   return {
     protocol: 'AP2/x402',
-    merchantId,
+    merchantId: validMerchantId ? validMerchantId.toString() : null,
     agentsCount: formattedAgents.length,
     agents: formattedAgents,
     evaluatedAt: new Date().toISOString(),
