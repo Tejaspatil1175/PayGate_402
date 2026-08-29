@@ -161,9 +161,9 @@ Output raw JSON only:`;
     merchantId: null,
   });
 
-  // Explicit echo confirmation summary for numerical accuracy check (e.g. 2000 vs 20000)
-  const requiresConfirmation = true;
-  const confirmationSummary = `Please confirm: Action '${action.toUpperCase()}' for item "${itemKeywords}" in category '${category}' at budget ₹${budget.toLocaleString('en-IN')}${brandPreference ? ` (Brand: ${brandPreference})` : ''}${scheduleTime ? ` (Scheduled: ${scheduleTime})` : ''}.`;
+  // Only require confirmation if manual approval threshold is exceeded by high-value policy
+  const requiresConfirmation = Boolean(gatedEvaluation.requireManualApproval);
+  const confirmationSummary = `Action '${action.toUpperCase()}' for item "${itemKeywords}" in category '${category}' at budget ₹${budget.toLocaleString('en-IN')}${brandPreference ? ` (Brand: ${brandPreference})` : ''}${scheduleTime ? ` (Scheduled: ${scheduleTime})` : ''}.`;
 
   return {
     rawTranscript: cleanTranscript,
@@ -313,11 +313,17 @@ function ruleBasedIntentParser(transcript, lastContext = null) {
 
   // Extract budget / price figures
   let budget = 0;
-  const priceMatches = transcript.match(/(?:under|below|for|around|budget|rs\.?|₹|\$)\s*(\d+(?:,\d+)*(?:\.\d+)?)/i) ||
-                       transcript.match(/(\d+(?:,\d+)*(?:\.\d+)?)\s*(?:rupees|rs|inr)/i) ||
+  const priceMatches = transcript.match(/(?:under|below|for|around|budget|rs\.?|₹|\$)\s*(\d+(?:,\d+)*(?:\.\d+)?)\s*(thousand|k)?/i) ||
+                       transcript.match(/(\d+(?:,\d+)*(?:\.\d+)?)\s*(thousand|k)?\s*(?:rupees|rs|inr)?/i) ||
                        transcript.match(/(\d+)/);
   if (priceMatches && priceMatches[1]) {
     budget = parseFloat(priceMatches[1].replace(/,/g, ''));
+    if (priceMatches[2] && (priceMatches[2].toLowerCase() === 'k' || priceMatches[2].toLowerCase() === 'thousand')) {
+      budget = budget * 1000;
+    } else if (budget > 0 && budget < 100 && !/\b(rupee|rs|inr)\b/i.test(transcript)) {
+      // E.g. "under 5" or "for 3" -> 5000, 3000
+      budget = budget * 1000;
+    }
   }
 
   // Extract brand preference

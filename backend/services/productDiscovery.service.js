@@ -3,7 +3,7 @@ const { matchIntentToMerchants } = require('./matching.service');
 const logger = require('../utils/logger');
 
 /**
- * Perform flexible product search using MongoDB text index and price filter with attribute-drop fallback
+ * Perform flexible product search using MongoDB text search + multi-field regex + tag fallback
  * @param {Object} params - { query, category, maxPrice, minPrice, page, limit }
  * @returns {Promise<Object>} Search results with metadata
  */
@@ -24,15 +24,8 @@ async function searchProducts(params = {}) {
   // Base availability filter
   const baseFilter = { isAvailable: true };
 
-  // Price bounds
-  if (maxPrice !== undefined && Number(maxPrice) > 0) {
-    baseFilter.price = { ...(baseFilter.price || {}), $lte: Number(maxPrice) };
-  }
   if (minPrice !== undefined && Number(minPrice) >= 0) {
     baseFilter.price = { ...(baseFilter.price || {}), $gte: Number(minPrice) };
-  }
-  if (category && category !== 'General' && category !== 'All') {
-    baseFilter.category = category;
   }
 
   let products = [];
@@ -41,60 +34,130 @@ async function searchProducts(params = {}) {
 
   if (query && query.trim()) {
     const rawTokens = query.trim().split(/\s+/).filter(Boolean);
+    const cleanQuery = query.trim();
 
-    // Attempt 1: Search using all keywords
-    const textSearchFilter = {
+    // Strategy 1: Multi-field Regex & Tag Search (Fast & Stemming-tolerant)
+    // Matches title, description, category, tags, or sku
+    const tokenRegexes = rawTokens.map((t) => new RegExp(t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'));
+    
+    // Also build category synonyms (e.g., shoes -> Footwear / Sneaker / Shoes)
+    const synonyms = [];
+    if (/shoe|sneaker|boot|footwear|runner/i.test(cleanQuery)) {
+      synonyms.push(/shoe|sneaker|boot|footwear|runner|nike|jordan|adidas/i);
+    }
+    if (/headphone|earbud|earphone|audio|speaker|airpod/i.test(cleanQuery)) {
+      synonyms.push(/headphone|earbud|earphone|audio|speaker|sony|bose|airpod/i);
+    }
+    if (/laptop|macbook|computer|pc/i.test(cleanQuery)) {
+      synonyms.push(/laptop|macbook|computer|pc|apple/i);
+    }
+    if (/mouse|keyboard|accessory/i.test(cleanQuery)) {
+      synonyms.push(/mouse|keyboard|accessory|logitech|keychron/i);
+    }
+    if (/bottle|flask|water/i.test(cleanQuery)) {
+      synonyms.push(/bottle|flask|water|hydro/i);
+    }
+    if (/bag|backpack|wallet/i.test(cleanQuery)) {
+      synonyms.push(/bag|backpack|wallet|bellroy/i);
+    }
+
+    const regexClauses = [
+      { title: { $regex: cleanQuery, $options: 'i' } },
+      { description: { $regex: cleanQuery, $options: 'i' } },
+      { tags: { $in: tokenRegexes } },
+      { category: { $regex: cleanQuery, $options: 'i' } },
+      ...tokenRegexes.map((r) => ({ title: r })),
+      ...tokenRegexes.map((r) => ({ tags: r })),
+      ...synonyms.map((s) => ({ title: s })),
+      ...synonyms.map((s) => ({ category: s })),
+      ...synonyms.map((s) => ({ tags: s })),
+    ];
+
+    let searchFilter = {
       ...baseFilter,
-      $text: { $search: rawTokens.join(' ') },
+      $or: regexClauses,
     };
 
+    if (maxPrice !== undefined && Number(maxPrice) > 0) {
+      searchFilter.price = { ...(searchFilter.price || {}), $lte: Number(maxPrice) };
+    }
+
     try {
-      products = await Product.find(
-        textSearchFilter,
-        { score: { $meta: 'textScore' } }
-      )
-        .sort({ score: { $meta: 'textScore' } })
+      products = await Product.find(searchFilter)
+        .sort({ price: 1, createdAt: -1 })
         .skip(skip)
         .limit(limitNum)
         .populate('merchant', 'businessName businessCategory')
         .lean();
     } catch (err) {
-      logger.error('[PRODUCT_DISCOVERY] Text search query error:', err);
-      throw new Error(`Product text search failed: ${err.message}`);
+      logger.warn('[PRODUCT_DISCOVERY] Regex search error:', err.message);
     }
 
-    // Attempt 2: If 0 results and multiple keywords exist (e.g. "black shirt"), drop attribute/color token and retry with core item token (e.g. "shirt")
-    if (products.length === 0 && rawTokens.length > 1) {
+    // Strategy 2: If no items found strictly under maxPrice, search without strict maxPrice
+    // so the agent can show the closest available product and offer to negotiate it down!
+    if (products.length === 0 && maxPrice !== undefined && Number(maxPrice) > 0) {
       fallbackUsed = true;
-      // Keep last token(s) assuming last token is the core item noun
-      const coreTokens = rawTokens.slice(-1);
-      searchedKeywords = coreTokens.join(' ');
-
-      const fallbackTextFilter = {
-        ...baseFilter,
-        $text: { $search: searchedKeywords },
-      };
-
       try {
-        products = await Product.find(
-          fallbackTextFilter,
-          { score: { $meta: 'textScore' } }
-        )
+        const relaxedFilter = {
+          ...baseFilter,
+          $or: regexClauses,
+        };
+        products = await Product.find(relaxedFilter)
+          .sort({ price: 1 })
+          .skip(skip)
+          .limit(limitNum)
+          .populate('merchant', 'businessName businessCategory')
+          .lean();
+        logger.info(`[PRODUCT_DISCOVERY] Relaxed budget search found ${products.length} product(s) for "${cleanQuery}"`);
+      } catch (e) {
+        logger.warn('[PRODUCT_DISCOVERY] Relaxed search error:', e.message);
+      }
+    }
+
+    // Strategy 3: Text Index Search Fallback
+    if (products.length === 0) {
+      fallbackUsed = true;
+      try {
+        const textFilter = {
+          ...baseFilter,
+          $text: { $search: rawTokens.join(' ') },
+        };
+        products = await Product.find(textFilter, { score: { $meta: 'textScore' } })
           .sort({ score: { $meta: 'textScore' } })
           .skip(skip)
           .limit(limitNum)
           .populate('merchant', 'businessName businessCategory')
           .lean();
-        
-        logger.info(`[PRODUCT_DISCOVERY] Fallback triggered: dropped attributes, searched core keyword "${searchedKeywords}". Found ${products.length} item(s).`);
-      } catch (err) {
-        logger.error('[PRODUCT_DISCOVERY] Fallback text search error:', err);
-        throw new Error(`Product fallback text search failed: ${err.message}`);
+      } catch (textErr) {
+        logger.warn('[PRODUCT_DISCOVERY] Text search fallback skipped:', textErr.message);
+      }
+    }
+
+    // Strategy 4: If still 0 products, return top in-stock products in catalog
+    if (products.length === 0) {
+      fallbackUsed = true;
+      try {
+        products = await Product.find({ isAvailable: true })
+          .sort({ createdAt: -1 })
+          .limit(limitNum)
+          .populate('merchant', 'businessName businessCategory')
+          .lean();
+        logger.info(`[PRODUCT_DISCOVERY] Catalog fallback returned ${products.length} general product(s)`);
+      } catch (catErr) {
+        logger.warn('[PRODUCT_DISCOVERY] Catalog fallback error:', catErr.message);
       }
     }
   } else {
-    // No text query: browse mode by category/price
-    products = await Product.find(baseFilter)
+    // Browse mode by category/price
+    const browseFilter = { ...baseFilter };
+    if (category && category !== 'General' && category !== 'All') {
+      browseFilter.category = category;
+    }
+    if (maxPrice !== undefined && Number(maxPrice) > 0) {
+      browseFilter.price = { ...(browseFilter.price || {}), $lte: Number(maxPrice) };
+    }
+
+    products = await Product.find(browseFilter)
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limitNum)
@@ -125,7 +188,7 @@ async function searchProducts(params = {}) {
       merchant: {
         id: p.merchant?._id,
         _id: p.merchant?._id,
-        name: p.merchant?.businessName || 'Merchant',
+        name: p.merchant?.businessName || 'Verified Merchant',
       },
       textScore: p.score || 0,
     })),
@@ -160,7 +223,6 @@ async function ensureProductIndexes() {
 
 /**
  * Initiate commerce matching pipeline directly from a product search result
- * Feeds search selection into matching.service.js (Step 19)
  */
 async function initiateSearchMatchingPipeline(params) {
   const { query, category, maxPrice, merchantId } = params;
