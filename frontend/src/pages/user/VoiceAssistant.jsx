@@ -121,6 +121,9 @@ export default function VoiceAssistant() {
     if (inputText.trim() && !loading) {
       const text = inputText.trim();
       setInputText('');
+      latestTranscriptRef.current = '';
+      setTranscript('');
+      stopRecording(false);
       handleSendText(text);
     }
   };
@@ -288,6 +291,8 @@ export default function VoiceAssistant() {
   const silenceTimerRef = useRef(null);
   const manualStopRef = useRef(false);
 
+  const latestTranscriptRef = useRef('');
+
   // Fix React Closure Trap for async event handlers
   const handleSendTextRef = useRef(null);
   const handleAudioUploadRef = useRef(null);
@@ -346,19 +351,21 @@ export default function VoiceAssistant() {
             }
             const currentText = (finalSpeechText || interimText).trim();
             if (currentText && !manualStopRef.current) {
+              latestTranscriptRef.current = currentText;
               setTranscript(currentText);
 
               if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
               silenceTimerRef.current = setTimeout(() => {
-                if (currentText.length > 1 && !manualStopRef.current) {
-                  const textToSend = currentText;
+                const textToSend = (latestTranscriptRef.current || currentText).trim();
+                if (textToSend.length > 1 && !manualStopRef.current) {
+                  latestTranscriptRef.current = '';
                   setTranscript('');
                   stopRecording(false);
                   if (handleSendTextRef.current) {
                     handleSendTextRef.current(textToSend);
                   }
                 }
-              }, 1500);
+              }, 1200);
             }
           };
 
@@ -374,7 +381,22 @@ export default function VoiceAssistant() {
           recognition.onend = () => {
             setIsRecording(false);
             clearInterval(recordingTimerRef.current);
-            if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+            if (silenceTimerRef.current) {
+              clearTimeout(silenceTimerRef.current);
+              silenceTimerRef.current = null;
+            }
+
+            // If user spoke and there is pending speech captured, dispatch it immediately!
+            const captured = (latestTranscriptRef.current || '').trim();
+            if (captured && captured.length > 1 && !manualStopRef.current) {
+              latestTranscriptRef.current = '';
+              setTranscript('');
+              if (handleSendTextRef.current) {
+                handleSendTextRef.current(captured);
+              }
+              return;
+            }
+
             if (!manualStopRef.current && !isSpeaking) {
               setTimeout(() => {
                 if (!manualStopRef.current && !isSpeaking) startRecording();
@@ -497,6 +519,7 @@ export default function VoiceAssistant() {
 
     if (isManual) {
       manualStopRef.current = true;
+      latestTranscriptRef.current = '';
       setTranscript('');
     }
 
@@ -1661,9 +1684,27 @@ export default function VoiceAssistant() {
         {/* Real-Time Live Transcript Preview (If Speaking) */}
         {transcript && (
           <div className="mb-2 max-w-md mx-auto px-1 animate-in fade-in duration-100">
-            <div className="bg-indigo-50 border border-indigo-200 text-indigo-900 rounded-xl px-3 py-1.5 text-xs text-center font-medium">
-              🎙️ <span>"{transcript}"</span>
-            </div>
+            <button
+              type="button"
+              onClick={() => {
+                const text = transcript.trim();
+                if (text) {
+                  latestTranscriptRef.current = '';
+                  setTranscript('');
+                  stopRecording(false);
+                  handleSendText(text);
+                }
+              }}
+              className="w-full bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-950 rounded-xl px-3 py-2 text-xs flex items-center justify-between font-medium cursor-pointer shadow-2xs transition"
+              title="Tap to send immediately"
+            >
+              <span className="flex items-center gap-1.5 truncate">
+                🎙️ <span className="font-semibold truncate">"{transcript}"</span>
+              </span>
+              <span className="shrink-0 flex items-center gap-1 text-[11px] bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-2.5 py-1 rounded-lg shadow-xs ml-2">
+                Send <Send className="w-3 h-3" />
+              </span>
+            </button>
           </div>
         )}
 
@@ -1674,8 +1715,8 @@ export default function VoiceAssistant() {
               type="text"
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
-              placeholder={isRecording ? 'Listening to voice...' : 'Type or speak your request...'}
-              disabled={loading || isRecording}
+              placeholder="Type or speak your request..."
+              disabled={loading}
               className="w-full bg-transparent text-xs sm:text-sm text-slate-800 placeholder-slate-400 outline-none font-medium"
             />
             {inputText.trim() ? (

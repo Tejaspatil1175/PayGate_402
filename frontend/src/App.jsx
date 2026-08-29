@@ -678,10 +678,6 @@ export default function App() {
           />
         </Routes>
       </main>
-
-      {/* Global KAIRO Floating AI Voice Assistant Widget */}
-      {/* Hide on merchant portal since merchants use a text-based Co-Pilot instead */}
-      {activeRole !== 'merchant' && <GlobalKairoWidget />}
     </div>
   );
 }
