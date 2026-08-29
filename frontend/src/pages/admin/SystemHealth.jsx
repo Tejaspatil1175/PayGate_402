@@ -220,7 +220,7 @@ export default function AdminSystemHealth() {
           <div className="space-y-2.5 text-xs">
             <div className="flex items-center justify-between p-2.5 bg-slate-50 rounded-lg">
               <span className="text-slate-600 font-medium">Process PID</span>
-              <span className="font-mono font-bold text-slate-800">{healthData?.process?.pid || process.pid || 12044}</span>
+              <span className="font-mono font-bold text-slate-800">{healthData?.process?.pid || 12044}</span>
             </div>
 
             <div className="flex items-center justify-between p-2.5 bg-slate-50 rounded-lg">
