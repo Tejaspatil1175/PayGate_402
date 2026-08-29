@@ -296,7 +296,7 @@ export default function ProductDiscovery() {
               return (
                 <div
                   key={product._id}
-                  className="bg-white border border-slate-200 hover:border-indigo-300 rounded-2xl p-4 shadow-xs hover:shadow-md transition duration-150 flex flex-col justify-between group h-full"
+                  className="bg-white border border-slate-200 hover:border-indigo-400 rounded-2xl p-4 shadow-2xs transition-colors flex flex-col justify-between group h-full [content-visibility:auto] [contain-intrinsic-size:320px] transform-gpu"
                 >
                   <div className="space-y-3">
                     {/* Product Image Banner */}
@@ -309,15 +309,16 @@ export default function ProductDiscovery() {
                         }
                         alt={product.title}
                         loading="lazy"
+                        decoding="async"
                         onError={(e) => {
                           e.currentTarget.onerror = null;
                           e.currentTarget.src = '/image.png';
                         }}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200 transform-gpu"
+                        className="w-full h-full object-cover"
                       />
                       {/* Category Badge overlay */}
                       <div className="absolute top-2.5 left-2.5 z-10 pointer-events-none">
-                        <span className="px-2.5 py-0.5 rounded-md bg-white border border-slate-200 text-indigo-700 font-bold text-[10px] shadow-xs">
+                        <span className="px-2.5 py-0.5 rounded-md bg-white border border-slate-200 text-indigo-700 font-bold text-[10px] shadow-2xs">
                           {product.category || 'General'}
                         </span>
                       </div>
@@ -328,7 +329,7 @@ export default function ProductDiscovery() {
                         <Store className="w-3 h-3" />
                         <span>Merchant Store</span>
                       </div>
-                      <h3 className="font-bold text-slate-900 text-sm line-clamp-1 group-hover:text-indigo-600 transition">
+                      <h3 className="font-bold text-slate-900 text-sm line-clamp-1 group-hover:text-indigo-600 transition-colors">
                         {product.title}
                       </h3>
                       <p className="text-xs text-slate-500 line-clamp-2 mt-1">
@@ -363,7 +364,7 @@ export default function ProductDiscovery() {
 
                       <button
                         onClick={() => handleInitiateAgentPurchase(product)}
-                        className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-3 rounded-xl text-xs flex items-center justify-center gap-1.5 transition shadow-xs"
+                        className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-3 rounded-xl text-xs flex items-center justify-center gap-1.5 transition shadow-2xs"
                       >
                         <Zap className="w-3.5 h-3.5 fill-white" />
                         <span>Buy via AI Agent</span>

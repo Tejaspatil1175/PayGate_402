@@ -416,7 +416,7 @@ export default function MerchantCatalog() {
           {products.map((p) => (
             <div
               key={p._id}
-              className="bg-white border border-slate-200 hover:border-indigo-300 rounded-2xl p-4 shadow-xs hover:shadow-md transition duration-150 flex flex-col justify-between group relative h-full"
+              className="bg-white border border-slate-200 hover:border-indigo-400 rounded-2xl p-4 shadow-2xs transition-colors flex flex-col justify-between group relative h-full [content-visibility:auto] [contain-intrinsic-size:320px] transform-gpu"
             >
               <div className="space-y-3">
                 {/* Product Image Banner */}
@@ -429,15 +429,16 @@ export default function MerchantCatalog() {
                     }
                     alt={p.title}
                     loading="lazy"
+                    decoding="async"
                     onError={(e) => {
                       e.currentTarget.onerror = null;
                       e.currentTarget.src = '/image.png';
                     }}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200 transform-gpu"
+                    className="w-full h-full object-cover"
                   />
                   {/* Category Badge overlay (solid bg, no blur thrashing) */}
                   <div className="absolute top-2.5 left-2.5 z-10 pointer-events-none">
-                    <span className="px-2.5 py-0.5 rounded-md bg-white border border-slate-200 text-indigo-700 font-bold text-[10px] shadow-xs">
+                    <span className="px-2.5 py-0.5 rounded-md bg-white border border-slate-200 text-indigo-700 font-bold text-[10px] shadow-2xs">
                       {p.category || 'General'}
                     </span>
                   </div>
@@ -448,7 +449,7 @@ export default function MerchantCatalog() {
                         e.stopPropagation();
                         handleDeleteProduct(p._id, p.title);
                       }}
-                      className="p-1.5 rounded-lg bg-white border border-slate-200 text-rose-500 hover:bg-rose-50 hover:text-rose-600 transition shadow-xs"
+                      className="p-1.5 rounded-lg bg-white border border-slate-200 text-rose-500 hover:bg-rose-50 hover:text-rose-600 transition shadow-2xs"
                       title="Delete Product"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -457,7 +458,7 @@ export default function MerchantCatalog() {
                 </div>
 
                 <div className="min-h-[52px]">
-                  <h3 className="font-bold text-slate-900 text-sm line-clamp-1 group-hover:text-indigo-600 transition">
+                  <h3 className="font-bold text-slate-900 text-sm line-clamp-1 group-hover:text-indigo-600 transition-colors">
                     {p.title}
                   </h3>
                   <p className="text-xs text-slate-500 line-clamp-2 mt-1">
