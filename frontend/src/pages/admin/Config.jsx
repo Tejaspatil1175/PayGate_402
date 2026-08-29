@@ -13,6 +13,8 @@ import {
   Power,
   Shield,
   Zap,
+  Trash2,
+  AlertOctagon,
 } from 'lucide-react';
 import apiClient from '../../api/client';
 
@@ -37,6 +39,27 @@ export default function AdminConfig() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [resetting, setResetting] = useState(false);
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [resetOptions, setResetOptions] = useState({
+    purgeMerchants: true,
+    purgeProducts: true,
+    purgeUsers: true,
+    purgeWallets: true,
+    purgeOrders: true,
+    purgeContracts: true,
+    purgeIntents: true,
+    purgeAuditLogs: true,
+    purgeNegotiations: true,
+    purgeCampaigns: true,
+    purgePolicyRules: true,
+    purgeScheduledTasks: true,
+    purgeWishlists: true,
+    purgeUserAgents: true,
+    purgeUserPersonas: true,
+    purgeRegistries: true,
+  });
+
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
@@ -83,6 +106,27 @@ export default function AdminConfig() {
       setError(err.error || err.message || 'Failed to update platform configuration');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleExecuteReset = async () => {
+    setResetting(true);
+    setMessage('');
+    setError('');
+    try {
+      const res = await apiClient.post('/admin/system/reset', resetOptions);
+      setShowResetModal(false);
+      const counts = res.data?.deletedCounts || {};
+      setMessage(
+        `Database purged successfully! (Orders: ${counts.orders || 0}, Mandates: ${
+          counts.contracts || 0
+        }, Audit Logs: ${counts.auditLogs || 0}, Wallets Reset: ${counts.walletsReset || 0})`
+      );
+      setTimeout(() => setMessage(''), 6000);
+    } catch (err) {
+      setError(err.error || err.message || 'Failed to reset database');
+    } finally {
+      setResetting(false);
     }
   };
 
@@ -279,7 +323,35 @@ export default function AdminConfig() {
           </div>
         </div>
 
-        {/* Submit & Reset Bar */}
+        {/* Section 4: Database Clean Slate Purge & Reset */}
+        <div className="bg-rose-50/40 border border-rose-200/80 rounded-xl p-6 shadow-sm space-y-4">
+          <div className="flex items-center justify-between border-b border-rose-200/60 pb-3">
+            <div className="flex items-center gap-2">
+              <Trash2 className="w-4 h-4 text-rose-600" />
+              <h3 className="text-sm font-bold text-rose-900">Database Clean Slate Purge & Reset</h3>
+            </div>
+            <span className="px-2.5 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-300 uppercase">
+              Danger Zone
+            </span>
+          </div>
+
+          <p className="text-xs text-slate-600 leading-relaxed">
+            Instantly wipe out all transactional records (Orders, AP2 Cart Mandates, Audit Logs, Negotiations, and Campaigns) and restore the test buyer wallet balance back to ₹50,000 without altering any database schemas or collections.
+          </p>
+
+          <div>
+            <button
+              type="button"
+              onClick={() => setShowResetModal(true)}
+              className="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs transition shadow-sm flex items-center gap-2"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Purge & Reset Operational Data</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Submit Bar */}
         <div className="flex items-center justify-end gap-3 pt-2">
           <button
             type="submit"
@@ -287,10 +359,84 @@ export default function AdminConfig() {
             className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs transition shadow-sm"
           >
             <Save className="w-3.5 h-3.5" />
-            <span>{saving ? 'Broadcasting...' : 'Save Configuration'}</span>
+            <span>{saving ? 'Saving...' : 'Save Configuration'}</span>
           </button>
         </div>
       </form>
+
+      {/* Confirmation Modal for Database Reset */}
+      {showResetModal && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 max-w-lg w-full shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2 text-rose-600">
+                <AlertOctagon className="w-5 h-5" />
+                <h3 className="font-bold text-slate-900 text-sm">Confirm Database Clean Slate Purge</h3>
+              </div>
+              <button
+                onClick={() => setShowResetModal(false)}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-600 leading-relaxed">
+              This action will permanently delete all records across ALL collections (Merchants, Products, Users, Wallets, Orders, AP2 Mandates, and Audit Logs) from MongoDB while preserving database schemas.
+            </p>
+
+            <div className="space-y-2 bg-slate-50 p-3 rounded-lg border border-slate-100 text-xs">
+              <span className="font-bold text-slate-800 text-[11px] block mb-1">Collections to be Purged:</span>
+              <div className="grid grid-cols-2 gap-2 text-slate-600">
+                <div className="flex items-center gap-1.5">
+                  <Check className="w-3.5 h-3.5 text-rose-600" />
+                  <span>Merchants & Catalogs</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Check className="w-3.5 h-3.5 text-rose-600" />
+                  <span>Users & Buyer Wallets</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Check className="w-3.5 h-3.5 text-rose-600" />
+                  <span>Orders & Payments</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Check className="w-3.5 h-3.5 text-rose-600" />
+                  <span>AP2 Cart Mandates & Intents</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Check className="w-3.5 h-3.5 text-rose-600" />
+                  <span>Audit & Security Logs</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Check className="w-3.5 h-3.5 text-rose-600" />
+                  <span>Campaigns & Governance Rules</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-3 flex items-center justify-end gap-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setShowResetModal(false)}
+                disabled={resetting}
+                className="px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleExecuteReset}
+                disabled={resetting}
+                className="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs transition flex items-center gap-1.5 shadow-sm"
+              >
+                {resetting ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                <span>{resetting ? 'Purging Database...' : 'Yes, Purge Operational Data'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
