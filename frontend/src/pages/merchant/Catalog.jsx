@@ -186,7 +186,7 @@ export default function MerchantCatalog() {
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold transition shadow-sm"
           >
             <UploadCloud className="w-4 h-4 text-indigo-500" />
-            <span>Bulk CSV Upload</span>
+            <span>Bulk CSV / Excel Import</span>
           </button>
 
           <button
@@ -342,7 +342,7 @@ export default function MerchantCatalog() {
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white border border-slate-200 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="font-bold text-slate-900 text-base">Bulk Upload Catalog CSV</h3>
+              <h3 className="font-bold text-slate-900 text-base">Bulk Import Catalog (CSV or Excel)</h3>
               <button onClick={() => setShowBulkModal(false)} className="text-slate-400 hover:text-slate-600 transition">
                 <XCircle className="w-5 h-5" />
               </button>
@@ -352,11 +352,11 @@ export default function MerchantCatalog() {
               <div className="border-2 border-dashed border-slate-300 hover:border-indigo-400 rounded-2xl p-8 text-center space-y-3 cursor-pointer bg-slate-50 transition">
                 <UploadCloud className="w-10 h-10 text-indigo-500 mx-auto" />
                 <div className="text-slate-700 font-semibold">
-                  {csvFile ? csvFile.name : 'Select CSV catalog file'}
+                  {csvFile ? csvFile.name : 'Select CSV or Excel (.xlsx, .xls) file'}
                 </div>
                 <input
                   type="file"
-                  accept=".csv"
+                  accept=".csv, .xlsx, .xls, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
                   required
                   onChange={(e) => setCsvFile(e.target.files[0])}
                   className="w-full text-slate-500 text-xs cursor-pointer mt-2"
@@ -376,7 +376,7 @@ export default function MerchantCatalog() {
                   disabled={bulkLoading || !csvFile}
                   className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold transition shadow-md shadow-indigo-600/20 disabled:opacity-50"
                 >
-                  {bulkLoading ? 'Uploading CSV...' : 'Start Bulk Upload'}
+                  {bulkLoading ? 'Importing Products...' : 'Start Bulk Import'}
                 </button>
               </div>
             </form>

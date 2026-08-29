@@ -1,6 +1,7 @@
 const fs = require('fs');
 const Product = require('../models/Product');
 const cloudinary = require('cloudinary').v2;
+const XLSX = require('xlsx');
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -163,6 +164,50 @@ function parseCSV(csvText) {
   }
 
   return products;
+}
+
+// Helper to parse Excel (.xlsx, .xls) workbook into product objects
+function parseExcel(filePathOrBuffer) {
+  try {
+    const workbook = typeof filePathOrBuffer === 'string'
+      ? XLSX.readFile(filePathOrBuffer)
+      : XLSX.read(filePathOrBuffer, { type: 'buffer' });
+
+    if (!workbook.SheetNames || workbook.SheetNames.length === 0) return [];
+
+    const firstSheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[firstSheetName];
+    const rawRows = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+
+    return rawRows.map((row) => {
+      const normalized = {};
+      Object.keys(row).forEach((k) => {
+        normalized[k.trim().toLowerCase()] = row[k];
+      });
+
+      const tags = normalized.tags
+        ? (typeof normalized.tags === 'string' ? normalized.tags.split(/[;,]/).map((t) => t.trim()).filter(Boolean) : [String(normalized.tags)])
+        : [];
+
+      const images = normalized.images
+        ? (typeof normalized.images === 'string' ? normalized.images.split(/[;,]/).map((img) => img.trim()).filter(Boolean) : [String(normalized.images)])
+        : (normalized.image ? [String(normalized.image).trim()] : (normalized.imageurl ? [String(normalized.imageurl).trim()] : []));
+
+      return {
+        title: String(normalized.title || normalized.name || '').trim(),
+        description: String(normalized.description || '').trim(),
+        price: parseFloat(normalized.price) || 0,
+        category: String(normalized.category || 'General').trim(),
+        sku: String(normalized.sku || '').trim(),
+        stock: parseInt(normalized.stock, 10) || 0,
+        tags,
+        images,
+      };
+    }).filter((p) => p.title && p.price > 0);
+  } catch (err) {
+    console.error('[Catalog parseExcel Error]:', err.message);
+    return [];
+  }
 }
 
 // @desc    Create a new product
@@ -442,14 +487,29 @@ exports.bulkUploadCSV = async (req, res) => {
 
     if (req.file && req.file.path) {
       try {
-        const fileContent = fs.readFileSync(req.file.path, 'utf8');
-        productList = parseCSV(fileContent);
+        const originalName = (req.file.originalname || '').toLowerCase();
+        const isExcel =
+          originalName.endsWith('.xlsx') ||
+          originalName.endsWith('.xls') ||
+          req.file.mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+          req.file.mimetype === 'application/vnd.ms-excel';
+
+        if (isExcel) {
+          productList = parseExcel(req.file.path);
+        } else {
+          const fileContent = fs.readFileSync(req.file.path, 'utf8');
+          productList = parseCSV(fileContent);
+        }
+
         // Clean up temp file
         fs.unlink(req.file.path, () => {});
       } catch (fileErr) {
+        if (req.file.path && fs.existsSync(req.file.path)) {
+          fs.unlink(req.file.path, () => {});
+        }
         return res.status(400).json({
           success: false,
-          error: 'Failed to read uploaded CSV file: ' + fileErr.message,
+          error: 'Failed to parse uploaded file: ' + fileErr.message,
         });
       }
     } else if (req.body.csvText && typeof req.body.csvText === 'string') {
@@ -459,7 +519,7 @@ exports.bulkUploadCSV = async (req, res) => {
     } else {
       return res.status(400).json({
         success: false,
-        error: 'Please provide a CSV file, csvText string, or products array',
+        error: 'Please provide a CSV/Excel file, csvText string, or products array',
       });
     }
 
