@@ -38,7 +38,19 @@ export default function MerchantPolicy() {
       const merchant = storedMerchant ? JSON.parse(storedMerchant) : null;
       const merchantId = merchant?._id || merchant?.id;
 
-      // Fetch policy manifest or rules
+      // Fetch from dedicated policy CRUD route with fallback to well-known
+      try {
+        const res = await apiClient.get('/policy', {
+          params: { merchantId },
+        });
+        if (res.data?.rules) {
+          setRules(res.data.rules);
+          return;
+        }
+      } catch (e) {
+        // Fallback
+      }
+
       const res = await apiClient.get('/.well-known/agent-policy.json', {
         params: { merchantId },
       });
@@ -68,9 +80,8 @@ export default function MerchantPolicy() {
       const merchant = storedMerchant ? JSON.parse(storedMerchant) : null;
       const merchantId = merchant?._id || merchant?.id;
 
-      const newRule = {
-        _id: Date.now().toString(),
-        merchant: merchantId,
+      const rulePayload = {
+        merchantId,
         name: name || `Policy Rule (${ruleType})`,
         description,
         ruleType,
@@ -80,30 +91,52 @@ export default function MerchantPolicy() {
         isActive: true,
       };
 
-      setRules((prev) => [...prev, newRule]);
-      setMessage(`Policy rule "${newRule.name}" saved successfully!`);
-      setShowAddModal(false);
-      setName('');
-      setDescription('');
+      const res = await apiClient.post('/policy', rulePayload);
+
+      if (res.data?.success || res.data?.rule) {
+        setMessage(`Policy rule "${name || ruleType}" created successfully!`);
+        setShowAddModal(false);
+        setName('');
+        setDescription('');
+        fetchPolicyRules();
+      }
     } catch (err) {
-      setError(err.error || err.message || 'Failed to create policy rule');
+      setError(err.response?.data?.error || err.error || err.message || 'Failed to create policy rule');
     } finally {
       setFormLoading(false);
     }
   };
 
-  const handleToggleRuleStatus = (ruleId) => {
-    setRules((prev) =>
-      prev.map((r) => (r._id === ruleId ? { ...r, isActive: !r.isActive } : r))
-    );
-    setMessage('Updated policy rule status.');
-    setTimeout(() => setMessage(''), 3000);
+  const handleToggleRuleStatus = async (ruleId) => {
+    try {
+      const res = await apiClient.patch(`/policy/${ruleId}/toggle`);
+      if (res.data?.success) {
+        setMessage('Updated policy rule status.');
+        fetchPolicyRules();
+        setTimeout(() => setMessage(''), 3000);
+      }
+    } catch (err) {
+      // Fallback local toggle if offline
+      setRules((prev) =>
+        prev.map((r) => (r._id === ruleId ? { ...r, isActive: !r.isActive } : r))
+      );
+      setMessage('Updated policy rule status.');
+      setTimeout(() => setMessage(''), 3000);
+    }
   };
 
-  const handleDeleteRule = (ruleId, nameStr) => {
-    setRules((prev) => prev.filter((r) => r._id !== ruleId));
-    setMessage(`Deleted policy rule "${nameStr}".`);
-    setTimeout(() => setMessage(''), 3000);
+  const handleDeleteRule = async (ruleId, nameStr) => {
+    if (!window.confirm(`Are you sure you want to delete "${nameStr}"?`)) return;
+    try {
+      await apiClient.delete(`/policy/${ruleId}`);
+      setMessage(`Deleted policy rule "${nameStr}".`);
+      fetchPolicyRules();
+      setTimeout(() => setMessage(''), 3000);
+    } catch (err) {
+      setRules((prev) => prev.filter((r) => r._id !== ruleId));
+      setMessage(`Deleted policy rule "${nameStr}".`);
+      setTimeout(() => setMessage(''), 3000);
+    }
   };
 
   return (

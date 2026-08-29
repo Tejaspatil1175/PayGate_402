@@ -11,9 +11,9 @@ const {
 } = require('../controllers/catalog.controller');
 
 const upload = multer({ dest: 'uploads/' });
-
 router.route('/').post(upload.array('images', 5), createProduct).get(getProducts);
-router.post('/bulk', bulkUploadCSV);
+router.post('/bulk', upload.single('file'), bulkUploadCSV);
+router.post('/bulk-upload', upload.single('file'), bulkUploadCSV);
 router
   .route('/:id')
   .get(getProductById)

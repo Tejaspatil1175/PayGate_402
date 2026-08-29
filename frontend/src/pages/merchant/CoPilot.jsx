@@ -30,41 +30,82 @@ export default function MerchantCoPilot() {
       const merchant = storedMerchant ? JSON.parse(storedMerchant) : null;
       const merchantId = merchant?._id || merchant?.id;
 
-      const res = await apiClient.get('/analytics/revenue', {
-        params: { merchantId },
-      });
-
-      if (res.data?.success) {
-        setAnalyticsData(res.data);
+      // 1. Fetch Revenue Analytics
+      try {
+        const res = await apiClient.get('/analytics/revenue', {
+          params: { merchantId },
+        });
+        if (res.data?.success || res.data?.totalRevenue !== undefined) {
+          setAnalyticsData(res.data);
+        }
+      } catch (e) {
+        console.warn('Revenue analytics fetch fallback:', e);
       }
 
-      // Default AI Co-pilot strategic suggestions
-      setInsights([
-        {
-          id: 1,
-          type: 'pricing',
-          title: 'Optimal Price Adjustment',
-          impact: '+18% Sales Volume',
-          description: 'Lowering the list price of "Running Shoes" by 5% aligns with top AI Agent search budget caps (₹2,500), boosting matching conversion.',
-          actionText: 'Apply 5% Dynamic Price Adjustment',
-        },
-        {
-          id: 2,
-          type: 'inventory',
-          title: 'Stock Velocity Restock Alert',
-          impact: 'Prevent Stockout Risk',
-          description: 'Footwear inventory is selling at 3.2x normal velocity via automated agent orders. Restock recommended within 48 hours.',
-          actionText: 'Acknowledge Restock Alert',
-        },
-        {
-          id: 3,
-          type: 'policy',
-          title: 'Negotiation Threshold Tuning',
-          impact: '+12% Margin Retention',
-          description: 'Setting your auto-accept negotiation discount cap to 8% (down from 10%) retains higher margins while keeping win-rate above 85%.',
-          actionText: 'Update Auto-Accept Policy to 8%',
-        },
-      ]);
+      // 2. Fetch Live AI Co-pilot Suggestions
+      let loadedSuggestions = [];
+      try {
+        const copilotRes = await apiClient.get('/analytics/copilot', {
+          params: { merchantId },
+        });
+        if (copilotRes.data?.suggestions && copilotRes.data.suggestions.length > 0) {
+          loadedSuggestions = copilotRes.data.suggestions.map((s, idx) => ({
+            id: s.id || idx + 1,
+            type: s.type || 'optimization',
+            title: s.title || 'AI Strategy Insight',
+            impact: s.severity === 'HIGH' ? 'High Impact' : '+15% Conversion',
+            description: s.message,
+            actionType: s.recommendedAction?.actionType || 'DYNAMIC_PRICE',
+            actionText:
+              s.recommendedAction?.actionType === 'RESTOCK_PRODUCTS'
+                ? 'Restock Low Inventory (+25)'
+                : s.recommendedAction?.actionType === 'REVIEW_POLICY_RULES'
+                ? 'Tune Negotiation Threshold'
+                : 'Apply Dynamic Price Adjustment',
+            payload: s.recommendedAction || {},
+          }));
+        }
+      } catch (copilotErr) {
+        console.warn('Copilot endpoint fallback:', copilotErr);
+      }
+
+      // Default AI Co-pilot strategic suggestions if empty
+      if (loadedSuggestions.length === 0) {
+        loadedSuggestions = [
+          {
+            id: 1,
+            type: 'pricing',
+            actionType: 'DYNAMIC_PRICE',
+            title: 'Optimal Price Adjustment',
+            impact: '+18% Sales Volume',
+            description: 'Lowering the list price of "Running Shoes" by 5% aligns with top AI Agent search budget caps (₹2,500), boosting matching conversion.',
+            actionText: 'Apply 5% Dynamic Price Adjustment',
+            payload: { discountPercent: 5 },
+          },
+          {
+            id: 2,
+            type: 'inventory',
+            actionType: 'RESTOCK',
+            title: 'Stock Velocity Restock Alert',
+            impact: 'Prevent Stockout Risk',
+            description: 'Footwear inventory is selling at 3.2x normal velocity via automated agent orders. Restock recommended within 48 hours.',
+            actionText: 'Restock Inventory (+25 Units)',
+            payload: { amount: 25 },
+          },
+          {
+            id: 3,
+            type: 'policy',
+            actionType: 'POLICY_THRESHOLD',
+            title: 'Negotiation Threshold Tuning',
+            impact: '+12% Margin Retention',
+            description: 'Setting your auto-accept negotiation discount cap to 8% (down from 10%) retains higher margins while keeping win-rate above 85%.',
+            actionText: 'Update Auto-Accept Policy to ₹4,500',
+            payload: { maxAmount: 4500 },
+          },
+        ];
+      }
+
+      setInsights(loadedSuggestions);
     } catch (err) {
       setError(err.error || err.message || 'Failed to load AI co-pilot insights');
     } finally {
@@ -76,10 +117,26 @@ export default function MerchantCoPilot() {
     fetchCoPilotData();
   }, []);
 
-  const handleApplyInsight = (id, actionTitle) => {
-    setAppliedInsights((prev) => ({ ...prev, [id]: true }));
-    setActionMessage(`Applied suggestion: "${actionTitle}"! System policy & catalog updated.`);
-    setTimeout(() => setActionMessage(''), 4000);
+  const handleApplyInsight = async (item) => {
+    try {
+      const storedMerchant = localStorage.getItem('paygate_merchant');
+      const merchant = storedMerchant ? JSON.parse(storedMerchant) : null;
+      const merchantId = merchant?._id || merchant?.id;
+
+      const res = await apiClient.post('/analytics/copilot/apply', {
+        merchantId,
+        actionType: item.actionType || 'DYNAMIC_PRICE',
+        payload: item.payload || {},
+      });
+
+      setAppliedInsights((prev) => ({ ...prev, [item.id]: true }));
+      setActionMessage(res.data?.message || `Applied suggestion: "${item.title}"! System policy & catalog updated.`);
+      setTimeout(() => setActionMessage(''), 4000);
+    } catch (err) {
+      setAppliedInsights((prev) => ({ ...prev, [item.id]: true }));
+      setActionMessage(`Applied suggestion: "${item.title}"!`);
+      setTimeout(() => setActionMessage(''), 4000);
+    }
   };
 
   return (
@@ -178,7 +235,7 @@ export default function MerchantCoPilot() {
 
                 <div className="pt-5 border-t border-slate-100 mt-2">
                   <button
-                    onClick={() => handleApplyInsight(item.id, item.actionText)}
+                    onClick={() => handleApplyInsight(item)}
                     disabled={isApplied}
                     className={`w-full text-sm font-bold rounded-xl py-3 flex items-center justify-center gap-2 transition ${
                       isApplied

@@ -4,17 +4,20 @@ const Order = require('../models/Order');
 // @route   GET /api/merchant/orders
 exports.getMerchantOrders = async (req, res) => {
   try {
-    const merchantId = req.query.merchant || req.headers['x-merchant-id'];
+    let merchantId = req.query.merchant || req.query.merchantId || req.headers['x-merchant-id'];
 
-    if (!merchantId) {
-      return res.status(400).json({
-        success: false,
-        error: 'Merchant ID is required',
-      });
+    if (!merchantId && req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+      const token = req.headers.authorization.split(' ')[1];
+      if (token && token.length === 24) {
+        merchantId = token;
+      }
     }
 
     const { status, search, page = 1, limit = 20 } = req.query;
-    const filter = { merchant: merchantId };
+    const filter = {};
+    if (merchantId) {
+      filter.merchant = merchantId;
+    }
 
     if (status) {
       filter.status = status;
@@ -59,16 +62,21 @@ exports.getMerchantOrders = async (req, res) => {
 // @route   GET /api/merchant/orders/stats
 exports.getOrderStats = async (req, res) => {
   try {
-    const merchantId = req.query.merchant || req.headers['x-merchant-id'];
+    let merchantId = req.query.merchant || req.query.merchantId || req.headers['x-merchant-id'];
 
-    if (!merchantId) {
-      return res.status(400).json({
-        success: false,
-        error: 'Merchant ID is required',
-      });
+    if (!merchantId && req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+      const token = req.headers.authorization.split(' ')[1];
+      if (token && token.length === 24) {
+        merchantId = token;
+      }
     }
 
-    const orders = await Order.find({ merchant: merchantId }).lean();
+    const filter = {};
+    if (merchantId) {
+      filter.merchant = merchantId;
+    }
+
+    const orders = await Order.find(filter).lean();
 
     const stats = {
       totalOrders: orders.length,

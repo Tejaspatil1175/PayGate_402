@@ -440,14 +440,26 @@ exports.bulkUploadCSV = async (req, res) => {
 
     let productList = [];
 
-    if (req.body.csvText && typeof req.body.csvText === 'string') {
+    if (req.file && req.file.path) {
+      try {
+        const fileContent = fs.readFileSync(req.file.path, 'utf8');
+        productList = parseCSV(fileContent);
+        // Clean up temp file
+        fs.unlink(req.file.path, () => {});
+      } catch (fileErr) {
+        return res.status(400).json({
+          success: false,
+          error: 'Failed to read uploaded CSV file: ' + fileErr.message,
+        });
+      }
+    } else if (req.body.csvText && typeof req.body.csvText === 'string') {
       productList = parseCSV(req.body.csvText);
     } else if (Array.isArray(req.body.products)) {
       productList = req.body.products;
     } else {
       return res.status(400).json({
         success: false,
-        error: 'Please provide csvText string or products array',
+        error: 'Please provide a CSV file, csvText string, or products array',
       });
     }
 
