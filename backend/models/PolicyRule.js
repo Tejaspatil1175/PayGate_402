@@ -50,6 +50,18 @@ const policyRuleSchema = new mongoose.Schema(
       default: 10000, // Orders above ₹10,000 require manual approval
       min: 0,
     },
+    autoAcceptDiscountPercent: {
+      type: Number,
+      default: 10, // Max discount percentage automatically accepted by policy engine
+      min: 0,
+      max: 100,
+    },
+    maxAllowedDiscountPercent: {
+      type: Number,
+      default: 25, // Absolute maximum discount percentage before auto-reject
+      min: 0,
+      max: 100,
+    },
     isActive: {
       type: Boolean,
       default: true,

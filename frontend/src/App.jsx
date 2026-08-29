@@ -41,6 +41,7 @@ import MerchantCatalog from './pages/merchant/Catalog';
 import MerchantPolicy from './pages/merchant/Policy';
 import MerchantOrders from './pages/merchant/Orders';
 import MerchantCoPilot from './pages/merchant/CoPilot';
+import MerchantCampaigns from './pages/merchant/Campaigns';
 
 // Agent Pages
 import IntentForm from './pages/agent/IntentForm';
@@ -122,6 +123,7 @@ export default function App() {
   const merchantRoutePrefixes = [
     '/merchant/catalog',
     '/merchant/policy',
+    '/merchant/campaigns',
     '/merchant/orders',
     '/merchant/copilot',
   ];
@@ -578,6 +580,7 @@ export default function App() {
           >
             <Route path="/merchant/catalog" element={<MerchantCatalog />} />
             <Route path="/merchant/policy" element={<MerchantPolicy />} />
+            <Route path="/merchant/campaigns" element={<MerchantCampaigns />} />
             <Route path="/merchant/orders" element={<MerchantOrders />} />
             <Route path="/merchant/copilot" element={<MerchantCoPilot />} />
           </Route>

@@ -54,6 +54,8 @@ router.post('/', async (req, res, next) => {
       dailyCap,
       requireApprovalThreshold,
       allowedCategories,
+      autoAcceptDiscountPercent,
+      maxAllowedDiscountPercent,
       isActive,
     } = req.body;
 
@@ -73,6 +75,10 @@ router.post('/', async (req, res, next) => {
       dailyCap: dailyCap !== undefined ? Number(dailyCap) : 25000,
       requireApprovalThreshold:
         requireApprovalThreshold !== undefined ? Number(requireApprovalThreshold) : 10000,
+      autoAcceptDiscountPercent:
+        autoAcceptDiscountPercent !== undefined ? Number(autoAcceptDiscountPercent) : 10,
+      maxAllowedDiscountPercent:
+        maxAllowedDiscountPercent !== undefined ? Number(maxAllowedDiscountPercent) : 25,
       allowedCategories: allowedCategories || [],
       isActive: isActive !== undefined ? Boolean(isActive) : true,
     });

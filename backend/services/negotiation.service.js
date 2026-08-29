@@ -2,6 +2,7 @@ const Negotiation = require('../models/Negotiation');
 const Product = require('../models/Product');
 const Intent = require('../models/Intent');
 const PolicyRule = require('../models/PolicyRule');
+const Campaign = require('../models/Campaign');
 const { logAuditEvent } = require('../middleware/auditLogger');
 
 /**
@@ -42,8 +43,30 @@ async function initiateNegotiation(params) {
   let rejectionReason = '';
   let note = `Initial offer submitted by agent: ₹${proposedPrice} (${discountPercentage}% discount)`;
 
-  // Policy Engine Evaluation against active merchant PolicyRules:
+  // 1. Check for Active Matching Campaigns (Bulk/Promo discounts)
+  const now = new Date();
+  const activeCampaign = await Campaign.findOne({
+    merchant: merchantId,
+    isActive: true,
+    minQuantity: { $lte: quantity },
+    $and: [
+      { $or: [{ startDate: { $lte: now } }, { startDate: null }] },
+      { $or: [{ endDate: { $gte: now } }, { endDate: null }] },
+    ],
+  }).sort({ discountPercent: -1 });
+
+  // 2. Policy Engine Evaluation against active merchant PolicyRules:
   const maxSpendRule = policyRules.find((r) => r.ruleType === 'max_spend_cap');
+  const activeRule = maxSpendRule || policyRules[0];
+
+  const autoAcceptPct =
+    activeRule && activeRule.autoAcceptDiscountPercent !== undefined
+      ? activeRule.autoAcceptDiscountPercent
+      : 10;
+  const maxAllowedPct =
+    activeRule && activeRule.maxAllowedDiscountPercent !== undefined
+      ? activeRule.maxAllowedDiscountPercent
+      : 25;
 
   if (maxSpendRule && totalProposed > maxSpendRule.maxAmount) {
     initialStatus = 'rejected';
@@ -52,12 +75,15 @@ async function initiateNegotiation(params) {
   } else if (discountPercentage <= 0) {
     initialStatus = 'accepted';
     note = 'Auto-accepted by policy engine: Full list price offered.';
-  } else if (discountPercentage <= 10) {
+  } else if (activeCampaign && discountPercentage <= activeCampaign.discountPercent) {
     initialStatus = 'accepted';
-    note = `Auto-accepted by policy engine: Discount of ${discountPercentage}% is within 10% auto-approval policy.`;
-  } else if (discountPercentage > 25) {
+    note = `Auto-accepted via Campaign "${activeCampaign.name}": ${activeCampaign.discountPercent}% promo discount applied for ≥${activeCampaign.minQuantity} units (requested ${discountPercentage}% off).`;
+  } else if (discountPercentage <= autoAcceptPct) {
+    initialStatus = 'accepted';
+    note = `Auto-accepted by policy engine: Discount of ${discountPercentage}% is within merchant ${autoAcceptPct}% auto-approval policy.`;
+  } else if (discountPercentage > maxAllowedPct) {
     initialStatus = 'rejected';
-    rejectionReason = `Discount request of ${discountPercentage}% exceeds max allowed 25% policy threshold`;
+    rejectionReason = `Discount request of ${discountPercentage}% exceeds merchant max allowed ${maxAllowedPct}% policy threshold`;
     note = `Auto-rejected by policy engine: ${rejectionReason}`;
   }
 

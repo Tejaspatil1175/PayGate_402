@@ -10,6 +10,7 @@ import {
   XCircle,
   RefreshCw,
   SlidersHorizontal,
+  Percent,
 } from 'lucide-react';
 import apiClient from '../../api/client';
 
@@ -25,6 +26,8 @@ export default function MerchantPolicy() {
   const [maxAmount, setMaxAmount] = useState('5000');
   const [dailyCap, setDailyCap] = useState('25000');
   const [requireApprovalThreshold, setRequireApprovalThreshold] = useState('10000');
+  const [autoAcceptDiscountPercent, setAutoAcceptDiscountPercent] = useState('10');
+  const [maxAllowedDiscountPercent, setMaxAllowedDiscountPercent] = useState('25');
   const [formLoading, setFormLoading] = useState(false);
 
   const [message, setMessage] = useState('');
@@ -88,6 +91,8 @@ export default function MerchantPolicy() {
         maxAmount: Number(maxAmount),
         dailyCap: Number(dailyCap),
         requireApprovalThreshold: Number(requireApprovalThreshold),
+        autoAcceptDiscountPercent: Number(autoAcceptDiscountPercent) || 10,
+        maxAllowedDiscountPercent: Number(maxAllowedDiscountPercent) || 25,
         isActive: true,
       };
 
@@ -98,6 +103,8 @@ export default function MerchantPolicy() {
         setShowAddModal(false);
         setName('');
         setDescription('');
+        setAutoAcceptDiscountPercent('10');
+        setMaxAllowedDiscountPercent('25');
         fetchPolicyRules();
       }
     } catch (err) {
@@ -153,7 +160,7 @@ export default function MerchantPolicy() {
               <Sparkles className="w-5 h-5 text-amber-400" />
             </h1>
             <p className="text-sm text-slate-500 mt-1">
-              Configure auto-negotiation caps, spend limits, and manual approval thresholds
+              Configure auto-negotiation discount caps, transaction velocity limits, and approval thresholds
             </p>
           </div>
         </div>
@@ -183,7 +190,7 @@ export default function MerchantPolicy() {
       {/* Create Rule Modal */}
       {showAddModal && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h3 className="font-bold text-slate-900 text-base">Create Policy Rule</h3>
               <button onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-slate-600 transition">
@@ -199,7 +206,7 @@ export default function MerchantPolicy() {
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Max Spend Cap ₹5000"
+                  placeholder="e.g. Standard Agent Commerce Policy"
                   className="w-full bg-slate-50 border border-slate-300 focus:border-indigo-500 focus:bg-white rounded-xl px-3 py-2 text-slate-900 outline-none transition"
                 />
               </div>
@@ -240,6 +247,46 @@ export default function MerchantPolicy() {
                     onChange={(e) => setDailyCap(e.target.value)}
                     className="w-full bg-slate-50 border border-slate-300 focus:border-indigo-500 focus:bg-white rounded-xl px-3 py-2 text-slate-900 outline-none transition"
                   />
+                </div>
+              </div>
+
+              {/* Dynamic Negotiation Threshold Inputs */}
+              <div className="p-3 bg-indigo-50/60 border border-indigo-100 rounded-xl space-y-3">
+                <div className="text-xs font-bold text-indigo-900 flex items-center gap-1.5">
+                  <Percent className="w-3.5 h-3.5 text-indigo-600" />
+                  <span>AI Negotiation Thresholds</span>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] text-slate-600 font-semibold mb-1">
+                      Auto-Accept (%)
+                    </label>
+                    <input
+                      type="number"
+                      required
+                      min="0"
+                      max="100"
+                      value={autoAcceptDiscountPercent}
+                      onChange={(e) => setAutoAcceptDiscountPercent(e.target.value)}
+                      className="w-full bg-white border border-slate-300 focus:border-indigo-500 rounded-lg px-2.5 py-1.5 text-slate-900 outline-none transition text-xs font-bold"
+                    />
+                    <span className="text-[10px] text-slate-400 block mt-0.5">≤ % is auto-approved</span>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] text-slate-600 font-semibold mb-1">
+                      Max Allowed (%)
+                    </label>
+                    <input
+                      type="number"
+                      required
+                      min="0"
+                      max="100"
+                      value={maxAllowedDiscountPercent}
+                      onChange={(e) => setMaxAllowedDiscountPercent(e.target.value)}
+                      className="w-full bg-white border border-slate-300 focus:border-indigo-500 rounded-lg px-2.5 py-1.5 text-slate-900 outline-none transition text-xs font-bold"
+                    />
+                    <span className="text-[10px] text-slate-400 block mt-0.5">&gt; % is auto-rejected</span>
+                  </div>
                 </div>
               </div>
 
@@ -337,6 +384,14 @@ export default function MerchantPolicy() {
                     <div className="flex justify-between items-center pb-2 border-b border-slate-100">
                       <span className="font-medium text-slate-400">Daily Cap:</span> 
                       <span className="font-bold text-slate-700">₹{rule.dailyCap || 25000}</span>
+                    </div>
+                    <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+                      <span className="font-medium text-slate-400">Auto-Accept Discount:</span> 
+                      <span className="font-bold text-emerald-600">≤ {rule.autoAcceptDiscountPercent !== undefined ? rule.autoAcceptDiscountPercent : 10}%</span>
+                    </div>
+                    <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+                      <span className="font-medium text-slate-400">Max Allowed Discount:</span> 
+                      <span className="font-bold text-rose-600">≤ {rule.maxAllowedDiscountPercent !== undefined ? rule.maxAllowedDiscountPercent : 25}%</span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="font-medium text-slate-400">Approval Threshold:</span> 

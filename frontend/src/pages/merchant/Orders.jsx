@@ -10,7 +10,12 @@ import {
   DollarSign,
   User,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   Package,
+  ShieldCheck,
+  ShieldAlert,
+  Info,
 } from 'lucide-react';
 import apiClient from '../../api/client';
 
@@ -18,6 +23,7 @@ export default function MerchantOrders() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState(null);
+  const [expandedOrderId, setExpandedOrderId] = useState(null);
 
   const [fulfillmentCarrier, setFulfillmentCarrier] = useState('Express Courier');
   const [fulfillmentLoading, setFulfillmentLoading] = useState(false);
@@ -75,6 +81,10 @@ export default function MerchantOrders() {
     }
   };
 
+  const toggleExpand = (id) => {
+    setExpandedOrderId((prev) => (prev === id ? null : id));
+  };
+
   const totalRevenue = orders.reduce((sum, o) => sum + (o.amount || 0), 0);
   const fulfilledCount = orders.filter((o) => o.status === 'fulfilled').length;
 
@@ -92,7 +102,7 @@ export default function MerchantOrders() {
               <Sparkles className="w-5 h-5 text-amber-400" />
             </h1>
             <p className="text-sm text-slate-500 mt-1">
-              Real-time feed of AP2 settled orders, digital receipts, and fulfillment actions
+              Real-time feed of AP2 settled orders, gate decisions, digital receipts, and fulfillment actions
             </p>
           </div>
         </div>
@@ -173,57 +183,130 @@ export default function MerchantOrders() {
                 <tr className="border-b border-slate-200 text-slate-500 uppercase tracking-wider text-xs font-bold bg-slate-50/50">
                   <th className="py-4 px-4 rounded-tl-xl">Order ID</th>
                   <th className="py-4 px-4">Customer / Agent</th>
+                  <th className="py-4 px-4">Gate Decision</th>
                   <th className="py-4 px-4">Mandate Hash</th>
                   <th className="py-4 px-4">Amount</th>
                   <th className="py-4 px-4">Status</th>
-                  <th className="py-4 px-4 text-right rounded-tr-xl">Fulfillment Action</th>
+                  <th className="py-4 px-4 text-right rounded-tr-xl">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {orders.map((ord) => {
                   const isFulfilled = ord.status === 'fulfilled';
+                  const isExpanded = expandedOrderId === ord._id;
+                  const gatePassed = ord.gateDecision ? ord.gateDecision.passed !== false : true;
+                  const gateReason = ord.gateDecision?.reason || 'AP2 Policy checks verified and passed.';
+
                   return (
-                    <tr key={ord._id} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="py-4 px-4 font-mono font-bold text-indigo-600 text-xs">
-                        {ord.orderId}
-                      </td>
-                      <td className="py-4 px-4 font-medium text-slate-700">
-                        {ord.customer?.name || ord.customer?.email || ord.agentId || 'AI Buyer Agent'}
-                      </td>
-                      <td className="py-4 px-4 font-mono text-amber-600 text-xs font-semibold bg-amber-50/50 rounded-lg inline-block mt-2 ml-4">
-                        {ord.mandateHash ? `${ord.mandateHash.substring(0, 14)}...` : 'N/A'}
-                      </td>
-                      <td className="py-4 px-4 font-black text-slate-900">
-                        ₹{(ord.amount || 0).toLocaleString('en-IN')}
-                      </td>
-                      <td className="py-4 px-4">
-                        <span
-                          className={`px-2.5 py-1 rounded-md font-bold uppercase text-[10px] border ${
-                            isFulfilled
-                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                              : 'bg-indigo-50 text-indigo-700 border-indigo-200'
-                          }`}
-                        >
-                          {ord.status}
-                        </span>
-                      </td>
-                      <td className="py-4 px-4 text-right">
-                        {!isFulfilled ? (
+                    <React.Fragment key={ord._id}>
+                      <tr className="hover:bg-slate-50/80 transition-colors">
+                        <td className="py-4 px-4 font-mono font-bold text-indigo-600 text-xs">
                           <button
-                            onClick={() => handleFulfillOrder(ord._id || ord.orderId)}
-                            disabled={fulfillmentLoading}
-                            className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition shadow-md shadow-emerald-600/20 disabled:opacity-50"
+                            onClick={() => toggleExpand(ord._id)}
+                            className="flex items-center gap-1 hover:underline text-left"
+                            title="Click to view gate decision details"
                           >
-                            Fulfill Order
+                            <span>{ord.orderId}</span>
+                            {isExpanded ? (
+                              <ChevronUp className="w-3.5 h-3.5 text-slate-400" />
+                            ) : (
+                              <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                            )}
                           </button>
-                        ) : (
-                          <span className="text-slate-500 font-bold text-xs flex items-center justify-end gap-1.5">
-                            <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                            <span>Fulfilled</span>
+                        </td>
+                        <td className="py-4 px-4 font-medium text-slate-700">
+                          {ord.customer?.name || ord.customer?.email || ord.agentId || 'AI Buyer Agent'}
+                        </td>
+                        <td className="py-4 px-4">
+                          <button
+                            onClick={() => toggleExpand(ord._id)}
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase transition ${
+                              gatePassed
+                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
+                                : 'bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100'
+                            }`}
+                            title="Click to inspect gate decision trail"
+                          >
+                            {gatePassed ? (
+                              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                            ) : (
+                              <ShieldAlert className="w-3.5 h-3.5 text-amber-600" />
+                            )}
+                            <span>{gatePassed ? 'Approved' : 'Challenged'}</span>
+                          </button>
+                        </td>
+                        <td className="py-4 px-4 font-mono text-amber-600 text-xs font-semibold">
+                          <span className="bg-amber-50/70 border border-amber-100 px-2 py-0.5 rounded">
+                            {ord.mandateHash ? `${ord.mandateHash.substring(0, 12)}...` : 'N/A'}
                           </span>
-                        )}
-                      </td>
-                    </tr>
+                        </td>
+                        <td className="py-4 px-4 font-black text-slate-900">
+                          ₹{(ord.amount || 0).toLocaleString('en-IN')}
+                        </td>
+                        <td className="py-4 px-4">
+                          <span
+                            className={`px-2.5 py-1 rounded-md font-bold uppercase text-[10px] border ${
+                              isFulfilled
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                : 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                            }`}
+                          >
+                            {ord.status}
+                          </span>
+                        </td>
+                        <td className="py-4 px-4 text-right">
+                          {!isFulfilled ? (
+                            <button
+                              onClick={() => handleFulfillOrder(ord._id || ord.orderId)}
+                              disabled={fulfillmentLoading}
+                              className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition shadow-md shadow-emerald-600/20 disabled:opacity-50"
+                            >
+                              Fulfill Order
+                            </button>
+                          ) : (
+                            <span className="text-slate-500 font-bold text-xs flex items-center justify-end gap-1.5">
+                              <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                              <span>Fulfilled</span>
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+
+                      {/* Expandable Gate Decision & Detail Row */}
+                      {isExpanded && (
+                        <tr className="bg-indigo-50/40 border-b border-indigo-100">
+                          <td colSpan={7} className="p-4 px-6 space-y-3">
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="space-y-1.5 flex-1">
+                                <div className="flex items-center gap-2 text-xs font-bold text-slate-900">
+                                  <ShieldCheck className="w-4 h-4 text-indigo-600" />
+                                  <span>AP2 Protocol Gate Decision Audit Trail</span>
+                                </div>
+                                <p className="text-xs text-slate-600 bg-white p-3 rounded-xl border border-indigo-100/80 font-mono leading-relaxed">
+                                  <span className="text-slate-400 font-sans block text-[10px] uppercase font-bold mb-1">
+                                    Diagnostic Reason Log:
+                                  </span>
+                                  {gateReason}
+                                </p>
+                              </div>
+
+                              <div className="text-right text-[11px] text-slate-500 space-y-1 shrink-0">
+                                {ord.gateDecision?.evaluatedAt && (
+                                  <div>
+                                    <span className="font-semibold text-slate-700">Evaluated: </span>
+                                    {new Date(ord.gateDecision.evaluatedAt).toLocaleString('en-IN')}
+                                  </div>
+                                )}
+                                <div>
+                                  <span className="font-semibold text-slate-700">Payment ID: </span>
+                                  <span className="font-mono text-slate-600">{ord.razorpayPaymentId || ord.razorpayOrderId || 'N/A'}</span>
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
                   );
                 })}
               </tbody>

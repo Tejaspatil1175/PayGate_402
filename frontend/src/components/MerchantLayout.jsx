@@ -6,6 +6,7 @@ import {
   Sliders,
   Package,
   Sparkles,
+  Megaphone,
   Settings,
   Search,
   Bell,
@@ -52,6 +53,11 @@ export default function MerchantLayout() {
       to: '/merchant/policy',
       label: 'Policy Builder',
       icon: <Sliders className="w-4 h-4" />,
+    },
+    {
+      to: '/merchant/campaigns',
+      label: 'Campaigns',
+      icon: <Megaphone className="w-4 h-4" />,
     },
     {
       to: '/merchant/orders',
