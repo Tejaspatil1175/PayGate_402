@@ -5,6 +5,7 @@ const {
   getFulfillmentStatus,
 } = require('../controllers/fulfillment.controller');
 
+router.post('/process', triggerFulfillment);
 router.post('/:id/fulfill', triggerFulfillment);
 router.get('/:id', getFulfillmentStatus);
 

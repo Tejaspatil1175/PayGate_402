@@ -4,11 +4,19 @@ const {
 } = require('../services/fulfillment.service');
 
 // @desc    Process order fulfillment (post-payment tracking hook)
-// @route   POST /api/agent/fulfillment/:id/fulfill
+// @route   POST /api/agent/fulfillment/:id/fulfill or POST /api/agent/fulfillment/process
 exports.triggerFulfillment = async (req, res) => {
   try {
+    const orderId = req.params.id || req.body.orderId || req.body.id;
+    if (!orderId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Order ID is required to process fulfillment',
+      });
+    }
+
     const { carrier, trackingNumber, estimatedDeliveryDays } = req.body;
-    const result = await processOrderFulfillment(req.params.id, {
+    const result = await processOrderFulfillment(orderId, {
       carrier,
       trackingNumber,
       estimatedDeliveryDays,
@@ -19,6 +27,8 @@ exports.triggerFulfillment = async (req, res) => {
       success: true,
       message: 'Fulfillment processed successfully',
       receipt: result.digitalReceipt,
+      digitalReceipt: result.digitalReceipt,
+      order: result.order,
     });
   } catch (error) {
     res.status(500).json({
