@@ -62,6 +62,21 @@ const policyRuleSchema = new mongoose.Schema(
       min: 0,
       max: 100,
     },
+    ruleId: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    precedence: {
+      type: Number,
+      default: 100, // Lower number = higher priority execution order
+      min: 1,
+    },
+    reasonCode: {
+      type: String,
+      trim: true,
+      default: '',
+    },
     isActive: {
       type: Boolean,
       default: true,
@@ -72,6 +87,15 @@ const policyRuleSchema = new mongoose.Schema(
   }
 );
 
-policyRuleSchema.index({ merchant: 1, isActive: 1 });
+policyRuleSchema.pre('save', function (next) {
+  if (!this.ruleId) {
+    const typePrefix = (this.ruleType || 'RULE').toUpperCase();
+    const shortId = this._id ? this._id.toString().substring(18, 24).toUpperCase() : Math.floor(1000 + Math.random() * 9000);
+    this.ruleId = `${typePrefix}_${shortId}`;
+  }
+  next();
+});
+
+policyRuleSchema.index({ merchant: 1, isActive: 1, precedence: 1 });
 
 module.exports = mongoose.model('PolicyRule', policyRuleSchema);

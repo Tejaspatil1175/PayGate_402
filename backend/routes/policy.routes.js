@@ -15,7 +15,7 @@ function getMerchantId(req) {
   return merchantId;
 }
 
-// GET /api/policy — Fetch merchant policy rules
+// GET /api/policy — Fetch merchant policy rules (sorted by precedence)
 router.get('/', async (req, res, next) => {
   try {
     const merchantId = getMerchantId(req);
@@ -24,7 +24,7 @@ router.get('/', async (req, res, next) => {
       filter.merchant = merchantId;
     }
 
-    const rules = await PolicyRule.find(filter).sort({ createdAt: -1 });
+    const rules = await PolicyRule.find(filter).sort({ precedence: 1, createdAt: -1 });
     res.status(200).json({
       success: true,
       count: rules.length,
@@ -50,6 +50,9 @@ router.post('/', async (req, res, next) => {
       name,
       description,
       ruleType,
+      ruleId,
+      precedence,
+      reasonCode,
       maxAmount,
       dailyCap,
       requireApprovalThreshold,
@@ -71,6 +74,9 @@ router.post('/', async (req, res, next) => {
       name,
       description: description || '',
       ruleType: ruleType || 'max_spend_cap',
+      ruleId: ruleId || '',
+      precedence: precedence !== undefined ? Number(precedence) : 100,
+      reasonCode: reasonCode || '',
       maxAmount: maxAmount !== undefined ? Number(maxAmount) : 5000,
       dailyCap: dailyCap !== undefined ? Number(dailyCap) : 25000,
       requireApprovalThreshold:
@@ -83,7 +89,7 @@ router.post('/', async (req, res, next) => {
       isActive: isActive !== undefined ? Boolean(isActive) : true,
     });
 
-    logger.info(`[POLICY_RULE_CREATED] Rule "${newRule.name}" created for merchant ${merchantId}`);
+    logger.info(`[POLICY_RULE_CREATED] Rule "${newRule.name}" (${newRule.ruleId}, precedence: ${newRule.precedence}) created for merchant ${merchantId}`);
 
     res.status(201).json({
       success: true,

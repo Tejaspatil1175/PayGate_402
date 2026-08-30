@@ -42,6 +42,16 @@ const auditLogSchema = new mongoose.Schema(
       enum: ['ALLOW', 'BLOCK', 'PENDING', 'PAYOUT_HOLD', 'REQUIRE_APPROVAL'],
       default: 'ALLOW',
     },
+    ruleId: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    reasonCode: {
+      type: String,
+      trim: true,
+      default: '',
+    },
     reason: {
       type: String,
       trim: true,

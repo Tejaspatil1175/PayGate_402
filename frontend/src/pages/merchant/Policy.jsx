@@ -333,13 +333,21 @@ export default function MerchantPolicy() {
                 <div className="space-y-3.5">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span
                           className={`w-2 h-2 rounded-full shrink-0 ${
                             isActive ? 'bg-emerald-500' : 'bg-slate-300'
                           }`}
                         />
                         <h3 className="font-bold text-slate-900 text-sm">{rule.name}</h3>
+                        {rule.ruleId && (
+                          <span className="px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200 text-[9px] font-mono font-bold">
+                            {rule.ruleId}
+                          </span>
+                        )}
+                        <span className="px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200 text-[9px] font-bold">
+                          Precedence #{rule.precedence || 100}
+                        </span>
                       </div>
                       {rule.description ? (
                         <p className="text-xs text-slate-500 mt-1 leading-relaxed">
@@ -347,7 +355,7 @@ export default function MerchantPolicy() {
                         </p>
                       ) : (
                         <p className="text-[11px] text-slate-400 mt-0.5">
-                          Standard autonomous execution policy
+                          Deterministic policy evaluated in precedence order
                         </p>
                       )}
                     </div>

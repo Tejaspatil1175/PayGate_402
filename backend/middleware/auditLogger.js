@@ -20,6 +20,8 @@ async function logAuditEvent(data) {
       razorpayPaymentId: data.razorpayPaymentId || '',
       action: data.action || 'API_CALL',
       decision: data.decision || 'ALLOW',
+      ruleId: data.ruleId || '',
+      reasonCode: data.reasonCode || '',
       reason: data.reason || 'Operation performed successfully',
       ipAddress: data.ipAddress || '',
       metadata: data.metadata || {},
@@ -27,8 +29,9 @@ async function logAuditEvent(data) {
     });
 
     const level = data.decision === 'BLOCK' ? 'warn' : 'info';
+    const ruleInfo = data.ruleId ? ` | Rule: ${data.ruleId} [${data.reasonCode || 'N/A'}]` : '';
     logger[level](
-      `[AUDIT] Action: ${data.action} | Decision: ${data.decision} | Agent: ${data.agentId} | Reason: ${data.reason}`
+      `[AUDIT] Action: ${data.action} | Decision: ${data.decision}${ruleInfo} | Agent: ${data.agentId} | Reason: ${data.reason}`
     );
 
     return logEntry;

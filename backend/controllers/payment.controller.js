@@ -56,6 +56,8 @@ exports.executePayment = async (req, res, next) => {
         merchant: merchantId,
         action: 'PAYMENT_SECURITY_GATE_BLOCKED',
         decision: 'BLOCK',
+        ruleId: 'GATE_01_SPEND_GUARDRAIL',
+        reasonCode: 'SPEND_VELOCITY_LIMIT_EXCEEDED',
         reason: `[SECURITY_GATE_REJECTED] ${guardrailRes.reason}`,
       });
       return next(new AppError(`[SECURITY_GATE_REJECTED] ${guardrailRes.reason}`, 400, 'BLOCK'));
@@ -77,12 +79,14 @@ exports.executePayment = async (req, res, next) => {
         merchant: merchantId,
         action: 'PAYMENT_SECURITY_GATE_BLOCKED',
         decision: gatedRes.decision || 'REQUIRE_APPROVAL',
+        ruleId: 'GATE_02_MANUAL_APPROVAL_THRESHOLD',
+        reasonCode: 'HIGH_VALUE_MANUAL_APPROVAL_REQUIRED',
         reason: `[SECURITY_GATE_REJECTED] ${gatedRes.reason}`,
       });
       return next(new AppError(`[SECURITY_GATE_REJECTED] ${gatedRes.reason}`, 403, gatedRes.decision));
     }
 
-    // Gate B2: Real-time Policy Pre-Check (Wallet Balance, Caps & Merchant Rules)
+    // Gate B2: Real-time Policy Pre-Check (Wallet Balance, Caps & Merchant Rules with Deterministic Precedence)
     const targetUserId = req.body.userId || req.headers['x-user-id'] || customer?.id || contract.userId;
 
     const policyPreCheckRes = await performPolicyPreCheck({
@@ -102,6 +106,8 @@ exports.executePayment = async (req, res, next) => {
         merchant: merchantId,
         action: 'PAYMENT_SECURITY_GATE_BLOCKED',
         decision: 'BLOCK',
+        ruleId: policyPreCheckRes.ruleId || 'GATE_03_MERCHANT_POLICY',
+        reasonCode: policyPreCheckRes.reasonCode || 'POLICY_PRECHECK_FAILED',
         reason: `[SECURITY_GATE_REJECTED] ${policyPreCheckRes.reason}`,
       });
       return next(new AppError(`[SECURITY_GATE_REJECTED] ${policyPreCheckRes.reason}`, 400, 'BLOCK'));
@@ -115,6 +121,8 @@ exports.executePayment = async (req, res, next) => {
         merchant: merchantId,
         action: 'PAYMENT_SECURITY_GATE_BLOCKED',
         decision: 'REQUIRE_APPROVAL',
+        ruleId: policyPreCheckRes.ruleId || 'GATE_03_MERCHANT_POLICY_APPROVAL',
+        reasonCode: policyPreCheckRes.reasonCode || 'MANUAL_APPROVAL_REQUIRED',
         reason: `[SECURITY_GATE_REJECTED] ${policyPreCheckRes.reason}`,
       });
       return next(new AppError(`[SECURITY_GATE_REJECTED] ${policyPreCheckRes.reason}`, 403, 'REQUIRE_APPROVAL'));
@@ -137,6 +145,8 @@ exports.executePayment = async (req, res, next) => {
         merchant: merchantId,
         action: 'PAYMENT_SECURITY_GATE_BLOCKED',
         decision: 'PAYOUT_HOLD',
+        ruleId: 'GATE_04_FRAUD_HEURISTIC_SCORE',
+        reasonCode: 'FRAUD_RISK_THRESHOLD_EXCEEDED',
         reason: `[SECURITY_GATE_REJECTED] Fraud score ${fraudRes.riskScore} exceeds safety threshold: ${fraudRes.decisionReason}`,
       });
       return next(new AppError(`[SECURITY_GATE_REJECTED] ${fraudRes.decisionReason}`, 403, 'PAYOUT_HOLD'));
