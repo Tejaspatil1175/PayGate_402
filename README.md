@@ -14,25 +14,212 @@
 
 ---
 
+> **"Razorpay and NPCI proved AI agents can pay autonomously — for seven curated companies, on one closed rail. PayGate 402 is the self-serve, open-protocol version any of Razorpay's other merchants can turn on today."**
+
+---
+
 ## Introduction
 
 The **AP2/x402 Agentic Settlement Gateway** is a policy-gated middleware layer that lets autonomous AI buyer agents transact safely on merchant catalogs without ever touching raw API keys or violating cardholder authorization requirements.
 
-Autonomous agents cannot be handed unrestricted merchant credentials — doing so exposes merchants to prompt-injection risk, unbounded spend, and non-deterministic model behavior. At the same time, global agentic commerce protocols such as Google's **AP2 (Agent Payments Protocol)** and Coinbase's **x402** have no bridge into India's domestic payment rails.
+Autonomous agents cannot be handed unrestricted merchant credentials — doing so exposes merchants to prompt-injection risk, unbounded spend, and non-deterministic model behavior. At the same time, global agentic commerce protocols such as Google's **AP2 (Agent Payments Protocol)** and Coinbase's **x402** convention have no bridge into India's domestic payment rails.
 
-This gateway closes that gap. It intercepts unauthenticated agent requests, issues an HTTP 402 challenge, verifies cryptographically signed AP2 Cart Mandates against per-agent spending policies, and — only after verification — executes a bounded settlement through the official **Razorpay MCP Server**, writing every transaction to an auditable double-entry ledger.
+This gateway closes that gap. An AI agent discovers a merchant's catalog, negotiates a price, and signs a cryptographic mandate for the purchase. That mandate must pass a five-checkpoint security pipeline before a pre-funded, capped wallet is debited — with every decision, pass or fail, written to an immutable audit log.
 
-## Features
+## Core Features
 
-- **HTTP 402 Negotiation Engine** — intercepts agent purchase requests and responds with a structured payment challenge containing an AP2 Cart Mandate.
-- **Cryptographic Mandate Verification** — validates ECDSA signatures on Intent, Cart, and Payment Mandates against registered agent public keys.
-- **Policy-Gated Execution Proxy** — enforces per-transaction spend caps, velocity limits, and merchant whitelists before any funds move.
-- **Razorpay MCP Settlement** — routes verified requests through `initiate_payment`, `capture_payment`, and order-management tools on the official Razorpay Remote MCP Server.
-- **x402 Stablecoin Support** — accepts machine-to-machine micropayments over the x402 protocol as an alternative settlement path.
-- **Idempotent Dual-Ledger Audit Trail** — maps every AP2 mandate ID to its resulting Razorpay payment ID (`pay_xxx`) in a non-repudiable, double-entry ledger.
-- **Deterministic Failure Handling** — rejects unsigned, expired, over-budget, or replayed mandates before any Razorpay API call is made.
+- **AP2 Signed Cart Mandates** — every purchase intent is signed with a 2048-bit RSA key using RSA-PSS padding and a SHA-256 hash, before any money moves.
+- **Nonce-Based Replay Protection** — every mandate carries a single-use nonce; a captured or resubmitted request is rejected outright.
+- **Five-Checkpoint Settlement Engine** — signature/nonce verification, spend-velocity guardrails, manual-approval gating, merchant policy pre-check, and fraud risk scoring, evaluated in strict sequence. Any single failure halts the transaction immediately.
+- **Full Audit Trail** — every checkpoint decision (`ALLOW` / `BLOCK` / `REQUIRE_APPROVAL` / `PAYOUT_HOLD`) is logged with a correlation ID, the mandate hash, and the reason — satisfying the buildathon's explicit bar of "every money action explainable, bounded and gated."
+- **Automatic Rollback on Failure** — if a transaction fails after the wallet has already been debited, the wallet is credited back automatically and the reversal is logged as its own audit event. No manual reconciliation required.
+- **Self-Serve, Open-Protocol Onboarding** — any merchant can register and go live independently; every merchant is automatically exposed via a machine-readable catalog and policy manifest that any AP2-compatible AI agent can read without custom integration work.
+- **HTTP 402 Policy-Violation Signal** — a blocked transaction returns a structured `402 Payment Required` response with a machine-readable challenge object, logged to the audit trail.
 
-## System Flow
+## Architecture
 
-![System Architecture & Payment Integrity Mesh](./flowchart.png)
+### Sequential Authorization Pipeline
 
+Every agent-initiated transaction passes through this pipeline, in order, before a rupee moves:
+
+![Sequential Authorization Pipeline](./Architecture/sequentialpipeline.png)
+
+### Security Layers
+
+![Security Architecture](./Architecture/security.png)
+
+### End-to-End Workflow
+
+From merchant onboarding through to a completed, audited transaction:
+
+![Workflow](./Architecture/workflow.png)
+
+### System Flow
+
+![System Architecture & Payment Integrity Mesh](./Architecture/flowchart.png)
+
+## Competitive Positioning
+
+|  | Razorpay + NPCI (Reserve Pay) | PayGate 402 |
+|---|---|---|
+| **Onboarding** | Curated — a small number of named enterprise brands | Self-serve — any merchant, today |
+| **Rail** | UPI only, proprietary NPCI infrastructure | Protocol-based (AP2/x402), rail-agnostic |
+| **Authorization** | A single flat spending limit set once | Signed mandate verified through five checkpoints |
+| **Audit Trail** | Not exposed publicly | Full per-decision audit trail, queryable |
+| **Availability** | Live, closed | Live, open — no regulatory approval required |
+
+## Full Feature Inventory
+
+### Buyer / User
+
+| Feature | Description |
+|---|---|
+| Authentication & Roles | Email/password auth with role-based access (buyer, merchant, admin). |
+| Smart Catalog Discovery | Search and browse merchant catalogs with live product data. |
+| Voice AI Assistant | Real speech-to-text (Groq Whisper) and intent extraction (Gemini 2.5 Flash) for hands-free shopping. |
+| Pre-Funded Agent Wallet | Capped wallet with per-transaction and daily velocity limits, topped up via real Razorpay Checkout. |
+| Wishlist & Price Drops | Track products and get notified of price changes. |
+| Order Tracking | Full order lifecycle and fulfillment status. |
+| Spending Analytics | Personal transaction history and spend breakdowns. |
+| Scheduled Tasks | Cron-driven recurring agent purchase tasks. |
+
+### Merchant
+
+| Feature | Description |
+|---|---|
+| Self-Serve Onboarding | Business registration with PAN/GSTIN and Razorpay key setup — no manual approval gate. |
+| Catalog Management | Product CRUD, image uploads, and bulk CSV import. |
+| Policy Builder | Merchant-owned spend caps, category rules, approval thresholds, and negotiation discount thresholds. |
+| Live Orders & Fulfillment | Order feed with shipping/fulfillment status updates. |
+| AI Co-Pilot | Applies real pricing, restock, and policy-cap adjustments based on live analytics. |
+| Campaign Orchestrator | Merchant-defined promotional discounts for AI-agent bulk orders, factored directly into live negotiations. |
+| Agent-Readable Manifest | Auto-published catalog and policy JSON files (`/.well-known/agent-catalog.json`) for AI agent discovery. |
+
+### AI Agent & Negotiation Pipeline
+
+| Feature | Description |
+|---|---|
+| Structured Intent Submission | Agent states desired item, category, and budget cap. |
+| Catalog Matching | System matches intent against live merchant inventory. |
+| Multi-Round Negotiation | Agent and merchant policy engine exchange offers/counters until acceptance or rejection. |
+| AP2 Mandate Signing | RSA-PSS 2048-bit signed Cart Mandate with nonce-based replay protection. |
+| Five-Checkpoint Settlement | Signature check plus four policy/fraud gates before funds move. |
+| Order Status Tracking | Post-settlement order and fulfillment visibility for the agent. |
+
+### Admin & Security Mesh
+
+| Feature | Description |
+|---|---|
+| Platform Telemetry | GMV and platform-wide transaction overview. |
+| Audit Log Monitoring | Live feed of every gate decision across the platform. |
+| Merchant Compliance Scores | Health/compliance signals per merchant. |
+| System Diagnostics | Infrastructure and integration health checks. |
+| Security Parameter Control | Global configuration of gate thresholds and limits. |
+
+## Screenshots
+
+| | |
+|---|---|
+| ![User catalog — laptop](./frontend/preview/usercatloglaptopview.png) | ![Merchant catalog](./frontend/preview/merchantcatalog.png) |
+| User catalog — desktop | Merchant catalog |
+| ![Wallet — laptop](./frontend/preview/walletlaptopview.png) | ![Adding funds — laptop](./frontend/preview/addingfundesinwalletlaptopview.png) |
+| Wallet dashboard — desktop | Adding funds via Razorpay — desktop |
+| ![User catalog — mobile](./frontend/preview/usercatlogmobileview.png) | ![Wallet top-up — mobile](./frontend/preview/topupmobileview.png) |
+| User catalog — mobile | Wallet top-up — mobile |
+| ![Order tracking — mobile](./frontend/preview/ordertrackingmobile.png) | |
+| Order tracking — mobile | |
+
+## Technology Stack
+
+| Layer | Technology |
+|---|---|
+| Backend | Node.js, Express, MongoDB (Mongoose) |
+| Cryptography | Node.js native `crypto` — RSA-2048, RSA-PSS, SHA-256, AES-256-GCM |
+| Payments | Razorpay test-mode APIs (Checkout, Orders), HMAC-SHA256 webhook verification |
+| Voice AI | Groq-hosted Whisper (`whisper-large-v3`), Gemini 2.5 Flash |
+| Frontend | React, React Router, Vite, Tailwind |
+| Media | Cloudinary (product images, merchant logos) |
+
+## Setup Guide
+
+### Prerequisites
+
+- Node.js 18+
+- A MongoDB connection string (Atlas or local)
+- A Razorpay test-mode account (Key ID + Key Secret)
+- (Optional) Groq API key for Voice AI transcription, Gemini API key for intent parsing, Cloudinary credentials for image uploads
+
+### Backend
+
+```bash
+cd backend
+npm install
+```
+
+Create a `.env` file in `backend/` with:
+
+```env
+PORT=4000
+NODE_ENV=development
+MONGODB_URI=your_mongodb_connection_string
+
+RAZORPAY_KEY_ID=your_razorpay_key_id
+RAZORPAY_KEY_SECRET=your_razorpay_key_secret
+RAZORPAY_WEBHOOK_SECRET=your_razorpay_webhook_secret
+
+ENCRYPTION_SECRET=a_32_byte_secret_for_aes_256_gcm
+
+# Optional — Voice AI
+GROQ_API_KEY=your_groq_api_key
+GEMINI_API_KEY=your_gemini_api_key
+
+# Optional — Image uploads
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_cloudinary_key
+CLOUDINARY_API_SECRET=your_cloudinary_secret
+
+# Optional — seeds an admin account on first run
+ADMIN_EMAIL=admin@example.com
+ADMIN_PASSWORD=choose_a_strong_password
+```
+
+Run it:
+
+```bash
+npm run dev     # nodemon, auto-restart
+# or
+npm start       # plain node
+```
+
+The API will be available at `http://localhost:4000/api`.
+
+### Frontend
+
+```bash
+cd frontend
+npm install
+```
+
+Create a `.env` file in `frontend/` with:
+
+```env
+VITE_API_BASE_URL=http://localhost:4000/api
+```
+
+Run it:
+
+```bash
+npm run dev
+```
+
+The app will be available at the local URL Vite prints (typically `http://localhost:5173`).
+
+## Known Limitations — Stated Honestly
+
+- Agent-triggered settlement debits an internal, pre-funded wallet ledger rather than creating a live Razorpay order per transaction. This is an intentional security boundary — the agent is never exposed to real payment rails directly — but the per-transaction reference ID is internal, not a Razorpay payment ID.
+- The Razorpay Model Context Protocol (MCP) server is not currently integrated; settlement and wallet operations use the standard Razorpay REST SDK.
+- The internal wallet ledger records a running transaction history per account; it is not a double-entry accounting system across paired accounts.
+
+---
+
+Built for the Razorpay AI Buildathon 2026 — Track 1: AI Growth & Agentic Commerce.
