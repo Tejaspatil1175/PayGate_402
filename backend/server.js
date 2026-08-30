@@ -11,11 +11,29 @@ const app = express();
 // Razorpay Webhook Route with raw body parsing (must precede express.json for HMAC signature validation)
 app.post('/api/webhooks/razorpay', express.raw({ type: 'application/json' }), require('./webhooks/razorpay.webhook'));
 
-// CORS headers middleware
+// Strict Origin CORS headers middleware
+const allowedOrigins = [
+  process.env.CLIENT_URL,
+  'https://pay-gate-402.vercel.app',
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:3000',
+].filter(Boolean);
+
 app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
+  const origin = req.headers.origin;
+  const isAllowed =
+    !origin ||
+    allowedOrigins.includes(origin) ||
+    (origin && origin.endsWith('.vercel.app'));
+
+  if (isAllowed) {
+    res.header('Access-Control-Allow-Origin', origin || '*');
+  }
+  res.header('Access-Control-Allow-Credentials', 'true');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, x-user-id, x-merchant-id, *');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, x-user-id, x-merchant-id');
   if (req.method === 'OPTIONS') {
     return res.sendStatus(200);
   }

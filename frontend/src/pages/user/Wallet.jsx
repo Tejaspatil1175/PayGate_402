@@ -396,7 +396,7 @@ export default function UserWallet() {
                   </div>
                   <div>
                     <h3 className="font-bold text-slate-800 text-xs sm:text-sm">Instant Top-Up</h3>
-                    <span className="text-[10px] text-slate-400 font-medium">Non-custodial AP2 credit</span>
+                    <span className="text-[10px] text-slate-400 font-medium">Pre-Funded AP2 Balance</span>
                   </div>
                 </div>
 
@@ -603,7 +603,7 @@ export default function UserWallet() {
               <div className="flex items-center gap-3 text-[10px] sm:text-[11px] text-slate-400">
                 <div className="flex items-center gap-1">
                   <Lock className="w-3 h-3 text-emerald-600" />
-                  <span>Hardware-Bound AP2 Vault</span>
+                  <span>AES-256-GCM Encrypted Vault</span>
                 </div>
                 <span>•</span>
                 <div className="flex items-center gap-1">
@@ -638,11 +638,11 @@ export default function UserWallet() {
                     Wallet Ledger & Audit Trail
                   </h3>
                   <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[9px] sm:text-[10px] font-bold flex items-center gap-1">
-                    <Check className="w-2.5 h-2.5" /> Immutable Hash
+                    <Check className="w-2.5 h-2.5" /> SHA-256 Verified
                   </span>
                 </div>
                 <p className="text-[11px] sm:text-xs text-slate-400 mt-0.5">
-                  Double-entry cryptographic ledger record for AP2 transactions.
+                  Policy-gated cryptographic ledger record with auto-rollback.
                 </p>
               </div>
             </div>

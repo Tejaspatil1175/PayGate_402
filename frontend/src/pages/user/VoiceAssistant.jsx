@@ -964,8 +964,9 @@ export default function VoiceAssistant() {
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         },
       ]);
-      speakText(`All autonomous agent transactions are secured by RSA-PSS 2048-bit digital signatures and atomic double-entry ledgers.`);
-      setLoading(false);
+      speakText(
+        'All autonomous agent transactions are secured by RSA-PSS 2048-bit digital signatures, five-checkpoint security verification, and atomic ledger rollbacks.'
+      );setLoading(false);
       setPipelineStage('');
       return;
     }

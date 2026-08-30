@@ -107,11 +107,16 @@ async function createTopUpOrder(userId, amount) {
   };
 }
 
+// Precision currency math helpers (guarantee zero floating-point drift)
+const toPaise = (rupees) => Math.round(Number(rupees) * 100);
+const fromPaise = (paise) => Math.round(Number(paise)) / 100;
+
 /**
  * Credit wallet (Top-Up completion) with idempotency check
  */
 async function creditWallet(userId, amount, referenceId, description = 'Wallet Top-up') {
-  if (!amount || amount <= 0) {
+  const safeAmount = fromPaise(toPaise(amount));
+  if (!safeAmount || safeAmount <= 0) {
     throw new Error('Credit amount must be greater than zero');
   }
 
@@ -130,16 +135,16 @@ async function creditWallet(userId, amount, referenceId, description = 'Wallet T
     return null;
   }
 
-  const newBalance = (wallet.balance || 0) + amount;
+  const newBalance = fromPaise(toPaise(wallet.balance || 0) + toPaise(safeAmount));
 
   const updatedWallet = await Wallet.findOneAndUpdate(
     { owner: wallet.owner },
     {
-      $inc: { balance: amount },
+      $inc: { balance: safeAmount },
       $push: {
         ledger: {
           type: 'topup',
-          amount,
+          amount: safeAmount,
           description,
           referenceId,
           status: 'completed',
@@ -150,7 +155,7 @@ async function creditWallet(userId, amount, referenceId, description = 'Wallet T
     { new: true }
   );
 
-  logger.info(`[WALLET] Credited ₹${amount} to user ${wallet.owner}. New balance: ₹${updatedWallet.balance}`);
+  logger.info(`[WALLET] Credited ₹${safeAmount} to user ${wallet.owner}. New balance: ₹${updatedWallet.balance}`);
   return updatedWallet;
 }
 
@@ -159,31 +164,32 @@ async function creditWallet(userId, amount, referenceId, description = 'Wallet T
  * Atomic query uses findOneAndUpdate with balance-sufficient and cap filters
  */
 async function debitWallet(userId, amount, referenceId, description = 'Agent Commerce Purchase') {
-  if (!amount || amount <= 0) {
+  const safeAmount = fromPaise(toPaise(amount));
+  if (!safeAmount || safeAmount <= 0) {
     throw new Error('Debit amount must be greater than zero');
   }
 
   const wallet = await getOrCreateWallet(userId);
 
-  if (amount > wallet.perTransactionCap) {
-    throw new Error(`Transaction amount ₹${amount} exceeds per-transaction cap of ₹${wallet.perTransactionCap}`);
+  if (safeAmount > wallet.perTransactionCap) {
+    throw new Error(`Transaction amount ₹${safeAmount} exceeds per-transaction cap of ₹${wallet.perTransactionCap}`);
   }
 
-  const newBalance = Math.max(0, (wallet.balance || 0) - amount);
+  const newBalance = fromPaise(Math.max(0, toPaise(wallet.balance || 0) - toPaise(safeAmount)));
 
   const filter = {
     owner: wallet.owner,
-    balance: { $gte: amount },
-    perTransactionCap: { $gte: amount },
-    $expr: { $lte: [{ $add: ['$dailySpent', amount] }, '$perDayCap'] },
+    balance: { $gte: safeAmount },
+    perTransactionCap: { $gte: safeAmount },
+    $expr: { $lte: [{ $add: ['$dailySpent', safeAmount] }, '$perDayCap'] },
   };
 
   const update = {
-    $inc: { balance: -amount, dailySpent: amount },
+    $inc: { balance: -safeAmount, dailySpent: safeAmount },
     $push: {
       ledger: {
         type: 'debit',
-        amount,
+        amount: safeAmount,
         description,
         referenceId,
         status: 'completed',
@@ -199,18 +205,18 @@ async function debitWallet(userId, amount, referenceId, description = 'Agent Com
     if (!currentWallet) {
       throw new Error('Wallet not found');
     }
-    if (currentWallet.balance < amount) {
-      throw new Error(`Insufficient wallet balance. Required: ₹${amount}, Available: ₹${currentWallet.balance}`);
+    if (currentWallet.balance < safeAmount) {
+      throw new Error(`Insufficient wallet balance. Required: ₹${safeAmount}, Available: ₹${currentWallet.balance}`);
     }
-    if (currentWallet.dailySpent + amount > currentWallet.perDayCap) {
+    if (currentWallet.dailySpent + safeAmount > currentWallet.perDayCap) {
       throw new Error(
-        `Transaction of ₹${amount} exceeds remaining daily cap of ₹${Math.max(0, currentWallet.perDayCap - currentWallet.dailySpent)}`
+        `Transaction of ₹${safeAmount} exceeds remaining daily cap of ₹${Math.max(0, currentWallet.perDayCap - currentWallet.dailySpent)}`
       );
     }
     throw new Error('Wallet debit failed due to concurrency or cap constraint');
   }
 
-  logger.info(`[WALLET] Atomically debited ₹${amount} from user ${wallet.owner}. New balance: ₹${updatedWallet.balance}`);
+  logger.info(`[WALLET] Atomically debited ₹${safeAmount} from user ${wallet.owner}. New balance: ₹${updatedWallet.balance}`);
   return updatedWallet;
 }
 

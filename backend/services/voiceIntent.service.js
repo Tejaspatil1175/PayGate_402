@@ -269,7 +269,7 @@ function ruleBasedIntentParser(transcript, lastContext = null) {
     } else if (normalized.includes('order') || normalized.includes('track') || normalized.includes('delivery')) {
       answer = 'I track all your autonomous agent orders in real-time. Just ask "Track my last order" to see live fulfillment and delivery receipts.';
     } else if (normalized.includes('refund') || normalized.includes('fail') || normalized.includes('cancel') || normalized.includes('rollback')) {
-      answer = 'Our Double-Entry Cryptographic Ledger includes automated rollback compensation. If an order fails, funds are instantly credited back to your wallet with zero loss.';
+      answer = 'Our Cryptographic Settlement Ledger includes automated rollback compensation. If an order fails, funds are instantly credited back to your wallet with zero loss.';
     } else if (normalized.includes('security') || normalized.includes('safe') || normalized.includes('hack') || normalized.includes('crypto')) {
       answer = 'All transactions are secured by client-side RSA-PSS 2048-bit keys, SHA-256 integrity hashes, policy velocity limits, and HMAC webhook authentication.';
     } else if (normalized.includes('how are you') || normalized.includes('kaise ho') || normalized.includes('how r u')) {

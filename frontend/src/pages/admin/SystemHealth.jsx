@@ -197,8 +197,8 @@ export default function AdminSystemHealth() {
 
             <div className="flex items-center justify-between p-2.5 bg-slate-50 rounded-lg">
               <div>
-                <span className="font-semibold text-slate-800 block">Idempotent Double-Entry Audit Ledger</span>
-                <span className="text-slate-500 text-[11px]">Mandate hash to Razorpay order mapping</span>
+                <span className="font-semibold text-slate-800 block">Idempotent Cryptographic Audit Ledger</span>
+                <span className="text-slate-500">Atomic ledger rollback and SHA-256 chain verification active</span>
               </div>
               <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700">ACTIVE</span>
             </div>

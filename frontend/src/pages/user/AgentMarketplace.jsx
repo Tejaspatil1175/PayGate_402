@@ -222,7 +222,7 @@ export default function AgentMarketplace() {
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-0.5">
-                Deploy and manage specialized autonomous sub-agents sharing your single non-custodial wallet ledger.
+                Deploy and manage specialized autonomous sub-agents sharing your pre-funded AP2 wallet ledger.
               </p>
             </div>
           </div>

@@ -730,7 +730,7 @@ export default function UserDashboard() {
               </div>
 
               <div className="p-3 bg-indigo-50 border border-indigo-100 rounded-xl text-[11px] text-indigo-700 leading-snug">
-                Settles into non-custodial AP2 ledger using Razorpay MCP Gateway rails.
+                Settles through AP2 isolation ledger with policy guardrails and Razorpay Checkout.
               </div>
 
               <button
