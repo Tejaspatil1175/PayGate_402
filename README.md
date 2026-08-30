@@ -42,21 +42,17 @@ This gateway closes that gap. An AI agent discovers a merchant's catalog, negoti
 
 Every agent-initiated transaction passes through this pipeline, in order, before a rupee moves:
 
-![Sequential Authorization Pipeline](./Architecture/sequentialpipeline.png)
+![Sequential Authorization Pipeline](Architecture/sequentialpipeline.png)
 
 ### Security Layers
 
-![Security Architecture](./Architecture/security.png)
+![Security Architecture](Architecture/security.png)
 
 ### End-to-End Workflow
 
 From merchant onboarding through to a completed, audited transaction:
 
-![Workflow](./Architecture/workflow.png)
-
-### System Flow
-
-![System Architecture & Payment Integrity Mesh](./Architecture/flowchart.png)
+![Workflow](Architecture/workflow.png)
 
 ## Competitive Positioning
 
@@ -116,18 +112,21 @@ From merchant onboarding through to a completed, audited transaction:
 | System Diagnostics | Infrastructure and integration health checks. |
 | Security Parameter Control | Global configuration of gate thresholds and limits. |
 
-## Screenshots
+## Application Previews
 
-| | |
-|---|---|
-| ![User catalog — laptop](./frontend/preview/usercatloglaptopview.png) | ![Merchant catalog](./frontend/preview/merchantcatalog.png) |
-| User catalog — desktop | Merchant catalog |
-| ![Wallet — laptop](./frontend/preview/walletlaptopview.png) | ![Adding funds — laptop](./frontend/preview/addingfundesinwalletlaptopview.png) |
-| Wallet dashboard — desktop | Adding funds via Razorpay — desktop |
-| ![User catalog — mobile](./frontend/preview/usercatlogmobileview.png) | ![Wallet top-up — mobile](./frontend/preview/topupmobileview.png) |
-| User catalog — mobile | Wallet top-up — mobile |
-| ![Order tracking — mobile](./frontend/preview/ordertrackingmobile.png) | |
-| Order tracking — mobile | |
+### Desktop Views
+
+| User Catalog | Merchant Catalog |
+| :---: | :---: |
+| ![User Catalog — Desktop](frontend/preview/usercatloglaptopview.png) | ![Merchant Catalog — Desktop](frontend/preview/merchantcatalog.png) |
+| **Wallet Management** | **Adding Funds (Razorpay)** |
+| ![Wallet Management — Desktop](frontend/preview/walletlaptopview.png) | ![Adding Funds via Razorpay — Desktop](frontend/preview/addingfundesinwalletlaptopview.png) |
+
+### Mobile Responsive Views
+
+| User Catalog | Wallet Top-Up | Order Tracking |
+| :---: | :---: | :---: |
+| ![User Catalog — Mobile](frontend/preview/usercatlogmobileview.png) | ![Wallet Top-Up — Mobile](frontend/preview/topupmobileview.png) | ![Order Tracking — Mobile](frontend/preview/ordertrackingmobile.png) |
 
 ## Technology Stack
 
