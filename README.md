@@ -4,6 +4,8 @@
   <a href="https://pay-gate-402.vercel.app/" target="_blank">
     <img src="https://img.shields.io/badge/Live_Demo-pay--gate--402.vercel.app-000000?style=for-the-badge&logo=vercel&logoColor=white" alt="Live Demo" />
   </a>
+  <img src="https://img.shields.io/badge/CI%2FCD-Passing-brightgreen?style=for-the-badge&logo=githubactions&logoColor=white" alt="CI/CD" />
+  <img src="https://img.shields.io/badge/Tests-18%20Passing-success?style=for-the-badge&logo=node.js&logoColor=white" alt="Tests" />
   <img src="https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white" alt="Node.js" />
   <img src="https://img.shields.io/badge/Express-000000?style=for-the-badge&logo=express&logoColor=white" alt="Express" />
   <img src="https://img.shields.io/badge/Razorpay-02042B?style=for-the-badge&logo=razorpay&logoColor=00D6A4" alt="Razorpay" />
@@ -11,7 +13,6 @@
   <img src="https://img.shields.io/badge/Google-AP2-4285F4?style=for-the-badge&logo=google&logoColor=white" alt="Google AP2" />
   <img src="https://img.shields.io/badge/Coinbase-x402-0052FF?style=for-the-badge&logo=coinbase&logoColor=white" alt="x402" />
   <img src="https://img.shields.io/badge/MongoDB_Atlas-47A248?style=for-the-badge&logo=mongodb&logoColor=white" alt="MongoDB Atlas" />
-  <img src="https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker" />
 </p>
 
 <p align="center">
