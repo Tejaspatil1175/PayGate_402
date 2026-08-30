@@ -5,7 +5,7 @@
     <img src="https://img.shields.io/badge/Live_Demo-pay--gate--402.vercel.app-000000?style=for-the-badge&logo=vercel&logoColor=white" alt="Live Demo" />
   </a>
   <img src="https://img.shields.io/badge/CI%2FCD-Passing-brightgreen?style=for-the-badge&logo=githubactions&logoColor=white" alt="CI/CD" />
-  <img src="https://img.shields.io/badge/Tests-18%20Passing-success?style=for-the-badge&logo=node.js&logoColor=white" alt="Tests" />
+  <img src="https://img.shields.io/badge/Tests-22%20Passing-success?style=for-the-badge&logo=node.js&logoColor=white" alt="Tests" />
   <img src="https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white" alt="Node.js" />
   <img src="https://img.shields.io/badge/Express-000000?style=for-the-badge&logo=express&logoColor=white" alt="Express" />
   <img src="https://img.shields.io/badge/Razorpay-02042B?style=for-the-badge&logo=razorpay&logoColor=00D6A4" alt="Razorpay" />
@@ -38,7 +38,8 @@ This gateway closes that gap. An AI agent discovers a merchant's catalog, negoti
 - **AP2 Signed Cart Mandates** — every purchase intent is signed with a 2048-bit RSA key using RSA-PSS padding and a SHA-256 hash, before any money moves.
 - **Nonce-Based Replay Protection** — every mandate carries a single-use nonce; a captured or resubmitted request is rejected outright.
 - **Five-Checkpoint Settlement Engine** — signature/nonce verification, spend-velocity guardrails, manual-approval gating, merchant policy pre-check, and fraud risk scoring, evaluated in strict sequence. Any single failure halts the transaction immediately.
-- **Full Audit Trail** — every checkpoint decision (`ALLOW` / `BLOCK` / `REQUIRE_APPROVAL` / `PAYOUT_HOLD`) is logged with a correlation ID, the mandate hash, and the reason — satisfying the buildathon's explicit bar of "every money action explainable, bounded and gated."
+- **Model Context Protocol (MCP) Server** — standard MCP server interface (`backend/mcp/server.js`) exposing tools for catalog discovery, mandate signing, and settlement to Claude Desktop, Cursor, and autonomous agent frameworks.
+- **Full Audit Trail** — every checkpoint decision (`ALLOW` / `BLOCK` / `REQUIRE_APPROVAL` / `PAYOUT_HOLD`) is logged with a correlation ID, rule ID, reason code, and mandate hash — satisfying the buildathon's explicit bar of "every money action explainable, bounded and gated."
 - **Automatic Rollback on Failure** — if a transaction fails after the wallet has already been debited, the wallet is credited back automatically and the reversal is logged as its own audit event. No manual reconciliation required.
 - **Self-Serve, Open-Protocol Onboarding** — any merchant can register and go live independently; every merchant is automatically exposed via a machine-readable catalog and policy manifest that any AP2-compatible AI agent can read without custom integration work.
 - **HTTP 402 Policy-Violation Signal** — a blocked transaction returns a structured `402 Payment Required` response with a machine-readable challenge object, logged to the audit trail.
@@ -68,7 +69,7 @@ From merchant onboarding through to a completed, audited transaction:
 | **Onboarding** | Curated — a small number of named enterprise brands | Self-serve — any merchant, today |
 | **Rail** | UPI only, proprietary NPCI infrastructure | Protocol-based (AP2/x402), rail-agnostic |
 | **Authorization** | A single flat spending limit set once | Signed mandate verified through five checkpoints |
-| **Audit Trail** | Not exposed publicly | Full per-decision audit trail, queryable |
+| **Audit Trail** | Not exposed publicly | Full per-decision audit trail with rule IDs & reason codes |
 | **Availability** | Live, closed | Live, open — no regulatory approval required |
 
 ## Full Feature Inventory
@@ -92,7 +93,7 @@ From merchant onboarding through to a completed, audited transaction:
 |---|---|
 | Self-Serve Onboarding | Business registration with PAN/GSTIN and Razorpay key setup — no manual approval gate. |
 | Catalog Management | Product CRUD, image uploads, and bulk CSV import. |
-| Policy Builder | Merchant-owned spend caps, category rules, approval thresholds, and negotiation discount thresholds. |
+| Policy Builder | Merchant-owned spend caps, category rules, approval thresholds, and negotiation discount thresholds with deterministic precedence. |
 | Live Orders & Fulfillment | Order feed with shipping/fulfillment status updates. |
 | AI Co-Pilot | Applies real pricing, restock, and policy-cap adjustments based on live analytics. |
 | Campaign Orchestrator | Merchant-defined promotional discounts for AI-agent bulk orders, factored directly into live negotiations. |
@@ -107,6 +108,7 @@ From merchant onboarding through to a completed, audited transaction:
 | Multi-Round Negotiation | Agent and merchant policy engine exchange offers/counters until acceptance or rejection. |
 | AP2 Mandate Signing | RSA-PSS 2048-bit signed Cart Mandate with nonce-based replay protection. |
 | Five-Checkpoint Settlement | Signature check plus four policy/fraud gates before funds move. |
+| MCP Tools Layer | Native Model Context Protocol server exposing `discover_merchant_catalog`, `sign_cart_mandate`, and `execute_settlement`. |
 | Order Status Tracking | Post-settlement order and fulfillment visibility for the agent. |
 
 ### Admin & Security Mesh
@@ -114,7 +116,7 @@ From merchant onboarding through to a completed, audited transaction:
 | Feature | Description |
 |---|---|
 | Platform Telemetry | GMV and platform-wide transaction overview. |
-| Audit Log Monitoring | Live feed of every gate decision across the platform. |
+| Audit Log Monitoring | Live feed of every gate decision across the platform with rule IDs and reason codes. |
 | Merchant Compliance Scores | Health/compliance signals per merchant. |
 | System Diagnostics | Infrastructure and integration health checks. |
 | Security Parameter Control | Global configuration of gate thresholds and limits. |
@@ -140,6 +142,7 @@ From merchant onboarding through to a completed, audited transaction:
 | Layer | Technology |
 |---|---|
 | Backend | Node.js, Express, MongoDB (Mongoose) |
+| Agent Protocol | Model Context Protocol (MCP), Google AP2, Coinbase x402 |
 | Cryptography | Node.js native `crypto` — RSA-2048, RSA-PSS, SHA-256, AES-256-GCM |
 | Payments | Razorpay test-mode APIs (Checkout, Orders), HMAC-SHA256 webhook verification |
 | Voice AI | Groq-hosted Whisper (`whisper-large-v3`), Gemini 2.5 Flash |
@@ -160,6 +163,8 @@ From merchant onboarding through to a completed, audited transaction:
 ```bash
 cd backend
 npm install
+npm test          # Run automated unit/integration test suite (22 tests)
+npm run seed      # One-command demo database seeder
 ```
 
 Create a `.env` file in `backend/` with:
@@ -167,6 +172,7 @@ Create a `.env` file in `backend/` with:
 ```env
 PORT=4000
 NODE_ENV=development
+CLIENT_URL=http://localhost:5173
 MONGODB_URI=your_mongodb_connection_string
 
 RAZORPAY_KEY_ID=your_razorpay_key_id
@@ -222,10 +228,10 @@ The app will be available at the local URL Vite prints (typically `http://localh
 
 ## Known Limitations — Stated Honestly
 
-- Agent-triggered settlement debits an internal, pre-funded wallet ledger rather than creating a live Razorpay order per transaction. This is an intentional security boundary — the agent is never exposed to real payment rails directly — but the per-transaction reference ID is internal, not a Razorpay payment ID.
-- The Razorpay Model Context Protocol (MCP) server is not currently integrated; settlement and wallet operations use the standard Razorpay REST SDK.
-- The internal wallet ledger records a running transaction history per account; it is not a double-entry accounting system across paired accounts.
+- Agent-triggered settlement debits an internal, pre-funded wallet ledger rather than creating a live Razorpay order per micro-transaction. This is an intentional security isolation boundary — the agent is never exposed to raw payment credentials directly — while top-ups use live Razorpay Checkout rails.
+- The internal wallet ledger records a running transaction history per account; it is not a double-entry accounting system across paired bank accounts.
 
 ---
 
 Built for the Razorpay AI Buildathon 2026 — Track 1: AI Growth & Agentic Commerce.
+

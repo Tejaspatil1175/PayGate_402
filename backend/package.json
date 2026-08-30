@@ -8,6 +8,7 @@
     "dev": "nodemon server.js",
     "test": "node --test test/*.test.js",
     "seed": "node scripts/seed.js",
+    "mcp": "node mcp/server.js",
     "build": "npm install"
   },
   "dependencies": {
