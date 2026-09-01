@@ -9,7 +9,6 @@
   <img src="https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white" alt="Node.js" />
   <img src="https://img.shields.io/badge/Express-000000?style=for-the-badge&logo=express&logoColor=white" alt="Express" />
   <img src="https://img.shields.io/badge/Razorpay-02042B?style=for-the-badge&logo=razorpay&logoColor=00D6A4" alt="Razorpay" />
-  <img src="https://img.shields.io/badge/MCP-Model%20Context%20Protocol-4B32C3?style=for-the-badge" alt="MCP" />
   <img src="https://img.shields.io/badge/Google-AP2-4285F4?style=for-the-badge&logo=google&logoColor=white" alt="Google AP2" />
   <img src="https://img.shields.io/badge/Coinbase-x402-0052FF?style=for-the-badge&logo=coinbase&logoColor=white" alt="x402" />
   <img src="https://img.shields.io/badge/MongoDB_Atlas-47A248?style=for-the-badge&logo=mongodb&logoColor=white" alt="MongoDB Atlas" />
@@ -38,7 +37,6 @@ This gateway closes that gap. An AI agent discovers a merchant's catalog, negoti
 - **AP2 Signed Cart Mandates** — every purchase intent is signed with a 2048-bit RSA key using RSA-PSS padding and a SHA-256 hash, before any money moves.
 - **Nonce-Based Replay Protection** — every mandate carries a single-use nonce; a captured or resubmitted request is rejected outright.
 - **Five-Checkpoint Settlement Engine** — signature/nonce verification, spend-velocity guardrails, manual-approval gating, merchant policy pre-check, and fraud risk scoring, evaluated in strict sequence. Any single failure halts the transaction immediately.
-- **Model Context Protocol (MCP) Server** — standard MCP server interface (`backend/mcp/server.js`) exposing tools for catalog discovery, mandate signing, and settlement to Claude Desktop, Cursor, and autonomous agent frameworks.
 - **Full Audit Trail** — every checkpoint decision (`ALLOW` / `BLOCK` / `REQUIRE_APPROVAL` / `PAYOUT_HOLD`) is logged with a correlation ID, rule ID, reason code, and mandate hash — satisfying the buildathon's explicit bar of "every money action explainable, bounded and gated."
 - **Automatic Rollback on Failure** — if a transaction fails after the wallet has already been debited, the wallet is credited back automatically and the reversal is logged as its own audit event. No manual reconciliation required.
 - **Self-Serve, Open-Protocol Onboarding** — any merchant can register and go live independently; every merchant is automatically exposed via a machine-readable catalog and policy manifest that any AP2-compatible AI agent can read without custom integration work.
@@ -58,7 +56,6 @@ Every agent-initiated transaction passes through this pipeline, in order, before
 graph TB
     subgraph INGRESS["1. Client Ingress & Agent Discovery Layer"]
         A1["Autonomous AI Buyer Agent<br/>(LLM / Prompt Runner)"]
-        A2["MCP Client Integration<br/>(Claude Desktop / Cursor)"]
         A3["Voice AI Commerce<br/>(Groq Whisper + Gemini 2.5 Flash)"]
         MF["Machine-Readable AP2 Manifest<br/>(/.well-known/agent-catalog.json)"]
     end
@@ -89,7 +86,6 @@ graph TB
     end
 
     A1 -->|Intent & Parameters| MF
-    A2 -->|JSON-RPC 2.0 /tools| MF
     A3 -->|Audio Transcription & NLP| MF
     MF -->|Agreed Cart & Terms| C1
     C1 --> C2
@@ -163,7 +159,6 @@ graph TB
 | Multi-Round Negotiation | Agent and merchant policy engine exchange offers/counters until acceptance or rejection. |
 | AP2 Mandate Signing | RSA-PSS 2048-bit signed Cart Mandate with nonce-based replay protection. |
 | Five-Checkpoint Settlement | Signature check plus four policy/fraud gates before funds move. |
-| MCP Tools Layer | Native Model Context Protocol server exposing `discover_merchant_catalog`, `sign_cart_mandate`, and `execute_settlement`. |
 | Order Status Tracking | Post-settlement order and fulfillment visibility for the agent. |
 
 ### Admin & Security Mesh
@@ -197,7 +192,7 @@ graph TB
 | Layer | Technology |
 |---|---|
 | Backend | Node.js, Express, MongoDB (Mongoose) |
-| Agent Protocol | Model Context Protocol (MCP), Google AP2, Coinbase x402 |
+| Agent Protocol | Google AP2, Coinbase x402 |
 | Cryptography | Node.js native `crypto` — RSA-2048, RSA-PSS, SHA-256, AES-256-GCM |
 | Payments | Razorpay test-mode APIs (Checkout, Orders), HMAC-SHA256 webhook verification |
 | Voice AI | Groq-hosted Whisper (`whisper-large-v3`), Gemini 2.5 Flash |
@@ -283,6 +278,7 @@ The app will be available at the local URL Vite prints (typically `http://localh
 
 ## Known Limitations — Stated Honestly
 
+- An earlier build included an experimental MCP (Model Context Protocol) tool layer. It was removed before submission after an internal review found its settlement path bypassed the velocity, approval, and fraud checkpoints that gate every other transaction in this system — shipping it in that state would have contradicted our own security claims. Re-adding it correctly (routed through the same five-checkpoint pipeline, with proper caller authorization) is scoped as follow-up work, not a requirement for this track.
 - Agent-triggered settlement debits an internal, pre-funded wallet ledger rather than creating a live Razorpay order per micro-transaction. This is an intentional security isolation boundary — the agent is never exposed to raw payment credentials directly — while top-ups use live Razorpay Checkout rails.
 - The internal wallet ledger records a running transaction history per account; it is not a double-entry accounting system across paired bank accounts.
 

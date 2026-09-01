@@ -661,8 +661,8 @@ export default function VoiceAssistant() {
           }
         }
 
-        // Direct product search & proposal if user requested a product
-        if (intent && (intent.action === 'buy' || intent.action === 'search' || intent.itemKeywords)) {
+        // Direct product search & proposal — only for explicit buy/search intents from the AI
+        if (intent && (intent.action === 'buy' || intent.action === 'search')) {
           lastContextRef.current = { category: intent.category, itemKeywords: intent.itemKeywords, budget: intent.budget || 0, brandPreference: intent.brandPreference };
           await executeProductSearchAndProposal(intent.itemKeywords || rawTranscript, intent.category, intent.budget);
           return;
@@ -1012,7 +1012,8 @@ export default function VoiceAssistant() {
         lastContextRef.current = { category: intent.category, itemKeywords: intent.itemKeywords, budget: intent.budget || 0, brandPreference: intent.brandPreference };
 
         // If user is searching or buying a product, execute product discovery and present proposal card directly!
-        if (intent.action === 'buy' || intent.action === 'search' || intent.itemKeywords) {
+        // Only fire for explicit buy/search actions — not for greetings, questions, or unclassified text
+        if (intent.action === 'buy' || intent.action === 'search') {
           await executeProductSearchAndProposal(intent.itemKeywords || textToSend, intent.category, intent.budget);
           return;
         }
@@ -1078,16 +1079,17 @@ export default function VoiceAssistant() {
 
       const productsFound = discoveryRes.data?.products || [];
       if (productsFound.length === 0) {
+        const budgetNote = budget > 0 ? ` under ₹${budget.toLocaleString('en-IN')}` : '';
         setMessages((prev) => [
           ...prev,
           {
             id: Date.now() + 2,
             sender: 'assistant',
-            text: `I searched the catalog for "${keywords}" but couldn't find items matching ₹${budget?.toLocaleString('en-IN')}. Would you like me to show all available items?`,
+            text: `I searched the catalog for "${keywords}"${budgetNote} but couldn't find a matching product. Try a different keyword like "shoes", "phone", or "headphones".`,
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           },
         ]);
-        speakText(`I searched for ${keywords} but couldn't find matching items. Would you like to adjust your budget?`);
+        speakText(`I searched for ${keywords} but couldn't find a matching product. Try a different keyword.`);
         setPendingIntent(null);
         setPendingNegotiation(null);
         return;

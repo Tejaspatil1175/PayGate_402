@@ -120,13 +120,27 @@ Output raw JSON only:`;
     parsedIntent = ruleBasedIntentParser(cleanTranscript, lastContext);
   }
 
-  const action = parsedIntent.action || 'buy';
+  let action = parsedIntent.action || 'buy';
   const category = parsedIntent.category || lastContext?.category || 'General';
   const itemKeywords = parsedIntent.itemKeywords || (parsedIntent.isFollowUp ? lastContext?.itemKeywords : cleanTranscript) || cleanTranscript;
   const budget = Number(parsedIntent.budget) || (parsedIntent.isFollowUp ? Number(lastContext?.budget) : 0) || 0;
   const brandPreference = parsedIntent.brandPreference || lastContext?.brandPreference || '';
   const scheduleTime = parsedIntent.scheduleTime || '';
-  const answer = parsedIntent.answer || null;
+  let answer = parsedIntent.answer || null;
+
+  // ── Nonsense / non-product guard ──────────────────────────────────────────
+  // If the AI returned action='buy'/'search' but the keywords contain NO
+  // recognisable product word, downgrade to a clarifying question.
+  // This stops "I want to buy Hospital" from hitting catalog fallback and
+  // returning a random product.
+  const KNOWN_PRODUCT_WORDS = /shoe|sneaker|boot|footwear|phone|mobile|smartphone|laptop|macbook|computer|headphone|earbud|earphone|speaker|watch|shirt|tshirt|t-shirt|hoodie|jacket|pant|trouser|kurta|dress|cloth|bag|backpack|book|novel|grocery|food|snack|mouse|keyboard|tablet|camera|tv|television|charger|cable|pen|bottle|flask|perfume|wallet|purse/i;
+
+  if ((action === 'buy' || action === 'search') && !KNOWN_PRODUCT_WORDS.test(itemKeywords)) {
+    action = 'question';
+    answer = `I couldn't find a product matching "${itemKeywords.trim()}". Try something like "Buy running shoes under ₹3000", "Find headphones", or "Search for a Samsung phone".`;
+    logger.warn(`[VOICE_INTENT] Nonsense product guard triggered for: "${itemKeywords}"`);
+  }
+  // ─────────────────────────────────────────────────────────────────────────
 
   // Confirm-purchase short-circuit: tells the frontend to trigger checkout directly, no new search needed
   if (action === 'confirm_purchase') {

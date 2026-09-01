@@ -51,6 +51,10 @@ async function searchProducts(params = {}) {
     if (/laptop|macbook|computer|pc/i.test(cleanQuery)) {
       synonyms.push(/laptop|macbook|computer|pc|apple/i);
     }
+    // mobile / phone synonyms — catches "I want a mobile", "find phone", "smartphone"
+    if (/mobile|phone|smartphone|iphone|android|handset/i.test(cleanQuery)) {
+      synonyms.push(/mobile|phone|smartphone|iphone|android|samsung|oneplus|realme|redmi|pixel/i);
+    }
     if (/mouse|keyboard|accessory/i.test(cleanQuery)) {
       synonyms.push(/mouse|keyboard|accessory|logitech|keychron/i);
     }
@@ -59,6 +63,13 @@ async function searchProducts(params = {}) {
     }
     if (/bag|backpack|wallet/i.test(cleanQuery)) {
       synonyms.push(/bag|backpack|wallet|bellroy/i);
+    }
+    // cloth / apparel synonyms — catches "classic cloth", "clothes", "clothing"
+    if (/cloth|clothes|clothing|apparel|shirt|tshirt|t-shirt|hoodie|jacket|pant|trouser|kurta|dress|fashion/i.test(cleanQuery)) {
+      synonyms.push(/shirt|tshirt|t-shirt|hoodie|jacket|pant|trouser|kurta|dress|apparel|cloth|fashion|zara|h&m|levi/i);
+    }
+    if (/watch|smartwatch|wearable/i.test(cleanQuery)) {
+      synonyms.push(/watch|smartwatch|wearable|fitbit|garmin|fossil|apple watch/i);
     }
 
     const regexClauses = [

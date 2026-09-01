@@ -85,7 +85,6 @@ app.use('/api/wishlist', require('./routes/wishlist.routes'));
 app.use('/api/user-orders', require('./routes/userOrders.routes'));
 app.use('/api/tasks', require('./routes/scheduledTasks.routes'));
 app.use('/api/agent-types', require('./routes/agentMarketplace.routes'));
-app.use('/api/mcp', require('./routes/mcp.routes'));
 
 // Centralized Error Handler
 const { errorHandler } = require('./middleware/errorHandler');
