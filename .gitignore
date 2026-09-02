@@ -59,3 +59,7 @@ API_TESTING_GUIDE.md
 # Simple plain-language report for submission — keep local only
 report.tex
 report.pdf
+
+# Local animation assets / recordings
+animation/
+animations/
