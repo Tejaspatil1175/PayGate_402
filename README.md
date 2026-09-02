@@ -280,7 +280,7 @@ The app will be available at the local URL Vite prints (typically `http://localh
 
 - An earlier build included an experimental MCP (Model Context Protocol) tool layer. It was removed before submission after an internal review found its settlement path bypassed the velocity, approval, and fraud checkpoints that gate every other transaction in this system — shipping it in that state would have contradicted our own security claims. Re-adding it correctly (routed through the same five-checkpoint pipeline, with proper caller authorization) is scoped as follow-up work, not a requirement for this track.
 - Agent-triggered settlement debits an internal, pre-funded wallet ledger rather than creating a live Razorpay order per micro-transaction. This is an intentional security isolation boundary — the agent is never exposed to raw payment credentials directly — while top-ups use live Razorpay Checkout rails.
-- The internal wallet ledger records a running transaction history per account; it is not a double-entry accounting system across paired bank accounts.
+- The internal wallet ledger operates as a tagged transaction ledger recording source and destination accounts (`debitAccount`/`creditAccount`) per entry; it is not a full double-entry accounting system (current balance is maintained as an atomically updated field rather than dynamically derived from ledger sums).
 
 ---
 

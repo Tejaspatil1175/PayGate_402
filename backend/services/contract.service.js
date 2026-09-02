@@ -28,18 +28,12 @@ async function generateCommerceContract(params) {
     expiresInMinutes = 60,
   } = params;
 
-  // Replay Attack Nonce Protection: an Intent's nonce is single-use for contract generation.
-  // Transition intent status to 'contract_created' atomically with findOneAndUpdate so that
-  // concurrent requests cannot race past the status check.
+  // Atomic Replay Attack Nonce Protection:
+  // Atomically claim the intent and transition status to 'contract_created'.
+  // If another concurrent request already updated the status, findOneAndUpdate returns null.
   const intent = await Intent.findOneAndUpdate(
-    {
-      _id: intentId,
-      status: { $nin: ['contract_created', 'completed'] },
-    },
-    {
-      $set: { status: 'contract_created' },
-    },
-    { new: false }
+    { _id: intentId, status: { $ne: 'contract_created' } },
+    { status: 'contract_created' }
   );
 
   if (!intent) {
