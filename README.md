@@ -44,74 +44,7 @@ This gateway closes that gap. An AI agent discovers a merchant's catalog, negoti
 
 ## Architecture
 
-### Sequential Authorization Pipeline
-
-Every agent-initiated transaction passes through this pipeline, in order, before a rupee moves:
-
-![Sequential Authorization Pipeline](Architecture/sequentialpipeline.png)
-
-### High-Level System Architecture & Security Mesh
-
-```mermaid
-graph TB
-    subgraph INGRESS["1. Client Ingress & Agent Discovery Layer"]
-        A1["Autonomous AI Buyer Agent<br/>(LLM / Prompt Runner)"]
-        A3["Voice AI Commerce<br/>(Groq Whisper + Gemini 2.5 Flash)"]
-        MF["Machine-Readable AP2 Manifest<br/>(/.well-known/agent-catalog.json)"]
-    end
-
-    subgraph CRYPTO["2. Cryptographic Protocol Boundary"]
-        C1["RSA-PSS 2048-bit Digital Signing<br/>(Private Key in User Isolation Vault)"]
-        C2["SHA-256 Cart Mandate Digest<br/>(Deterministic Payload Hash)"]
-        C3["Single-Use 32-Byte Nonce Generator<br/>(Anti-Replay Protection)"]
-    end
-
-    subgraph GATING["3. Five-Checkpoint Sequential Policy Engine"]
-        G1["Checkpoint 1: Signature & Nonce Gating<br/>(GATE_01_CRYPTO_VERIFICATION)"]
-        G2["Checkpoint 2: Velocity & Spend Guardrails<br/>(GATE_02_SPEND_GUARDRAIL)"]
-        G3["Checkpoint 3: Manual Approval Threshold<br/>(GATE_03_APPROVAL_THRESHOLD)"]
-        G4["Checkpoint 4: Deterministic Policy Engine<br/>(Precedence-Sorted Merchant Rules)"]
-        G5["Checkpoint 5: Anomaly & Fraud Scoring<br/>(GATE_05_FRAUD_HEURISTIC)"]
-    end
-
-    subgraph EXECUTION["4. Settlement & Isolation Boundary"]
-        L1["Pre-Funded Isolation Ledger<br/>(Integer Paise Precision Math)"]
-        RB["Automatic Compensation Engine<br/>(Rollback on Order Failure)"]
-        RZP["Razorpay Checkout & Webhooks<br/>(HMAC-SHA256 Signed Top-Up Rails)"]
-    end
-
-    subgraph TELEMETRY["5. Immutable Audit & Persistence"]
-        AUDIT["Structured Cryptographic Audit Stream<br/>(correlation_id, rule_id, reason_code, mandate_hash)"]
-        DB[("MongoDB Atlas Enterprise Cluster")]
-    end
-
-    A1 -->|Intent & Parameters| MF
-    A3 -->|Audio Transcription & NLP| MF
-    MF -->|Agreed Cart & Terms| C1
-    C1 --> C2
-    C2 --> C3
-    C3 -->|AP2 Signed Mandate| G1
-
-    G1 -->|Pass| G2
-    G1 -.->|Invalid Signature / Replay| BLK["HTTP 402 / Block Decision"]
-    G2 -->|Pass| G3
-    G2 -.->|Cap Exceeded| BLK
-    G3 -->|Auto-Approved| G4
-    G3 -.->|High Value Hold| HLD["REQUIRE_APPROVAL"]
-    G4 -->|Pass| G5
-    G4 -.->|Policy Block| BLK
-    G5 -->|Pass| L1
-    G5 -.->|Fraud Suspicion| BLK
-
-    L1 -->|Atomic Debit| ORD["Order Fulfillment & Digital Receipt"]
-    L1 -.->|Order Creation Failure| RB
-    RB -->|Reversal Credit| L1
-
-    RZP -->|Verified Top-Up Funds| L1
-
-    G1 & G2 & G3 & G4 & G5 & L1 & RB & BLK --> AUDIT
-    AUDIT --> DB
-```
+![Sequential Authorization Pipeline & Security Mesh](docs/signedpipeline.png)
 
 ## Competitive Positioning
 
