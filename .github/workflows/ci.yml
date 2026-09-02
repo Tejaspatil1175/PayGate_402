@@ -15,6 +15,12 @@ jobs:
       matrix:
         node-version: [18.x, 20.x]
 
+    services:
+      mongodb:
+        image: mongo:7.0
+        ports:
+          - 27017:27017
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -32,6 +38,8 @@ jobs:
 
       - name: Run Automated Test Suite (node:test)
         working-directory: backend
+        env:
+          MONGODB_URI: mongodb://127.0.0.1:27017/paygate402_test
         run: npm test
 
   frontend-build:
