@@ -114,7 +114,7 @@ const fromPaise = (paise) => Math.round(Number(paise)) / 100;
 /**
  * Credit wallet (Top-Up completion) with idempotency check
  */
-async function creditWallet(userId, amount, referenceId, description = 'Wallet Top-up') {
+async function creditWallet(userId, amount, referenceId, description = 'Wallet Top-up', options = {}) {
   const safeAmount = fromPaise(toPaise(amount));
   if (!safeAmount || safeAmount <= 0) {
     throw new Error('Credit amount must be greater than zero');
@@ -136,6 +136,10 @@ async function creditWallet(userId, amount, referenceId, description = 'Wallet T
   }
 
   const newBalance = fromPaise(toPaise(wallet.balance || 0) + toPaise(safeAmount));
+  const debitAccount =
+    (options && options.debitAccount) ||
+    (referenceId && referenceId.startsWith('rollback') ? 'merchant_escrow' : 'external_razorpay');
+  const creditAccount = (options && options.creditAccount) || `wallet_${wallet.owner}`;
 
   const updatedWallet = await Wallet.findOneAndUpdate(
     { owner: wallet.owner },
@@ -147,6 +151,8 @@ async function creditWallet(userId, amount, referenceId, description = 'Wallet T
           amount: safeAmount,
           description,
           referenceId,
+          debitAccount,
+          creditAccount,
           status: 'completed',
           balanceAfter: newBalance,
         },
@@ -163,7 +169,7 @@ async function creditWallet(userId, amount, referenceId, description = 'Wallet T
  * Debit wallet atomically for agent execution
  * Atomic query uses findOneAndUpdate with balance-sufficient and cap filters
  */
-async function debitWallet(userId, amount, referenceId, description = 'Agent Commerce Purchase') {
+async function debitWallet(userId, amount, referenceId, description = 'Agent Commerce Purchase', options = {}) {
   const safeAmount = fromPaise(toPaise(amount));
   if (!safeAmount || safeAmount <= 0) {
     throw new Error('Debit amount must be greater than zero');
@@ -176,6 +182,14 @@ async function debitWallet(userId, amount, referenceId, description = 'Agent Com
   }
 
   const newBalance = fromPaise(Math.max(0, toPaise(wallet.balance || 0) - toPaise(safeAmount)));
+  const debitAccount = (options && options.debitAccount) || `wallet_${wallet.owner}`;
+  const creditAccount =
+    (options && options.creditAccount) ||
+    (options && options.merchantId
+      ? `merchant_${options.merchantId}`
+      : referenceId
+      ? (referenceId.startsWith('merchant_') ? referenceId : `merchant_${referenceId}`)
+      : 'merchant_settlement');
 
   const filter = {
     owner: wallet.owner,
@@ -192,6 +206,8 @@ async function debitWallet(userId, amount, referenceId, description = 'Agent Com
         amount: safeAmount,
         description,
         referenceId,
+        debitAccount,
+        creditAccount,
         status: 'completed',
         balanceAfter: newBalance,
       },

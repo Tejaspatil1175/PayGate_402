@@ -20,6 +20,16 @@ const ledgerEntrySchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+    debitAccount: {
+      type: String,
+      required: true,
+      default: 'system',
+    },
+    creditAccount: {
+      type: String,
+      required: true,
+      default: 'system',
+    },
     status: {
       type: String,
       enum: ['pending', 'completed', 'failed'],
