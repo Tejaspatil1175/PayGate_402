@@ -28,15 +28,25 @@ async function generateCommerceContract(params) {
     expiresInMinutes = 60,
   } = params;
 
-  const intent = await Intent.findById(intentId);
-  if (!intent) {
-    throw new Error('Intent not found');
-  }
-
   // Replay Attack Nonce Protection: an Intent's nonce is single-use for contract generation.
-  // Once a contract has already been created from this intent, reject any further attempt
-  // to mint a new mandate from the same nonce (prevents replay of a captured intent payload).
-  if (intent.status === 'contract_created' || intent.status === 'completed') {
+  // Transition intent status to 'contract_created' atomically with findOneAndUpdate so that
+  // concurrent requests cannot race past the status check.
+  const intent = await Intent.findOneAndUpdate(
+    {
+      _id: intentId,
+      status: { $nin: ['contract_created', 'completed'] },
+    },
+    {
+      $set: { status: 'contract_created' },
+    },
+    { new: false }
+  );
+
+  if (!intent) {
+    const existingIntent = await Intent.findById(intentId);
+    if (!existingIntent) {
+      throw new Error('Intent not found');
+    }
     throw new Error(`[SECURITY_GATE_REJECTED] Replay detected: intent nonce has already been consumed to generate a commerce contract`);
   }
 
@@ -93,23 +103,25 @@ const logger = require('../utils/logger');
   // Sign mandate hash using RSA-PSS SHA-256
   const userSignature = signData(mandateHash, keys.privateKey);
 
-  const contract = await Contract.create({
-    contractId,
-    intent: intent._id,
-    merchant: merchant._id,
-    agentId: intent.agentId,
-    userPublicKey: keys.publicKey,
-    items,
-    contractTerms,
-    mandateHash,
-    userSignature,
-    expiresAt,
-    status: 'signed',
-  });
-
-  // Update intent status
-  intent.status = 'contract_created';
-  await intent.save();
+  let contract;
+  try {
+    contract = await Contract.create({
+      contractId,
+      intent: intent._id,
+      merchant: merchant._id,
+      agentId: intent.agentId,
+      userPublicKey: keys.publicKey,
+      items,
+      contractTerms,
+      mandateHash,
+      userSignature,
+      expiresAt,
+      status: 'signed',
+    });
+  } catch (err) {
+    await Intent.findByIdAndUpdate(intentId, { status: intent.status });
+    throw err;
+  }
 
   await logAuditEvent({
     correlationId: mandateHash,
