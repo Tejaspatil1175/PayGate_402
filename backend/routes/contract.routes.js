@@ -7,7 +7,9 @@ const {
   preCheckPolicy,
 } = require('../controllers/contract.controller');
 
-router.post('/', createContract);
+const { CreateContractSchema, validateBody } = require('../middleware/schemaValidation');
+
+router.post('/', validateBody(CreateContractSchema), createContract);
 router.post('/precheck', preCheckPolicy);
 router.get('/:id', getContractDetails);
 router.post('/:id/verify', verifyContract);

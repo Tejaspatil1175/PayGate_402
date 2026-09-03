@@ -64,6 +64,7 @@ app.use('/api/agent/negotiation', require('./routes/negotiation.routes'));
 app.use('/api/agent/contract', require('./routes/contract.routes'));
 app.use('/api/agent/payment', require('./routes/payment.routes'));
 app.use('/api/agent/fulfillment', require('./routes/fulfillment.routes'));
+app.use('/api/mcp', require('./routes/mcp.routes'));
 app.use('/api/analytics', require('./routes/analytics.routes'));
 app.use('/api/admin/overview', require('./routes/admin.overview.routes'));
 app.use('/api/admin/merchants', require('./routes/admin.merchants.routes'));
