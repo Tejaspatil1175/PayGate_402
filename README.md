@@ -4,6 +4,9 @@
   <a href="https://pay-gate-402.vercel.app/" target="_blank">
     <img src="https://img.shields.io/badge/Live_Demo-pay--gate--402.vercel.app-000000?style=for-the-badge&logo=vercel&logoColor=white" alt="Live Demo" />
   </a>
+  <a href="https://youtu.be/gN-8tQxaDkQ?si=fzSaNRcoQUYT64gz" target="_blank">
+    <img src="https://img.shields.io/badge/Pitch_Video-YouTube-FF0000?style=for-the-badge&logo=youtube&logoColor=white" alt="Pitch & Demo Video" />
+  </a>
   <a href="https://drive.google.com/file/d/1kz6T__kCQHHva6TekyXSXjxkgxvBgTA2/view?usp=sharing" target="_blank">
     <img src="https://img.shields.io/badge/Architecture_Report-PDF%20Document-EA4335?style=for-the-badge&logo=googledrive&logoColor=white" alt="Architecture Report" />
   </a>
@@ -19,7 +22,9 @@
 </p>
 
 <p align="center">
-  🌐 <b>Live Deployment:</b> <a href="https://pay-gate-402.vercel.app/" target="_blank"><b>https://pay-gate-402.vercel.app/</b></a> &nbsp;&nbsp;|&nbsp;&nbsp; 📄 <b>System Architecture Report:</b> <a href="https://drive.google.com/file/d/1kz6T__kCQHHva6TekyXSXjxkgxvBgTA2/view?usp=sharing" target="_blank"><b>Google Drive PDF Document</b></a>
+  🌐 <b>Live Deployment:</b> <a href="https://pay-gate-402.vercel.app/" target="_blank"><b>https://pay-gate-402.vercel.app/</b></a> &nbsp;&nbsp;|&nbsp;&nbsp; 
+  🎬 <b>Pitch & Demo Video:</b> <a href="https://youtu.be/gN-8tQxaDkQ?si=fzSaNRcoQUYT64gz" target="_blank"><b>YouTube Walkthrough</b></a> &nbsp;&nbsp;|&nbsp;&nbsp; 
+  📄 <b>Architecture Report:</b> <a href="https://drive.google.com/file/d/1kz6T__kCQHHva6TekyXSXjxkgxvBgTA2/view?usp=sharing" target="_blank"><b>Google Drive PDF</b></a>
 </p>
 
 ---

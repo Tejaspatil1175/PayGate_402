@@ -9,6 +9,8 @@ This document provides a fast, reproducible 2-minute walkthrough for hackathon j
 ### Live Hosted Deployment
 The complete stack is live and accessible without local setup:
 - **Web App**: [https://pay-gate-402.vercel.app/](https://pay-gate-402.vercel.app/)
+- **Pitch & Demo Video (5 Min)**: [https://youtu.be/gN-8tQxaDkQ?si=fzSaNRcoQUYT64gz](https://youtu.be/gN-8tQxaDkQ?si=fzSaNRcoQUYT64gz)
+- **Architecture Report (PDF)**: [Google Drive Document](https://drive.google.com/file/d/1kz6T__kCQHHva6TekyXSXjxkgxvBgTA2/view?usp=sharing)
 
 ### Local Setup (Alternative)
 ```bash
