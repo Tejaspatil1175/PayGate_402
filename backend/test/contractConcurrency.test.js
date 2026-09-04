@@ -15,7 +15,7 @@ describe('Contract Nonce Anti-Replay & Concurrency Suite', () => {
   let createdMerchant = false;
 
   before(async () => {
-    if (mongoose.connection.readyState === 0) {
+    if (mongoose.connection.readyState !== 1) {
       const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/paygate402';
       await mongoose.connect(mongoUri);
     }
@@ -29,9 +29,6 @@ describe('Contract Nonce Anti-Replay & Concurrency Suite', () => {
     if (createdMerchant && testMerchantId) {
       await Merchant.deleteOne({ _id: testMerchantId });
     }
-    if (mongoose.connection.readyState !== 0) {
-      await mongoose.disconnect();
-    }
   });
 
   it('should allow exactly 1 contract generation and reject 9 parallel replay calls with the same intentId', async () => {
@@ -43,7 +40,9 @@ describe('Contract Nonce Anti-Replay & Concurrency Suite', () => {
     if (!merchant) {
       merchant = await Merchant.create({
         businessName: 'AP2 Test Merchant',
-        email: 'test_merchant@paygate.internal',
+        email: `test_merchant_${generateNonce().substring(0, 8)}@paygate.internal`,
+        phone: `+9198${Math.floor(10000000 + Math.random() * 90000000)}`,
+        password: 'TestPassword123!',
         businessCategory: 'Electronics',
         status: 'approved',
         apiKey: `key_${generateNonce().substring(0, 16)}`,

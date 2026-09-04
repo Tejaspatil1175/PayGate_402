@@ -118,7 +118,6 @@ const contractSchema = new mongoose.Schema(
   }
 );
 
-contractSchema.index({ contractId: 1 });
 contractSchema.index({ mandateHash: 1 });
 contractSchema.index({ intent: 1 });
 contractSchema.index({ merchant: 1, status: 1 });

@@ -68,7 +68,6 @@ const registrySchema = new mongoose.Schema(
   }
 );
 
-registrySchema.index({ slug: 1 });
 registrySchema.index({ category: 1, isListed: 1 });
 registrySchema.index({ displayName: 'text', description: 'text', tags: 'text' });
 

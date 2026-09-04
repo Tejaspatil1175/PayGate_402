@@ -16,7 +16,7 @@ describe('Safe Model Context Protocol (MCP) Gateway Suite', () => {
   let createdMerchant = false;
 
   before(async () => {
-    if (mongoose.connection.readyState === 0) {
+    if (mongoose.connection.readyState !== 1) {
       const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/paygate402';
       await mongoose.connect(mongoUri);
     }
@@ -28,6 +28,7 @@ describe('Safe Model Context Protocol (MCP) Gateway Suite', () => {
         businessName: 'MCP Test Store',
         email: `mcp_test_${generateNonce().substring(0, 8)}@paygate.internal`,
         phone: `+9199${Math.floor(10000000 + Math.random() * 90000000)}`,
+        password: 'TestPassword123!',
         businessCategory: 'Apparel',
         status: 'approved',
         apiKey: `key_${generateNonce().substring(0, 16)}`,
@@ -68,9 +69,6 @@ describe('Safe Model Context Protocol (MCP) Gateway Suite', () => {
     }
     if (createdMerchant && testMerchantId) {
       await Merchant.deleteOne({ _id: testMerchantId });
-    }
-    if (mongoose.connection.readyState !== 0) {
-      await mongoose.disconnect();
     }
   });
 
