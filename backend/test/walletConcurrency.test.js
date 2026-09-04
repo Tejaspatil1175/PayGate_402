@@ -10,7 +10,7 @@ describe('Wallet Concurrency & Overdraft Protection Suite', () => {
   let testWalletId = null;
 
   before(async () => {
-    if (mongoose.connection.readyState !== 1) {
+    if (mongoose.connection.readyState === 0) {
       const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/paygate402';
       await mongoose.connect(mongoUri);
     }
@@ -19,6 +19,9 @@ describe('Wallet Concurrency & Overdraft Protection Suite', () => {
   after(async () => {
     if (testWalletId) {
       await Wallet.deleteOne({ _id: testWalletId });
+    }
+    if (mongoose.connection.readyState !== 0) {
+      await mongoose.disconnect();
     }
   });
 

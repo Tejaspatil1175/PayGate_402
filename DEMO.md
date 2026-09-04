@@ -15,7 +15,7 @@ The complete stack is live and accessible without local setup:
 # Terminal 1: Backend
 cd backend
 npm install
-npm test          # Runs 18 unit/integration tests (0 failures)
+npm test          # Runs all 7 automated test suites (or npm run test:fast for instant unit tests)
 npm run seed      # Seeds demo buyer, merchant, products, and policies
 npm run dev       # Starts API server on http://localhost:4000
 

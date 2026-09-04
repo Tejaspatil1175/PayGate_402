@@ -3,6 +3,8 @@
 > **Production Architectural Specification, Security Invariants, Protocol Manual & Operational Runbooks**  
 > **Submitted For:** Razorpay AI Buildathon 2026 (Track 1: AI Growth & Agentic Commerce)  
 > **Repository:** `Payment-Integrity-Mesh / PayGate_402`  
+> **Live Deployment:** [pay-gate-402.vercel.app](https://pay-gate-402.vercel.app/)  
+> **Full Architecture Report (PDF):** [Google Drive PDF Report](https://drive.google.com/file/d/1kz6T__kCQHHva6TekyXSXjxkgxvBgTA2/view?usp=sharing)  
 > **Status:** Production-Ready / Verified (18/18 Integration Tests Passing)
 
 ---

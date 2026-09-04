@@ -4,6 +4,10 @@
   <a href="https://pay-gate-402.vercel.app/" target="_blank">
     <img src="https://img.shields.io/badge/Live_Demo-pay--gate--402.vercel.app-000000?style=for-the-badge&logo=vercel&logoColor=white" alt="Live Demo" />
   </a>
+  <a href="https://drive.google.com/file/d/1kz6T__kCQHHva6TekyXSXjxkgxvBgTA2/view?usp=sharing" target="_blank">
+    <img src="https://img.shields.io/badge/Architecture_Report-PDF%20Document-EA4335?style=for-the-badge&logo=googledrive&logoColor=white" alt="Architecture Report" />
+  </a>
+  <img src="https://img.shields.io/badge/Model_Context_Protocol-MCP%20Gateway-6B46C1?style=for-the-badge&logo=anthropic&logoColor=white" alt="Model Context Protocol (MCP)" />
   <img src="https://img.shields.io/badge/CI%2FCD-Passing-brightgreen?style=for-the-badge&logo=githubactions&logoColor=white" alt="CI/CD" />
   <img src="https://img.shields.io/badge/Tests-22%20Passing-success?style=for-the-badge&logo=node.js&logoColor=white" alt="Tests" />
   <img src="https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white" alt="Node.js" />
@@ -15,7 +19,7 @@
 </p>
 
 <p align="center">
-  🌐 <b>Live Deployment:</b> <a href="https://pay-gate-402.vercel.app/"><b>https://pay-gate-402.vercel.app/</b></a>
+  🌐 <b>Live Deployment:</b> <a href="https://pay-gate-402.vercel.app/" target="_blank"><b>https://pay-gate-402.vercel.app/</b></a> &nbsp;&nbsp;|&nbsp;&nbsp; 📄 <b>System Architecture Report:</b> <a href="https://drive.google.com/file/d/1kz6T__kCQHHva6TekyXSXjxkgxvBgTA2/view?usp=sharing" target="_blank"><b>Google Drive PDF Document</b></a>
 </p>
 
 ---
