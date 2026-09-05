@@ -38,6 +38,7 @@ import {
 } from 'lucide-react';
 import apiClient from '../../api/client';
 import { getOrCreateUserKeys } from '../../utils/keys';
+import { parseVoiceIntentDirect } from '../../utils/gemini';
 
 // Confirmation / "book it" style phrases — checked locally first (instant, no network round trip)
 // against whatever's currently pending, so voice can trigger checkout/confirm directly.
@@ -1042,17 +1043,63 @@ export default function VoiceAssistant() {
           : `Before I can search for ${intent.itemKeywords}, I need a budget. What is your budget?`);
       }
     } catch (err) {
-      const errorMsg = err.error || err.message || 'Unable to parse text.';
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: Date.now() + 1,
-          sender: 'assistant',
-          text: `⚠️ Voice parser error: ${errorMsg}`,
-          isError: true,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        },
-      ]);
+      console.warn('Backend voice parser unreachable, trying direct frontend Gemini AI:', err);
+      try {
+        const directRes = await parseVoiceIntentDirect(
+          textToSend,
+          getRecentHistory(),
+          lastContextRef.current
+        );
+
+        if (directRes.isQuestion && directRes.answer) {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: Date.now() + 1,
+              sender: 'assistant',
+              text: directRes.answer,
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            },
+          ]);
+          speakText(directRes.answer);
+          setLoading(false);
+          setPipelineStage('');
+          return;
+        }
+
+        if (directRes.intent?.action === 'buy' || directRes.intent?.action === 'search') {
+          await executeProductSearchAndProposal(
+            directRes.intent.itemKeywords || textToSend,
+            directRes.intent.category,
+            directRes.intent.budget
+          );
+          return;
+        }
+
+        // Standard summary fallback
+        const intent = directRes.intent || { action: 'BUY', itemKeywords: textToSend, category: 'General' };
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: Date.now() + 1,
+            sender: 'assistant',
+            text: `Understood: Request for "${intent.itemKeywords}" (direct AI mode).`,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          },
+        ]);
+      } catch (geminiErr) {
+        const errorMsg = err.error || err.message || 'Unable to parse text.';
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: Date.now() + 1,
+            sender: 'assistant',
+            text: `⚠️ Voice parser error: ${errorMsg}`,
+            isError: true,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          },
+        ]);
+      }
     } finally {
       setLoading(false);
       setPipelineStage('');
