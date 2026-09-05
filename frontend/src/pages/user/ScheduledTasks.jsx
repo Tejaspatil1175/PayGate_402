@@ -27,7 +27,6 @@ export default function ScheduledTasks() {
   const [formLoading, setFormLoading] = useState(false);
 
   const [message, setMessage] = useState('');
-  const [error, setError] = useState('');
 
   const fetchTasks = async () => {
     setLoading(true);
@@ -42,7 +41,7 @@ export default function ScheduledTasks() {
         setTasks(res.data.tasks || []);
       }
     } catch (err) {
-      setError(err.error || err.message || 'Failed to load scheduled tasks');
+      console.warn('[ScheduledTasks] fetch failed silently:', err.message);
     } finally {
       setLoading(false);
     }
@@ -80,7 +79,7 @@ export default function ScheduledTasks() {
         fetchTasks();
       }
     } catch (err) {
-      setError(err.error || err.message || 'Failed to create task');
+      console.warn('[ScheduledTasks] create failed:', err.message);
     } finally {
       setFormLoading(false);
     }
@@ -95,7 +94,7 @@ export default function ScheduledTasks() {
         fetchTasks();
       }
     } catch (err) {
-      setError(err.error || err.message || 'Immediate execution failed');
+      console.warn('[ScheduledTasks] execute failed:', err.message);
     }
   };
 
@@ -114,7 +113,7 @@ export default function ScheduledTasks() {
         fetchTasks();
       }
     } catch (err) {
-      setError(err.error || err.message || 'Failed to cancel task');
+      console.warn('[ScheduledTasks] cancel failed:', err.message);
     }
   };
 
@@ -152,11 +151,6 @@ export default function ScheduledTasks() {
           <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4" />
             <span>{message}</span>
-          </div>
-        )}
-        {error && (
-          <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-sm">
-            {error}
           </div>
         )}
 
