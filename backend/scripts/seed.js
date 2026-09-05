@@ -21,16 +21,16 @@ async function seedDatabase() {
     process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/paygate402';
 
   console.log('\n======================================================');
-  console.log('🌱 PayGate 402 — Automated Demo Database Seeder');
+  console.log(' PayGate 402 — Automated Demo Database Seeder');
   console.log('======================================================');
   console.log(`Connecting to MongoDB: ${mongoUri.split('@').pop() || mongoUri}`);
 
   try {
     await mongoose.connect(mongoUri);
-    console.log('✅ Connected to MongoDB successfully.\n');
+    console.log(' Connected to MongoDB successfully.\n');
 
     // 1. Seed Demo Buyer
-    console.log('👤 [1/4] Seeding Demo Buyer Account...');
+    console.log(' [1/4] Seeding Demo Buyer Account...');
     let buyer = await User.findOne({ email: 'buyer@demo.com' });
     if (!buyer) {
       buyer = await User.create({
@@ -39,11 +39,11 @@ async function seedDatabase() {
         password: hashPassword('Password123!'),
         isActive: true,
       });
-      console.log('   ✔ Created user: buyer@demo.com');
+      console.log('    Created user: buyer@demo.com');
     } else {
       buyer.password = hashPassword('Password123!');
       await buyer.save();
-      console.log('   ✔ Updated password for: buyer@demo.com');
+      console.log('    Updated password for: buyer@demo.com');
     }
 
     // Pre-fund Buyer Wallet
@@ -80,7 +80,7 @@ async function seedDatabase() {
     }
 
     // 2. Seed Demo Merchant
-    console.log('\n🏪 [2/4] Seeding Demo Merchant & Storefront...');
+    console.log('\n [2/4] Seeding Demo Merchant & Storefront...');
     let merchant = await Merchant.findOne({ email: 'merchant@demo.com' });
     if (!merchant) {
       merchant = await Merchant.create({
@@ -106,7 +106,7 @@ async function seedDatabase() {
     }
 
     // Seed Merchant Catalog Products
-    console.log('   📦 Seeding Merchant Product Catalog...');
+    console.log('    Seeding Merchant Product Catalog...');
     const demoProducts = [
       {
         title: 'Sony WH-1000XM5 Noise Cancelling Headphones',
@@ -172,7 +172,7 @@ async function seedDatabase() {
     }
 
     // Seed Merchant Governance Policy Rules
-    console.log('   🛡️ Seeding Merchant Governance & Settlement Rules...');
+    console.log('    Seeding Merchant Governance & Settlement Rules...');
     const demoPolicies = [
       {
         ruleId: 'RULE_SPEND_CAP_01',
@@ -216,7 +216,7 @@ async function seedDatabase() {
     }
 
     // 3. Seed Demo Admin Account
-    console.log('\n👑 [3/4] Seeding Platform Administrator Account...');
+    console.log('\n [3/4] Seeding Platform Administrator Account...');
     let admin = await User.findOne({ email: 'admin@demo.com' });
     if (!admin) {
       admin = await User.create({
@@ -233,7 +233,7 @@ async function seedDatabase() {
     }
 
     // 4. Seed Standard Autonomous Agent Personas
-    console.log('\n🤖 [4/4] Seeding Autonomous Agent Personas...');
+    console.log('\n [4/4] Seeding Autonomous Agent Personas...');
     const agentPersonas = [
       {
         agentSlug: 'bargain-hunter',
@@ -290,21 +290,21 @@ async function seedDatabase() {
     }
 
     console.log('\n======================================================');
-    console.log('✨ Demo Database Seeding Complete!');
+    console.log(' Demo Database Seeding Complete!');
     console.log('======================================================');
-    console.log('\n🔑 Ready-to-Use Demo Credentials:\n');
+    console.log('\n Ready-to-Use Demo Credentials:\n');
     console.log('┌───────────────────┬──────────────────────┬───────────────┬──────────────────────────────┐');
     console.log('│ Role              │ Email                │ Password      │ Pre-Loaded State             │');
     console.log('├───────────────────┼──────────────────────┼───────────────┼──────────────────────────────┤');
-    console.log('│ 👤 Buyer          │ buyer@demo.com       │ Password123!  │ ₹5,000 Pre-Funded AP2 Wallet │');
-    console.log('│ 🏪 Merchant       │ merchant@demo.com    │ Password123!  │ 5 Products + 3 Active Rules  │');
-    console.log('│ 👑 Admin          │ admin@demo.com       │ Password123!  │ Platform Telemetry Access    │');
+    console.log('│  Buyer          │ buyer@demo.com       │ Password123!  │ ₹5,000 Pre-Funded AP2 Wallet │');
+    console.log('│  Merchant       │ merchant@demo.com    │ Password123!  │ 5 Products + 3 Active Rules  │');
+    console.log('│  Admin          │ admin@demo.com       │ Password123!  │ Platform Telemetry Access    │');
     console.log('└───────────────────┴──────────────────────┴───────────────┴──────────────────────────────┘');
-    console.log('\n🚀 Run: npm run dev to start both servers, or visit: https://pay-gate-402.vercel.app/\n');
+    console.log('\n Run: npm run dev to start both servers, or visit: https://pay-gate-402.vercel.app/\n');
 
     process.exit(0);
   } catch (err) {
-    console.error('❌ Seeding failed:', err);
+    console.error(' Seeding failed:', err);
     process.exit(1);
   }
 }

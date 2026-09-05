@@ -29,6 +29,9 @@ describe('Contract Nonce Anti-Replay & Concurrency Suite', () => {
     if (createdMerchant && testMerchantId) {
       await Merchant.deleteOne({ _id: testMerchantId });
     }
+    if (mongoose.connection.readyState !== 0) {
+      await mongoose.disconnect();
+    }
   });
 
   it('should allow exactly 1 contract generation and reject 9 parallel replay calls with the same intentId', async () => {

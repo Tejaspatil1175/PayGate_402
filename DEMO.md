@@ -9,15 +9,13 @@ This document provides a fast, reproducible 2-minute walkthrough for hackathon j
 ### Live Hosted Deployment
 The complete stack is live and accessible without local setup:
 - **Web App**: [https://pay-gate-402.vercel.app/](https://pay-gate-402.vercel.app/)
-- **Pitch & Demo Video (5 Min)**: [https://youtu.be/gN-8tQxaDkQ?si=fzSaNRcoQUYT64gz](https://youtu.be/gN-8tQxaDkQ?si=fzSaNRcoQUYT64gz)
-- **Architecture Report (PDF)**: [Google Drive Document](https://drive.google.com/file/d/1kz6T__kCQHHva6TekyXSXjxkgxvBgTA2/view?usp=sharing)
 
 ### Local Setup (Alternative)
 ```bash
 # Terminal 1: Backend
 cd backend
 npm install
-npm test          # Runs all 7 automated test suites (or npm run test:fast for instant unit tests)
+npm test          # Runs 18 unit/integration tests (0 failures)
 npm run seed      # Seeds demo buyer, merchant, products, and policies
 npm run dev       # Starts API server on http://localhost:4000
 
@@ -33,9 +31,8 @@ npm run dev       # Starts UI on http://localhost:5173
 
 | Role | Email | Password | Pre-Loaded State |
 |---|---|---|---|
-| Buyer | `buyer@demo.com` | `Password123!` | ₹5,000 Pre-Funded AP2 Wallet |
-| Merchant | `merchant@demo.com` | `Password123!` | 5 Products + 3 Active Governance Rules |
-| Admin | `admin@demo.com` | `Password123!` | Platform Telemetry & Live Audit Stream |
+| Buyer | `tejas@gmail.com` | `12345678` | ₹5,000 Pre-Funded AP2 Wallet |
+| Merchant | `volt@gmail.com` | `12345678` | 5 Products |
 
 ---
 

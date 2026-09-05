@@ -10,6 +10,7 @@ jobs:
   backend-test:
     name: Backend Test Suite & Security Checks
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     strategy:
       matrix:
@@ -45,6 +46,7 @@ jobs:
   frontend-build:
     name: Frontend Build & Asset Verification
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
       - name: Checkout Code
