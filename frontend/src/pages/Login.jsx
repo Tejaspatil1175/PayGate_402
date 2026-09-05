@@ -11,7 +11,6 @@ import {
   EyeOff,
   CheckCircle2,
   AlertCircle,
-  Zap,
 } from 'lucide-react';
 import apiClient from '../api/client';
 
@@ -83,10 +82,6 @@ export default function Login() {
     localStorage.setItem('paygate_role', role);
     localStorage.setItem(userKey, JSON.stringify(profile));
 
-    if (geminiKey.trim()) {
-      setGeminiApiKey(geminiKey.trim());
-    }
-
     navigate(redirectPath);
   };
 
@@ -94,11 +89,6 @@ export default function Login() {
     e.preventDefault();
     setError('');
     setLoading(true);
-
-    // Save Gemini key locally regardless of backend
-    if (geminiKey.trim()) {
-      setGeminiApiKey(geminiKey.trim());
-    }
 
     try {
       let endpoint = '/user/auth/login';
@@ -264,17 +254,6 @@ export default function Login() {
           </button>
         </form>
 
-        {/* 1-Click Direct Frontend Login (No Backend Required) */}
-        <div className="mt-3 pt-3 border-t border-[#E7E2D6]">
-          <button
-            type="button"
-            onClick={() => executeDirectLogin(activeTab)}
-            className="w-full bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 font-semibold rounded-xl py-2 px-3 flex items-center justify-center gap-1.5 transition text-xs cursor-pointer shadow-xs"
-          >
-            <Zap className="w-3.5 h-3.5 text-emerald-600" />
-            <span>⚡ Direct Instant Login as {tabs.find((t) => t.id === activeTab)?.label} (No Backend)</span>
-          </button>
-        </div>
 
         {/* Registration link */}
         {activeTab !== 'admin' && (
