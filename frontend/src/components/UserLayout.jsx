@@ -209,7 +209,7 @@ export default function UserLayout() {
       {/* ----------------- MAIN VIEW WRAPPER ----------------- */}
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
         {/* ----------------- TOP HEADER BAR ----------------- */}
-        <header className="h-16 bg-white border-b border-[#E2E8F0] px-4 sm:px-6 flex items-center justify-between gap-3 shrink-0 z-30 shadow-xs">
+        <header className="h-13 sm:h-14 bg-white border-b border-[#E2E8F0] px-4 sm:px-6 flex items-center justify-between gap-3 shrink-0 z-30 shadow-2xs">
           <div className="flex items-center gap-3 flex-1 max-w-md">
             {/* Mobile Hamburger Button */}
             <button

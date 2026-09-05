@@ -218,10 +218,10 @@ export default function UserWallet() {
   const capPercent = Math.min(100, Math.round((dailySpent / (dailyCap || 1)) * 100));
 
   return (
-    <div className="p-3 sm:p-6 md:p-8 space-y-4 sm:space-y-6 max-w-7xl mx-auto w-full font-sans">
-      <div className="space-y-4 sm:space-y-6">
+    <div className="p-3 sm:p-5 md:p-6 pt-2 sm:pt-4 md:pt-4 space-y-3 sm:space-y-4 max-w-7xl mx-auto w-full font-sans">
+      <div className="space-y-3 sm:space-y-4">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 border-b border-slate-200 pb-4 sm:pb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 border-b border-slate-200 pb-3 sm:pb-4">
           <div className="flex items-center gap-3">
             <div className="p-2.5 sm:p-3 rounded-2xl bg-indigo-50 border border-indigo-100 text-indigo-600 shrink-0">
               <WalletIcon className="w-5 h-5 sm:w-6 sm:h-6" />

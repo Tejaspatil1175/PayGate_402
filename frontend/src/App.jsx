@@ -150,7 +150,7 @@ export default function App() {
     adminRoutePrefixes.some((p) => location.pathname === p || location.pathname.startsWith(`${p}/`));
 
   // We hide the global navbar on auth pages and any routes that have their own sidebar layouts (User, Merchant & Admin)
-  const shouldHideNavbar = isAuthPage || isUserRoute || isMerchantRoute || isAdminRoute;
+  const shouldHideNavbar = !location.pathname.startsWith('/agent');
 
   // Determine default authenticated redirect
   const getDefaultRedirect = () => {

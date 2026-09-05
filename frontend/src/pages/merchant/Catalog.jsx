@@ -164,9 +164,9 @@ export default function MerchantCatalog() {
   };
 
   return (
-    <div className="p-6 md:p-8 space-y-6 max-w-7xl mx-auto w-full">
+    <div className="p-3 sm:p-5 md:p-6 pt-2 sm:pt-4 md:pt-4 space-y-4 max-w-7xl mx-auto w-full">
       {/* Header & Actions */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-200 pb-4">
         <div className="flex items-center gap-3">
           <div className="p-3 rounded-2xl bg-indigo-50 border border-indigo-100 text-indigo-600">
             <Store className="w-6 h-6" />

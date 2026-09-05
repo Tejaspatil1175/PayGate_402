@@ -176,9 +176,9 @@ export default function MerchantPolicy() {
   const primaryRule = rules.find((r) => r.isActive !== false) || rules[0];
 
   return (
-    <div className="p-6 md:p-8 space-y-6 max-w-7xl mx-auto w-full font-sans text-slate-800">
+    <div className="p-3 sm:p-5 md:p-6 pt-2 sm:pt-4 md:pt-4 space-y-4 max-w-7xl mx-auto w-full font-sans text-slate-800">
       {/* Header & Main Actions */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200/80 pb-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-200/80 pb-4">
         <div>
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center shadow-sm">

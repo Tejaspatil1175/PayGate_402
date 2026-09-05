@@ -116,8 +116,8 @@ export default function ProductDiscovery() {
   };
 
   return (
-    <div className="p-3 sm:p-6 md:p-8 space-y-4 sm:space-y-6 max-w-7xl mx-auto w-full">
-      <div className="space-y-4 sm:space-y-5">
+    <div className="p-3 sm:p-5 md:p-6 pt-2 sm:pt-4 md:pt-4 space-y-3 sm:space-y-4 max-w-7xl mx-auto w-full">
+      <div className="space-y-3 sm:space-y-4">
         {/* Active Search Query Pill (if searched from top header) */}
         {searchQuery && (
           <div className="flex flex-wrap items-center justify-between gap-2 bg-indigo-50 border border-indigo-200 px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl text-xs text-indigo-900">

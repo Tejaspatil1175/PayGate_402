@@ -158,7 +158,7 @@ export default function MerchantLayout() {
       {/* ----------------- MAIN VIEW WRAPPER ----------------- */}
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
         {/* ----------------- TOP HEADER BAR ----------------- */}
-        <header className="h-16 bg-white border-b border-[#E2E8F0] px-6 flex items-center justify-between gap-4 shrink-0 z-30 shadow-xs">
+        <header className="h-13 sm:h-14 bg-white border-b border-[#E2E8F0] px-4 sm:px-6 flex items-center justify-between gap-4 shrink-0 z-30 shadow-2xs">
           {/* Global Search Bar */}
           <form onSubmit={handleSearchSubmit} className="relative flex-1 max-w-md">
             <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
