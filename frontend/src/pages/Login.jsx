@@ -140,7 +140,7 @@ export default function Login() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#FBF9F4] text-[#1A1612] flex flex-col items-center justify-start pt-2 sm:pt-6 pb-6 px-3 sm:px-6 relative overflow-y-auto">
+    <div className="min-h-screen bg-[#FBF9F4] text-[#1A1612] flex flex-col items-center justify-start pt-10 sm:pt-16 pb-6 px-3 sm:px-6 relative overflow-y-auto">
       {/* Background ambient lighting */}
       <div className="absolute -top-32 -left-32 sm:-top-40 sm:-left-40 w-72 sm:w-96 h-72 sm:h-96 bg-amber-200/30 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute -bottom-32 -right-32 sm:-bottom-40 sm:-right-40 w-72 sm:w-96 h-72 sm:h-96 bg-indigo-200/30 rounded-full blur-3xl pointer-events-none" />
