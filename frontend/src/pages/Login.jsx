@@ -9,18 +9,11 @@ import {
   ArrowRight,
   Eye,
   EyeOff,
-  Sparkles,
-  Key,
   CheckCircle2,
   AlertCircle,
   Zap,
 } from 'lucide-react';
 import apiClient from '../api/client';
-import {
-  getGeminiApiKey,
-  setGeminiApiKey,
-  testGeminiConnection,
-} from '../utils/gemini';
 
 const DEMO_PROFILES = {
   user: {
@@ -56,12 +49,6 @@ export default function Login() {
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
-  // Direct Frontend Gemini API Key Integration
-  const [geminiKey, setGeminiKeyInput] = useState(getGeminiApiKey());
-  const [showGeminiKey, setShowGeminiKey] = useState(false);
-  const [geminiStatus, setGeminiStatus] = useState(null); // 'connected' | 'testing' | 'error' | null
-  const [geminiMsg, setGeminiMsg] = useState('');
-
   // Auto-fill demo credentials on tab switch
   useEffect(() => {
     if (activeTab === 'user') {
@@ -75,25 +62,6 @@ export default function Login() {
       setPassword('Password123!');
     }
   }, [activeTab]);
-
-  const handleTestGemini = async () => {
-    setGeminiStatus('testing');
-    setGeminiMsg('Testing Gemini 1.5 Flash connectivity...');
-    const res = await testGeminiConnection(geminiKey.trim());
-    if (res.success) {
-      setGeminiStatus('connected');
-      setGeminiMsg('Google Gemini API connected & ready!');
-      setGeminiApiKey(geminiKey.trim());
-    } else {
-      setGeminiStatus('error');
-      setGeminiMsg(res.error || 'Connection failed');
-    }
-  };
-
-  const handleSaveGeminiKey = (newKey) => {
-    setGeminiKeyInput(newKey);
-    setGeminiApiKey(newKey);
-  };
 
   const executeDirectLogin = (role = activeTab) => {
     const profile = DEMO_PROFILES[role] || DEMO_PROFILES.user;
@@ -226,58 +194,6 @@ export default function Login() {
           })}
         </div>
 
-        {/* Direct Gemini API Key Integration Card */}
-        <div className="mb-3 sm:mb-4 p-2.5 sm:p-3 rounded-xl bg-indigo-50/50 border border-indigo-100 text-xs">
-          <div className="flex items-center justify-between mb-1.5">
-            <div className="flex items-center gap-1.5 font-semibold text-indigo-900">
-              <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
-              <span className="text-[11px] sm:text-xs">Direct Gemini AI API Key</span>
-            </div>
-            <span className="inline-flex items-center gap-1 text-[9px] sm:text-[10px] font-medium text-emerald-700 bg-emerald-100/70 px-2 py-0.5 rounded-full">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-              Client-Side
-            </span>
-          </div>
-          <div className="relative mb-1.5">
-            <Key className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-indigo-400" />
-            <input
-              type={showGeminiKey ? 'text' : 'password'}
-              value={geminiKey}
-              onChange={(e) => handleSaveGeminiKey(e.target.value)}
-              placeholder="Paste Gemini API Key..."
-              className="w-full bg-white border border-indigo-200 focus:border-indigo-500 rounded-lg pl-8 pr-8 py-1 text-xs text-slate-800 placeholder-slate-400 outline-none font-mono"
-            />
-            <button
-              type="button"
-              onClick={() => setShowGeminiKey(!showGeminiKey)}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-indigo-400 hover:text-indigo-600"
-              title={showGeminiKey ? 'Hide key' : 'Show key'}
-            >
-              {showGeminiKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-            </button>
-          </div>
-          <div className="flex items-center justify-between gap-2">
-            <button
-              type="button"
-              onClick={handleTestGemini}
-              disabled={geminiStatus === 'testing'}
-              className="text-[10px] sm:text-[11px] font-medium text-indigo-600 hover:text-indigo-800 underline flex items-center gap-1 cursor-pointer disabled:opacity-50"
-            >
-              {geminiStatus === 'testing' ? 'Verifying...' : '⚡ Test Gemini Key'}
-            </button>
-            {geminiMsg && (
-              <span
-                className={`text-[10px] truncate ${
-                  geminiStatus === 'connected'
-                    ? 'text-emerald-600 font-medium'
-                    : 'text-rose-600'
-                }`}
-              >
-                {geminiMsg}
-              </span>
-            )}
-          </div>
-        </div>
 
         {error && (
           <div className="mb-3 p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 text-xs font-medium">
