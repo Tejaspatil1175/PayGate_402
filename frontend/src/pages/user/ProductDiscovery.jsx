@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
   Heart,
   Zap,
@@ -23,13 +23,13 @@ export default function ProductDiscovery() {
 
   const [wishlistSaved, setWishlistSaved] = useState({});
   const [actionMessage, setActionMessage] = useState('');
-  const [error, setError] = useState('');
+  const [actionType, setActionType] = useState('success');
+  const navigate = useNavigate();
 
   const categories = ['All', 'Electronics', 'Footwear', 'Fashion', 'Home', 'General'];
 
   const fetchProducts = async () => {
     setLoading(true);
-    setError('');
     try {
       const params = {};
       if (searchQuery.trim()) params.q = searchQuery.trim();
@@ -50,7 +50,7 @@ export default function ProductDiscovery() {
         setProducts(items);
       }
     } catch (err) {
-      setError(err.error || err.message || 'Failed to fetch catalog products');
+      console.warn('[Discovery] fetch error:', err?.message || err);
     } finally {
       setLoading(false);
     }
@@ -85,34 +85,12 @@ export default function ProductDiscovery() {
         setTimeout(() => setActionMessage(''), 3000);
       }
     } catch (err) {
-      setError(err.error || err.message || 'Failed to add to wishlist');
+      console.warn('[Discovery] wishlist error:', err?.message || err);
     }
   };
 
-  const handleInitiateAgentPurchase = async (product) => {
-    try {
-      const storedUser = localStorage.getItem('paygate_user');
-      const user = storedUser ? JSON.parse(storedUser) : null;
-      const userId = user?._id || user?.id;
-
-      setActionMessage(`Initiating AI agent negotiation for "${product.title}"...`);
-
-      const res = await apiClient.post('/discovery/initiate-match', {
-        query: product.title,
-        category: product.category,
-        maxPrice: product.price,
-        userId,
-      });
-
-      if (res.data?.success) {
-        setActionMessage(
-          `Agent matched! Initiating autonomous purchase protocol for "${product.title}".`
-        );
-        setTimeout(() => setActionMessage(''), 4000);
-      }
-    } catch (err) {
-      setError(err.error || err.message || 'Agent purchase failed');
-    }
+  const handleInitiateAgentPurchase = (product) => {
+    navigate('/voice', { state: { product } });
   };
 
   return (
@@ -139,14 +117,13 @@ export default function ProductDiscovery() {
 
         {/* Notifications */}
         {actionMessage && (
-          <div className="p-3 sm:p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs sm:text-sm flex items-center gap-2">
+          <div className={`p-3 sm:p-4 rounded-xl text-xs sm:text-sm flex items-center gap-2 ${
+            actionType === 'error'
+              ? 'bg-rose-50 border border-rose-200 text-rose-700'
+              : 'bg-emerald-50 border border-emerald-200 text-emerald-700'
+          }`}>
             <Check className="w-4 h-4 shrink-0" />
             <span>{actionMessage}</span>
-          </div>
-        )}
-        {error && (
-          <div className="p-3 sm:p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs sm:text-sm">
-            {error}
           </div>
         )}
 

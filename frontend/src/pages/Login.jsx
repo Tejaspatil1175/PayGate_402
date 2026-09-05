@@ -14,30 +14,8 @@ import {
 } from 'lucide-react';
 import apiClient from '../api/client';
 
-const DEMO_PROFILES = {
-  user: {
-    _id: 'usr_demo_buyer_001',
-    name: 'Demo Buyer',
-    email: 'buyer@demo.com',
-    role: 'buyer',
-    walletId: 'wal_demo_buyer_001',
-    balance: 5000,
-  },
-  merchant: {
-    _id: 'mer_demo_store_001',
-    businessName: 'AP2 Apex Store',
-    email: 'merchant@demo.com',
-    role: 'merchant',
-    status: 'approved',
-    businessCategory: 'Electronics',
-  },
-  admin: {
-    _id: 'adm_demo_super_001',
-    name: 'PayGate Admin',
-    email: 'admin@demo.com',
-    role: 'admin',
-  },
-};
+
+
 
 export default function Login() {
   const [activeTab, setActiveTab] = useState('user'); // 'user' | 'merchant' | 'admin'
@@ -62,28 +40,6 @@ export default function Login() {
     }
   }, [activeTab]);
 
-  const executeDirectLogin = (role = activeTab) => {
-    const profile = DEMO_PROFILES[role] || DEMO_PROFILES.user;
-    const token = `paygate_direct_jwt_${role}_${Date.now()}`;
-    const userKey =
-      role === 'merchant'
-        ? 'paygate_merchant'
-        : role === 'admin'
-        ? 'paygate_admin'
-        : 'paygate_user';
-    const redirectPath =
-      role === 'merchant'
-        ? '/merchant/catalog'
-        : role === 'admin'
-        ? '/admin/overview'
-        : '/discovery';
-
-    localStorage.setItem('paygate_token', token);
-    localStorage.setItem('paygate_role', role);
-    localStorage.setItem(userKey, JSON.stringify(profile));
-
-    navigate(redirectPath);
-  };
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -120,14 +76,10 @@ export default function Login() {
 
         navigate(redirectPath);
       } else {
-        // Backend didn't return success, use direct frontend login fallback
-        console.warn('Backend login unsuccessful, using direct frontend login.');
-        executeDirectLogin(activeTab);
+        setError('Please enter valid credentials.');
       }
     } catch (err) {
-      console.warn('Backend offline or unreachable, logging in directly in frontend mode:', err);
-      // Seamless direct frontend login fallback!
-      executeDirectLogin(activeTab);
+      setError('Please enter valid credentials.');
     } finally {
       setLoading(false);
     }
@@ -140,7 +92,7 @@ export default function Login() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#FBF9F4] text-[#1A1612] flex flex-col items-center justify-start pt-10 sm:pt-16 pb-6 px-3 sm:px-6 relative overflow-y-auto">
+    <div className="min-h-screen bg-[#FBF9F4] text-[#1A1612] flex flex-col items-center justify-start pt-20 sm:pt-28 pb-6 px-3 sm:px-6 relative overflow-y-auto">
       {/* Background ambient lighting */}
       <div className="absolute -top-32 -left-32 sm:-top-40 sm:-left-40 w-72 sm:w-96 h-72 sm:h-96 bg-amber-200/30 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute -bottom-32 -right-32 sm:-bottom-40 sm:-right-40 w-72 sm:w-96 h-72 sm:h-96 bg-indigo-200/30 rounded-full blur-3xl pointer-events-none" />

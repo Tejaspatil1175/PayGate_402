@@ -298,12 +298,14 @@ export default function VoiceAssistant() {
   const handleSendTextRef = useRef(null);
   const handleAudioUploadRef = useRef(null);
   const handleExecuteNegotiationRef = useRef(null);
+  const executeProductSearchAndProposalRef = useRef(null);
   
   useEffect(() => {
     // These get updated on every render so they always close over the latest state
     handleSendTextRef.current = handleSendText;
     handleAudioUploadRef.current = handleAudioUpload;
     handleExecuteNegotiationRef.current = handleExecuteNegotiation;
+    executeProductSearchAndProposalRef.current = executeProductSearchAndProposal;
   });
 
   const isMobile = typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
@@ -549,6 +551,8 @@ export default function VoiceAssistant() {
 
   // On page mount: speak greeting and auto-start continuous listening immediately.
   useEffect(() => {
+    // If arriving with a product to buy from catalog, skip the generic greeting
+    if (location.state?.product) return;
     if (hasAutoStartedRef.current) return;
     hasAutoStartedRef.current = true;
 
@@ -597,6 +601,44 @@ export default function VoiceAssistant() {
 
     return () => clearTimeout(timer);
   }, []);
+
+  // Auto-trigger pipeline if user arrived via "Buy via AI Agent" from catalog
+  const hasAutoTriggeredProductRef = useRef(false);
+  useEffect(() => {
+    const incomingProduct = location.state?.product;
+    if (!incomingProduct || hasAutoTriggeredProductRef.current) return;
+    hasAutoTriggeredProductRef.current = true;
+
+    const intro = `I found "${incomingProduct.title}" for ₹${(incomingProduct.price || 0).toLocaleString('en-IN')}. Let me negotiate the best deal and place the order for you.`;
+
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: Date.now(),
+        sender: 'assistant',
+        text: `🛒 Product loaded from catalog: **${incomingProduct.title}** — ₹${(incomingProduct.price || 0).toLocaleString('en-IN')}\n\nSearching product & preparing negotiation...`,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      },
+    ]);
+
+    // Speak intro concurrently without blocking search execution
+    speakText(intro);
+
+    // Directly search and propose the product
+    const timer = setTimeout(() => {
+      const runner = executeProductSearchAndProposalRef.current || executeProductSearchAndProposal;
+      if (runner) {
+        runner(
+          incomingProduct.title,
+          incomingProduct.category || 'General',
+          incomingProduct.price || 0,
+          incomingProduct
+        );
+      }
+    }, 150);
+
+    return () => clearTimeout(timer);
+  }, [location.state]);
 
   const handleAudioUpload = async (audioBlob, mimeType = 'audio/webm') => {
     setLoading(true);
@@ -1106,7 +1148,7 @@ export default function VoiceAssistant() {
     }
   };
 
-  const executeProductSearchAndProposal = async (keywords, category = 'General', budget = 0) => {
+  const executeProductSearchAndProposal = async (keywords, category = 'General', budget = 0, directProduct = null) => {
     setLoading(true);
     setPipelineStage('matching');
 
@@ -1115,17 +1157,27 @@ export default function VoiceAssistant() {
       const u = stored ? JSON.parse(stored) : null;
       const userId = u?._id || u?.id || 'agent_buyer_user';
 
-      const discoveryRes = await apiClient.get('/discovery/search', {
-        params: {
-          q: keywords || category || '',
-          category: category !== 'General' ? category : undefined,
-          ...(budget > 0 ? { maxPrice: budget } : {}),
-          limit: 6,
-        },
-      });
+      let topProduct = directProduct || null;
 
-      const productsFound = discoveryRes.data?.products || [];
-      if (productsFound.length === 0) {
+      try {
+        const discoveryRes = await apiClient.get('/discovery/search', {
+          params: {
+            q: keywords || category || '',
+            category: category !== 'General' ? category : undefined,
+            ...(budget > 0 ? { maxPrice: budget } : {}),
+            limit: 6,
+          },
+        });
+
+        const productsFound = discoveryRes.data?.products || [];
+        if (productsFound.length > 0) {
+          topProduct = productsFound[0];
+        }
+      } catch (searchErr) {
+        console.warn('[Voice Search Warning]:', searchErr);
+      }
+
+      if (!topProduct) {
         const budgetNote = budget > 0 ? ` under ₹${budget.toLocaleString('en-IN')}` : '';
         setMessages((prev) => [
           ...prev,
@@ -1141,8 +1193,6 @@ export default function VoiceAssistant() {
         setPendingNegotiation(null);
         return;
       }
-
-      const topProduct = productsFound[0];
       const proposalData = {
         topProduct,
         finalBudget: budget > 0 ? budget : (topProduct.price || 50000),
