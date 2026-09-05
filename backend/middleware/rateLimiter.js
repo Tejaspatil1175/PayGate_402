@@ -5,7 +5,7 @@ const { AppError } = require('./errorHandler');
 const rateLimitStore = new Map();
 
 // Periodic cleanup of expired window entries every 5 minutes
-setInterval(() => {
+const rateLimitCleanupTimer = setInterval(() => {
   const now = Date.now();
   for (const [key, record] of rateLimitStore.entries()) {
     if (now > record.resetTime) {
@@ -13,6 +13,7 @@ setInterval(() => {
     }
   }
 }, 5 * 60 * 1000);
+if (rateLimitCleanupTimer.unref) rateLimitCleanupTimer.unref();
 
 /**
  * In-memory Rate Limiting Middleware

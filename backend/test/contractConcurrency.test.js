@@ -16,6 +16,9 @@ describe('Contract Nonce Anti-Replay & Concurrency Suite', () => {
 
   before(async () => {
     if (mongoose.connection.readyState !== 1) {
+      if (mongoose.connection.readyState !== 0) {
+        await mongoose.disconnect();
+      }
       const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/paygate402';
       await mongoose.connect(mongoUri);
     }

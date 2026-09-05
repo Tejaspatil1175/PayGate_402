@@ -7,7 +7,7 @@ const logger = require('../utils/logger');
 const repeatTxCache = new Map();
 
 // Cleanup repeat transaction cache every 10 minutes
-setInterval(() => {
+const repeatTxCleanupTimer = setInterval(() => {
   const now = Date.now();
   for (const [hash, timestamp] of repeatTxCache.entries()) {
     if (now - timestamp > 10 * 60 * 1000) {
@@ -15,6 +15,7 @@ setInterval(() => {
     }
   }
 }, 10 * 60 * 1000);
+if (repeatTxCleanupTimer.unref) repeatTxCleanupTimer.unref();
 
 /**
  * Calculate anomaly risk score and determine payout hold status

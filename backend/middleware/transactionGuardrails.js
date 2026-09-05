@@ -7,7 +7,7 @@ const logger = require('../utils/logger');
 const velocityStore = new Map();
 
 // Periodic cleanup of expired velocity windows (runs every 5 minutes)
-setInterval(() => {
+const velocityCleanupTimer = setInterval(() => {
   const now = Date.now();
   for (const [key, record] of velocityStore.entries()) {
     if (now > record.resetTime) {
@@ -15,6 +15,7 @@ setInterval(() => {
     }
   }
 }, 5 * 60 * 1000);
+if (velocityCleanupTimer.unref) velocityCleanupTimer.unref();
 
 /**
  * Evaluate transaction guardrails for an agent transaction
